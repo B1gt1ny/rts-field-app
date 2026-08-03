@@ -144,25 +144,27 @@ export function FieldAppView() {
   async function startJob(job: Job) {
     setSavingJobId(job.jobId);
     const employeeName = employee?.name || user?.employeeName || "Crew";
+    const session = getWorkSession(job);
+    const now = new Date().toISOString();
     const activity: JobActivity = {
       id: `activity-${Date.now()}`,
-      type: "Status",
-      message: `${employeeName} started field work.`,
-      createdAt: new Date().toISOString(),
+      type: "Time",
+      message: "Started Job",
+      createdAt: now,
       createdBy: employeeName,
       audience: "All",
     };
-    const timeEntry: NonNullable<Job["timeEntries"]>[number] = {
+    const timeEntry: NonNullable<Job["timeEntries"]>[number] | undefined = session.active ? undefined : {
       id: `time-${Date.now()}`,
       type: "Work started",
       employeeName,
-      createdAt: new Date().toISOString(),
+      createdAt: now,
       notes: "Started from Field App.",
     };
     const patch: Partial<Job> = {
-      status: "In Progress",
-      activityLog: [activity, ...(job.activityLog || [])].slice(0, 50),
-      timeEntries: [timeEntry, ...(job.timeEntries || [])].slice(0, 100),
+      status: ["New", "Scheduled"].includes(job.status) ? "In Progress" : job.status,
+      activityLog: session.active ? job.activityLog || [] : [activity, ...(job.activityLog || [])].slice(0, 50),
+      timeEntries: timeEntry ? [timeEntry, ...(job.timeEntries || [])].slice(0, 100) : job.timeEntries || [],
     };
     try {
       const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
@@ -354,7 +356,7 @@ export function FieldAppView() {
       <Link href="/employees" className="btn-primary mt-4">Open Employees</Link>
     </section> : null}
 
-    {!loading && employee && <CurrentJobPanel job={currentJob} permissions={fieldPermissions} />}
+    {!loading && employee && <CurrentJobPanel job={currentJob} saving={savingJobId === currentJob?.jobId} permissions={fieldPermissions} onStart={(job) => startJob(job)} />}
 
     {!loading && employee && <TodayAssignments jobs={todayRemainingJobs} />}
 
@@ -386,12 +388,13 @@ export function FieldAppView() {
   </div>;
 }
 
-function CurrentJobPanel({ job, permissions }: { job?: Job; permissions: FieldPermissions }) {
+function CurrentJobPanel({ job, saving, permissions, onStart }: { job?: Job; saving: boolean; permissions: FieldPermissions; onStart: (job: Job) => void }) {
   if (!job) return <section className="card p-5 text-center">
     <p className="text-lg font-black">No assigned work right now.</p>
     <p className="mt-1 text-sm font-semibold text-black/45">Assigned jobs will show here when dispatch puts them on your crew list.</p>
   </section>;
   const action = primaryFieldAction(job);
+  const session = getWorkSession(job);
   return <section className="card overflow-hidden">
     <div className="bg-sand p-4">
       <p className="text-xs font-black uppercase tracking-widest text-forest">Current / next job</p>
@@ -404,10 +407,15 @@ function CurrentJobPanel({ job, permissions }: { job?: Job; permissions: FieldPe
         <StatusBadge status={job.status} />
       </div>
       {job.assignedCrew && <p className="mt-2 text-xs font-black uppercase tracking-wide text-black/40">Crew: {job.assignedCrew}</p>}
+      <p className="mt-2 text-xs font-black uppercase tracking-wide text-black/40">{session.started ? "Started" : "Not Started"}</p>
       <p className="mt-3 rounded-xl bg-white p-3 text-sm font-bold text-black/65">{nextActionReason(job)}</p>
     </div>
     <div className="space-y-3 p-4">
-      <Link href={action.href} className="block min-h-12 rounded-xl bg-forest px-4 py-3 text-center font-black text-white">{action.label}</Link>
+      {session.started
+        ? <Link href={`/jobs/${job.jobId}`} className="block min-h-12 rounded-xl bg-forest px-4 py-3 text-center font-black text-white">Continue Job</Link>
+        : permissions.employeeCanStartJobs
+          ? <button type="button" disabled={saving} onClick={() => onStart(job)} className="block min-h-12 w-full rounded-xl bg-forest px-4 py-3 text-center font-black text-white disabled:opacity-50">{saving ? "Saving..." : "Start Job"}</button>
+          : <Link href={action.href} className="block min-h-12 rounded-xl bg-forest px-4 py-3 text-center font-black text-white">{action.label}</Link>}
       <QuickCurrentJobActions job={job} canUpload={permissions.employeeCanUploadFiles} />
     </div>
   </section>;
@@ -440,13 +448,14 @@ function TodayAssignments({ jobs }: { jobs: Job[] }) {
 }
 
 function AssignmentRow({ job, order }: { job: Job; order: number }) {
+  const session = getWorkSession(job);
   return <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3 p-3">
     <span className="grid size-8 place-items-center rounded-lg bg-sand text-sm font-black text-black/50">{order}</span>
     <div className="min-w-0">
       <p className="truncate text-sm font-black">{job.jobId} · {job.customerName}</p>
-      <p className="truncate text-xs font-bold text-black/45">{job.city || "No city"} · {job.status} · {nextActionReason(job)}</p>
+      <p className="truncate text-xs font-bold text-black/45">{job.city || "No city"} · {session.started ? "Started" : "Not Started"} · {nextActionReason(job)}</p>
     </div>
-    <Link href={`/jobs/${job.jobId}`} className="rounded-lg bg-forest px-3 py-2 text-xs font-black text-white">Open</Link>
+    <Link href={`/jobs/${job.jobId}`} className="rounded-lg bg-forest px-3 py-2 text-xs font-black text-white">{session.started ? "Continue" : "Start"}</Link>
   </div>;
 }
 
@@ -629,6 +638,7 @@ function FieldJobCard({ job, noteDraft, saving, permissions, customerTextTemplat
       <StatusBadge status={job.status} />
     </div>
     <ProgressBar job={job} />
+    <FieldWorkSessionBadge job={job} />
     <FieldDueStatus job={job} />
     <FieldJobBasics job={job} />
     <FieldScopeSummary job={job} />
@@ -862,6 +872,7 @@ function FieldCloseoutStatus({ review, instructions }: { review: ReturnType<type
 
 function FieldButtons({ job, saving, permissions, customerTextTemplate, fieldSupportName, fieldSupportPhone, employeeHelpInstructions, reviewReady, reviewScore, supportText, onStart, onNeedHelp, onReadyReview }: { job: Job; saving: boolean; permissions: FieldPermissions; customerTextTemplate: string; fieldSupportName: string; fieldSupportPhone: string; employeeHelpInstructions: string; reviewReady: boolean; reviewScore: number; supportText: string; onStart: () => void; onNeedHelp: () => void; onReadyReview: () => void }) {
   const reviewButtonLabel = job.status === "Needs Inspection" ? "Review Sent" : reviewReady ? "Ready Review" : `Locked ${reviewScore}%`;
+  const session = getWorkSession(job);
   return <div className="mt-4 space-y-2">
     {permissions.employeeCanRequestHelp && employeeHelpInstructions && <p className="rounded-xl border border-red-100 bg-red-50 p-3 text-xs font-bold text-red-900">{employeeHelpInstructions}</p>}
     <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
@@ -871,7 +882,7 @@ function FieldButtons({ job, saving, permissions, customerTextTemplate, fieldSup
     {permissions.employeeCanRequestHelp && <button type="button" onClick={onNeedHelp} disabled={saving} className="min-h-12 rounded-xl bg-red-100 px-3 py-3 text-center text-xs font-black text-red-900 disabled:opacity-50"><ExclamationTriangleIcon className="mx-auto mb-1 size-5" />Need Help</button>}
     {permissions.employeeCanRequestHelp && fieldSupportPhone && <a href={`tel:${fieldSupportPhone}`} className="min-h-12 rounded-xl bg-red-600 px-3 py-3 text-center text-xs font-black text-white"><PhoneIcon className="mx-auto mb-1 size-5" />{fieldSupportName || "Office"}</a>}
     {permissions.employeeCanRequestHelp && fieldSupportPhone && <a href={`sms:${fieldSupportPhone}?&body=${encodeURIComponent(supportText)}`} className="min-h-12 rounded-xl bg-red-50 px-3 py-3 text-center text-xs font-black text-red-900"><PhoneIcon className="mx-auto mb-1 size-5" />Text Office</a>}
-    {permissions.employeeCanStartJobs && <button type="button" onClick={onStart} disabled={saving || job.status === "In Progress"} className="min-h-12 rounded-xl bg-blue-100 px-3 py-3 text-center text-xs font-black text-blue-900 disabled:opacity-50"><PlayIcon className="mx-auto mb-1 size-5" />{saving ? "Saving" : job.status === "In Progress" ? "Started" : "Start"}</button>}
+    {permissions.employeeCanStartJobs && (session.started ? <Link href={`/jobs/${job.jobId}`} className="min-h-12 rounded-xl bg-blue-100 px-3 py-3 text-center text-xs font-black text-blue-900"><PlayIcon className="mx-auto mb-1 size-5" />Continue</Link> : <button type="button" onClick={onStart} disabled={saving} className="min-h-12 rounded-xl bg-blue-100 px-3 py-3 text-center text-xs font-black text-blue-900 disabled:opacity-50"><PlayIcon className="mx-auto mb-1 size-5" />{saving ? "Saving" : "Start"}</button>)}
     {job.googleCalendarEventUrl && <a href={job.googleCalendarEventUrl} target="_blank" className="min-h-12 rounded-xl bg-blue-50 px-3 py-3 text-center text-xs font-black text-blue-900"><CalendarDaysIcon className="mx-auto mb-1 size-5" />Calendar</a>}
     {job.companyCamProjectUrl && <a href={job.companyCamProjectUrl} target="_blank" className="min-h-12 rounded-xl bg-yellow-50 px-3 py-3 text-center text-xs font-black text-yellow-900"><CameraIcon className="mx-auto mb-1 size-5" />CompanyCam</a>}
     <Link href={`/jobs/${job.jobId}#time-log`} className="min-h-12 rounded-xl bg-sand px-3 py-3 text-center text-xs font-black text-ink"><ClockIcon className="mx-auto mb-1 size-5" />Time</Link>
@@ -909,6 +920,14 @@ function FieldDueStatus({ job }: { job: Job }) {
       <p className="mt-1 text-sm font-semibold text-black/65">{formatDue(job.dueDate)}</p>
     </div>
     <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-black uppercase tracking-wide ${tone}`}>{label}</span>
+  </div>;
+}
+
+function FieldWorkSessionBadge({ job }: { job: Job }) {
+  const session = getWorkSession(job);
+  return <div className="mt-3 rounded-2xl border border-black/10 bg-white p-3">
+    <p className="text-xs font-black uppercase tracking-wide text-black/35">Work session</p>
+    <p className="mt-1 text-sm font-semibold text-black/65">{session.started ? `Started ${formatShortDateTime(session.started.createdAt)}` : "Not Started"}</p>
   </div>;
 }
 
@@ -1056,14 +1075,29 @@ function matchesCrewFilter(job: Job, filter: CrewFilter, today: string, options:
   if (filter === "all") return true;
   if (filter === "today") return job.dueDate === today;
   if (filter === "overdue") return activeStatuses.includes(job.status) && Boolean(job.dueDate) && job.dueDate < today;
-  if (filter === "started") return job.status === "In Progress";
+  if (filter === "started") return Boolean(getWorkSession(job).started);
   if (filter === "parts") return job.status === "Waiting on Parts";
   if (filter === "closeout") return needsFieldCloseout(job, options);
   return true;
 }
 
+function getWorkSession(job: Job) {
+  const entries = [...(job.timeEntries || [])].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const started = entries.find((entry) => entry.type === "Work started");
+  const finished = entries.find((entry) => entry.type === "Departed");
+  return {
+    started,
+    finished,
+    active: Boolean(started && (!finished || started.createdAt > finished.createdAt)),
+  };
+}
+
 function formatDue(dueDate: string) {
   return dueDate ? new Date(`${dueDate}T12:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Not scheduled";
+}
+
+function formatShortDateTime(value: string) {
+  return new Date(value).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
 function formatTodayLabel() {

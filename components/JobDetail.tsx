@@ -96,6 +96,57 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
     const checklist = job.checklist.map((item) => item.id === id ? { ...item, complete: !item.complete } : item);
     await saveJobPatch({ checklist });
   }
+  async function startWorkSession() {
+    const session = getWorkSession(job);
+    if (session.active) return;
+    const employeeName = user?.employeeName || user?.email || "Field";
+    const now = new Date().toISOString();
+    const entry: TimeEntry = {
+      id: `time-${Date.now()}`,
+      type: "Work started",
+      employeeName,
+      createdAt: now,
+      notes: "Started from Job Detail.",
+    };
+    const activity: JobActivity = {
+      id: `activity-${Date.now()}`,
+      type: "Time",
+      message: "Started Job",
+      createdAt: now,
+      createdBy: employeeName,
+      audience: "All",
+    };
+    await saveJobPatch({
+      status: ["New", "Scheduled"].includes(job.status) ? "In Progress" : job.status,
+      timeEntries: [entry, ...(job.timeEntries || [])].slice(0, 100),
+      activityLog: [activity, ...(job.activityLog || [])].slice(0, 50),
+    });
+  }
+  async function finishWorkSession() {
+    const session = getWorkSession(job);
+    if (!session.active) return;
+    const employeeName = user?.employeeName || user?.email || "Field";
+    const now = new Date().toISOString();
+    const entry: TimeEntry = {
+      id: `time-${Date.now()}`,
+      type: "Departed",
+      employeeName,
+      createdAt: now,
+      notes: "Finished work session from Job Detail.",
+    };
+    const activity: JobActivity = {
+      id: `activity-${Date.now()}`,
+      type: "Time",
+      message: "Finished Work",
+      createdAt: now,
+      createdBy: employeeName,
+      audience: "All",
+    };
+    await saveJobPatch({
+      timeEntries: [entry, ...(job.timeEntries || [])].slice(0, 100),
+      activityLog: [activity, ...(job.activityLog || [])].slice(0, 50),
+    });
+  }
   return <>
     <div className="mb-5 flex items-start justify-between gap-3">
       <div>
@@ -114,6 +165,7 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
       </div>}
     </div>
     <JobWorkflowGuide job={job} canManageJob={canManageJob} />
+    <WorkSessionPanel job={job} saving={saving} canStart={!canManageJob} onStart={startWorkSession} />
     {detailMessage && <p role="alert" className="mb-5 rounded-xl border border-red-200 bg-red-50 p-4 font-bold text-red-700">{detailMessage}</p>}
     <div className="space-y-3">
       <WorkspaceSection id="overview" title="Overview" summary={`${job.jobId} · ${job.status} · ${job.assignedCrew || "Unassigned"}`} openSection={openSection} setOpenSection={setOpenSection}>
@@ -153,7 +205,7 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
       <WorkspaceSection id="closeout" title="Closeout" summary={`${readinessScore(job)}% billing ready`} openSection={openSection} setOpenSection={setOpenSection}>
         <GuidedCloseoutPanel job={job} canManageJob={canManageJob} />
         {canManageJob && <CloseoutQualityPanel job={job} />}
-        <CompleteJobFlow job={job} saving={saving} canManageJob={canManageJob} onSave={saveJobPatch} />
+        <CompleteJobFlow job={job} saving={saving} canManageJob={canManageJob} onFinishWork={finishWorkSession} onSave={saveJobPatch} />
         <SignoffPanel job={job} saving={saving} onSave={saveJobPatch} />
         {canManageJob && <BillingHandoffPanel job={job} saving={saving} onSave={saveJobPatch} />}
       </WorkspaceSection>
@@ -188,6 +240,31 @@ function WorkspaceSection({ id, title, summary, openSection, setOpenSection, chi
       <span className={`rounded-full px-3 py-1 text-xs font-black uppercase tracking-wide ${open ? "bg-forest text-white" : "bg-sand text-black/45"}`}>{open ? "Open" : "View"}</span>
     </button>
     {open && <div className="mt-3 space-y-5">{children}</div>}
+  </section>;
+}
+
+function WorkSessionPanel({ job, saving, canStart, onStart }: { job: Job; saving: boolean; canStart: boolean; onStart: () => void }) {
+  const session = getWorkSession(job);
+  const started = session.started?.createdAt;
+  if (!started) {
+    return <section className="card mb-5 p-4 sm:p-6">
+      {canStart ? <button type="button" disabled={saving} onClick={onStart} className="min-h-14 w-full rounded-xl bg-forest px-4 py-4 text-lg font-black text-white disabled:opacity-50">{saving ? "Saving..." : "START JOB"}</button> : <div className="rounded-xl bg-sand p-4 text-center font-black text-black/55">Not Started</div>}
+    </section>;
+  }
+  return <section className="card mb-5 p-4 sm:p-6">
+    <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div>
+        <p className="text-xs font-black uppercase tracking-widest text-forest">Work Session</p>
+        <h2 className="mt-1 text-xl font-black">{session.active ? "CONTINUE JOB" : "Work Session Finished"}</h2>
+      </div>
+      {canStart && (session.active ? <a href="#photos" className="inline-flex min-h-12 items-center justify-center rounded-xl bg-forest px-4 py-3 font-black text-white">CONTINUE JOB</a> : <button type="button" disabled={saving} onClick={onStart} className="min-h-12 rounded-xl bg-forest px-4 py-3 font-black text-white disabled:opacity-50">{saving ? "Saving..." : "CONTINUE JOB"}</button>)}
+    </div>
+    <div className="grid gap-3 sm:grid-cols-4">
+      <MiniMetric label="Started" value={formatSessionDate(started)} icon={<ClockIcon />} />
+      <MiniMetric label="Elapsed time" value={formatElapsed(started, session.finished?.createdAt)} icon={<ClockIcon />} />
+      <MiniMetric label="Crew" value={job.assignedCrew || "Unassigned"} icon={<UserGroupIcon />} />
+      <MiniMetric label="Current status" value={job.status} icon={<ClipboardDocumentListIcon />} />
+    </div>
   </section>;
 }
 
@@ -1048,11 +1125,12 @@ function receiptBackupApplies(job: Job) {
   return isReceiptBackupMissing(job) || (job.receipts || []).some((receipt) => Boolean(receipt.amount || receipt.file)) || hasFactoryCostWork(job.factoryCost);
 }
 
-function CompleteJobFlow({ job, saving, canManageJob, onSave }: { job: Job; saving: boolean; canManageJob: boolean; onSave: (patch: Partial<Job>) => Promise<Job | undefined> }) {
+function CompleteJobFlow({ job, saving, canManageJob, onFinishWork, onSave }: { job: Job; saving: boolean; canManageJob: boolean; onFinishWork: () => void; onSave: (patch: Partial<Job>) => Promise<Job | undefined> }) {
   const [notes, setNotes] = useState(job.completionNotes || "");
   const [notified, setNotified] = useState(false);
   const [invoiceReady, setInvoiceReady] = useState(job.invoiceStatus === "Ready");
   const [requireAfterPhotos, setRequireAfterPhotos] = useState(true);
+  const session = getWorkSession(job);
   const draftJob = { ...job, completionNotes: notes.trim() || job.completionNotes };
   const reviewRequirements = closeoutRequirements(draftJob, "review", { requireAfterPhotos });
   const reviewBlockers = blockingRequirements(reviewRequirements);
@@ -1116,6 +1194,15 @@ function CompleteJobFlow({ job, saving, canManageJob, onSave }: { job: Job; savi
     </div>
     {requireAfterPhotos && !afterPhotosReady && <p className="mt-3 rounded-xl bg-orange-50 p-3 text-sm font-bold text-orange-800">Add at least one After photo before completing the job.</p>}
     {reviewBlockers.length > 0 && <p className="mt-3 rounded-xl bg-orange-50 p-3 text-sm font-bold text-orange-800">Complete {reviewBlockers.length} item{reviewBlockers.length === 1 ? "" : "s"} first: {reviewBlockers.map((item) => item.name).join(", ")}.</p>}
+    <div className="mt-4 rounded-2xl border border-black/10 bg-sand p-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-black">Finish Work</p>
+          <p className="text-xs font-semibold text-black/45">{session.active ? "Closes the current work session without submitting for review." : session.started ? "Current work session is already closed." : "Start the job before finishing work."}</p>
+        </div>
+        <button type="button" disabled={saving || !session.active} onClick={onFinishWork} className="min-h-11 rounded-xl bg-ink px-4 py-2 text-sm font-black text-white disabled:opacity-50">{saving ? "Saving..." : "Finish Work"}</button>
+      </div>
+    </div>
     <div className={`mt-4 grid gap-2 ${canManageJob ? "sm:grid-cols-2" : ""}`}>
       <button type="button" disabled={saving || !canSubmitForReview} onClick={sendForManagerReview} className="min-h-12 rounded-xl border-2 border-black/10 bg-white px-4 py-3 font-black text-ink disabled:opacity-50">{saving ? "Saving…" : canSubmitForReview ? "Submit for Review" : `Complete ${reviewBlockers.length} items first`}</button>
       {canManageJob && <button type="button" disabled={saving || !canComplete} onClick={completeJob} className="min-h-12 rounded-xl bg-forest px-4 py-3 font-black text-white disabled:opacity-50">{saving ? "Saving…" : "Manager Approve Complete"}</button>}
@@ -1511,6 +1598,53 @@ function addJobActivity(job: Job, message: string, type: JobActivity["type"] = "
   return [entry, ...(job.activityLog || [])].slice(0, 50);
 }
 
+function getWorkSession(job: Job) {
+  const entries = [...(job.timeEntries || [])].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const started = entries.find((entry) => entry.type === "Work started");
+  const finished = entries.find((entry) => entry.type === "Departed");
+  return {
+    started,
+    finished,
+    active: Boolean(started && (!finished || started.createdAt > finished.createdAt)),
+  };
+}
+
+function formatSessionDate(value: string) {
+  return new Date(value).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+}
+
+function formatElapsed(startedAt: string, finishedAt?: string) {
+  const end = finishedAt ? new Date(finishedAt).getTime() : Date.now();
+  const minutes = Math.max(0, Math.round((end - new Date(startedAt).getTime()) / 60000));
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  if (!hours) return `${remainder}m`;
+  if (!remainder) return `${hours}h`;
+  return `${hours}h ${remainder}m`;
+}
+
+function formatWorkedToday(entries: TimeEntry[], today: string) {
+  const todayEntries = entries
+    .filter((entry) => entry.createdAt.slice(0, 10) === today && ["Work started", "Departed"].includes(entry.type))
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  let startedAt = "";
+  let totalMinutes = 0;
+  for (const entry of todayEntries) {
+    if (entry.type === "Work started") {
+      startedAt = entry.createdAt;
+    } else if (entry.type === "Departed" && startedAt) {
+      totalMinutes += Math.max(0, Math.round((new Date(entry.createdAt).getTime() - new Date(startedAt).getTime()) / 60000));
+      startedAt = "";
+    }
+  }
+  if (startedAt) totalMinutes += Math.max(0, Math.round((Date.now() - new Date(startedAt).getTime()) / 60000));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (!hours) return `${minutes}m`;
+  if (!minutes) return `${hours}h`;
+  return `${hours}h ${minutes}m`;
+}
+
 function readAsDataUrl(file: File) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -1883,6 +2017,8 @@ function TimeLogPanel({ job, saving, onSave }: { job: Job; saving: boolean; onSa
   const today = new Date().toLocaleDateString("en-CA");
   const todayEntries = entries.filter((entry) => entry.createdAt.slice(0, 10) === today);
   const mileageTotal = entries.reduce((sum, entry) => sum + (Number(entry.mileage) || 0), 0);
+  const session = getWorkSession(job);
+  const lastUpdated = entries[0]?.createdAt;
 
   async function addTimeEntry(type: TimeEntry["type"], options: { mileage?: string; notes?: string } = {}) {
     const entry: TimeEntry = {
@@ -1918,6 +2054,11 @@ function TimeLogPanel({ job, saving, onSave }: { job: Job; saving: boolean; onSa
       </div>
     </div>
     <div className="grid gap-3 sm:grid-cols-3">
+      <MiniMetric label="Started" value={session.started ? formatSessionDate(session.started.createdAt) : "Not Started"} icon={<ClockIcon />} />
+      <MiniMetric label="Worked today" value={formatWorkedToday(entries, today)} icon={<ClockIcon />} />
+      <MiniMetric label="Last updated" value={lastUpdated ? formatSessionDate(lastUpdated) : "No entries"} icon={<ClipboardDocumentListIcon />} />
+    </div>
+    <div className="mt-3 grid gap-3 sm:grid-cols-3">
       <MiniMetric label="Today entries" value={todayEntries.length} icon={<ClockIcon />} />
       <MiniMetric label="Total entries" value={entries.length} icon={<ClipboardDocumentListIcon />} />
       <MiniMetric label="Mileage" value={mileageTotal.toFixed(1)} icon={<MapPinIcon />} />
