@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: light; }
+* { box-sizing: border-box; }
+body { @apply bg-sand text-ink antialiased; }
+button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+
+@media print {
+  body { background: white !important; color: black !important; }
+  aside, header, nav, .print\:hidden { display: none !important; }
+  main { max-width: none !important; padding: 0 !important; }
+  .card { box-shadow: none !important; border: 1px solid #ddd !important; break-inside: avoid; }
+  a { color: black !important; text-decoration: none !important; }
+}
+
+@layer components {
+  .card { @apply rounded-2xl border border-black/5 bg-white shadow-card; }
+  .btn-primary { @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-forest px-5 py-3 font-bold text-white transition hover:bg-forest/90 active:scale-[.98] disabled:opacity-50; }
+  .btn-secondary { @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-black/10 bg-white px-4 py-3 font-semibold transition hover:bg-black/[.03] active:scale-[.98]; }
+  .field { @apply min-h-12 w-full rounded-xl border border-black/10 bg-white px-3.5 py-3 text-base outline-none transition placeholder:text-black/35 focus:border-forest focus:ring-2 focus:ring-forest/10; }
+  .label { @apply mb-1.5 block text-sm font-bold text-black/65; }
+}
