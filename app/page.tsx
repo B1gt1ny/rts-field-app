@@ -35,8 +35,8 @@ export default async function Dashboard() {
     <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div>
         <p className="text-sm font-extrabold uppercase tracking-widest text-forest">{now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</p>
-        <h1 className="mt-1 text-3xl font-black tracking-tight sm:text-4xl">{isEmployee ? "My Field Dashboard" : "Company Command"}</h1>
-        <p className="mt-1 text-sm font-semibold text-black/50">{isEmployee ? "What needs your attention in the field today." : "What needs attention today across jobs, parts, review, and billing."}</p>
+        <h1 className="mt-1 text-3xl font-black tracking-tight sm:text-4xl">{isEmployee ? "My Field Dashboard" : "Dashboard"}</h1>
+        <p className="mt-1 text-sm font-semibold text-black/50">{isEmployee ? "What needs your attention in the field today." : "Owner snapshot for what is going on with the business right now."}</p>
       </div>
       {isEmployee
         ? <Link href="/field" className="btn-primary sm:self-auto">Open my jobs <ArrowRightIcon className="size-5" /></Link>
@@ -45,7 +45,7 @@ export default async function Dashboard() {
 
     <section className="card p-3 sm:p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
-        <h2 className="text-lg font-black">Today’s Snapshot</h2>
+        <h2 className="text-lg font-black">Business Snapshot</h2>
         <span className="text-xs font-black uppercase tracking-wide text-black/35">{activeJobs.length} active</span>
       </div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
@@ -58,21 +58,21 @@ export default async function Dashboard() {
     </section>
 
     <section className="card overflow-hidden">
-      <SectionHeader title="Needs Attention" detail="Highest priority field, parts, paperwork, review, billing, and follow-up items." actionHref="/command" actionLabel={isEmployee ? undefined : "View all"} />
+      <SectionHeader title="Urgent Attention" detail="Business-level exceptions across jobs, parts, paperwork, review, billing, and follow-ups." actionHref="/command" actionLabel={isEmployee ? undefined : "Manage"} />
       <div className="divide-y divide-black/5">
         {attentionItems.length ? attentionItems.map((item) => <AttentionRow key={item.key} item={item} />) : <EmptyRow message="Nothing urgent needs attention right now." />}
       </div>
     </section>
 
     <section className="card overflow-hidden">
-      <SectionHeader title="Today’s Work" detail="Jobs due or scheduled today." actionHref="/today" actionLabel="View all" />
+      <SectionHeader title="Today at a Glance" detail="Jobs due today, shown here as a quick owner preview." actionHref="/today" actionLabel="Open Today" />
       <div className="divide-y divide-black/5">
         {todaysJobs.length ? todaysJobs.map((job) => <TodayJobRow key={job.jobId} job={job} />) : <EmptyRow message="No jobs scheduled for today." />}
       </div>
     </section>
 
     <section className="card overflow-hidden">
-      <SectionHeader title="Follow-up Reminders" detail="Only overdue and due-today follow-ups." actionHref="/reminders" actionLabel="View all" />
+      <SectionHeader title="Follow-up Reminders" detail="Overdue and due-today reminders that can affect customers, dealers, or billing." actionHref="/reminders" actionLabel="Review" />
       <div className="divide-y divide-black/5">
         {dueReminders.slice(0, 4).length ? dueReminders.slice(0, 4).map((reminder) => <Link key={reminder.id} href={`/jobs/${reminder.job.jobId}#operations`} className="block p-3 hover:bg-black/[.02] sm:p-4">
           <div className="flex items-start justify-between gap-3">
@@ -90,7 +90,7 @@ export default async function Dashboard() {
     <MonthlyCalendar jobs={jobs} today={now} />
 
     {recentActivity.length > 0 && <section className="card overflow-hidden">
-      <SectionHeader title="Recent Activity" detail="Latest reliable notes from job history." />
+      <SectionHeader title="Recent Activity" detail="Latest job history so the owner can see what changed." />
       <div className="divide-y divide-black/5">
         {recentActivity.map(({ job, activity }) => <Link key={`${job.jobId}-${activity.id}`} href={`/jobs/${job.jobId}#operations`} className="block p-3 hover:bg-black/[.02] sm:p-4">
           <p className="truncate text-xs font-black uppercase tracking-wide text-forest">{job.jobId} · {job.customerName}</p>

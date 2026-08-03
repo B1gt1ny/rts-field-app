@@ -39,8 +39,8 @@ export function TodayCommandView({ jobs }: { jobs: Job[] }) {
         <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-lime text-ink"><CalendarDaysIcon className="size-7" /></span>
         <div>
           <p className="text-xs font-black uppercase tracking-widest text-lime">{new Date(`${today}T12:00:00`).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</p>
-          <h1 className="text-3xl font-black">Today Command</h1>
-          <p className="mt-1 text-sm text-white/55">Daily field view for jobs, reminders, parts, and closeout attention.</p>
+          <h1 className="text-3xl font-black">Today</h1>
+          <p className="mt-1 text-sm text-white/55">Daily work screen for what crews need to do next: jobs, route actions, reminders, parts, and closeout.</p>
         </div>
       </div>
       <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
@@ -54,16 +54,16 @@ export function TodayCommandView({ jobs }: { jobs: Job[] }) {
     </section>
 
     <section className="grid grid-cols-2 gap-3 lg:grid-cols-6">
-      <Metric label="Active jobs" value={activeJobs.length} href="/jobs" icon={<ClipboardDocumentListIcon />} tone="bg-blue-100" />
-      <Metric label="Attention" value={attentionItems.length} href="#manager-attention" icon={<BellAlertIcon />} tone="bg-red-100" />
+      <Metric label="All active" value={activeJobs.length} href="/jobs" icon={<ClipboardDocumentListIcon />} tone="bg-blue-100" />
+      <Metric label="Do next" value={attentionItems.length} href="#today-next" icon={<BellAlertIcon />} tone="bg-red-100" />
       <Metric label="Today jobs" value={todaysJobs.length} href="/today" icon={<CalendarDaysIcon />} tone="bg-lime" />
       <Metric label="Reminders" value={urgentReminders.length} href="/reminders" icon={<BellAlertIcon />} tone="bg-orange-100" />
       <Metric label="Parts" value={partsRows.length} href="/waiting-on-parts" icon={<WrenchScrewdriverIcon />} tone="bg-amber-100" />
       <Metric label="Field updates" value={fieldActivityRows.length} href="/communication" icon={<ChatBubbleLeftRightIcon />} tone="bg-emerald-100" />
     </section>
 
-    <section id="manager-attention" className="card overflow-hidden">
-      <SectionHeader title="Needs manager attention" subtitle={`${attentionItems.length} flagged issue${attentionItems.length === 1 ? "" : "s"} across field notes, parts, overdue jobs, closeout, and scheduling`} href="/tasks" />
+    <section id="today-next" className="card overflow-hidden">
+      <SectionHeader title="What needs done next" subtitle={`${attentionItems.length} field action${attentionItems.length === 1 ? "" : "s"} across notes, parts, overdue jobs, closeout, and scheduling`} href="/tasks" />
       <div className="grid grid-cols-3 gap-2 border-b border-black/5 p-3">
         <MiniAttention label="Urgent" value={urgentAttention} tone="bg-red-100 text-red-900" />
         <MiniAttention label="Review" value={reviewAttention} tone="bg-orange-100 text-orange-900" />
@@ -84,12 +84,12 @@ export function TodayCommandView({ jobs }: { jobs: Job[] }) {
             <Link href={item.handoffHref || `/jobs/${item.job.jobId}/edit`} className="min-h-11 rounded-xl border border-black/10 bg-white px-3 py-2 text-center text-sm font-black text-ink">{item.handoffLabel || "Assign / edit"}</Link>
             <Link href={`/jobs/${item.job.jobId}`} className="min-h-11 rounded-xl bg-sand px-3 py-2 text-center text-sm font-black text-ink sm:block">Open job</Link>
           </div>
-        </div>) : <Empty text="No manager attention items right now." />}
+        </div>) : <Empty text="Nothing is waiting on the daily work list right now." />}
       </div>
     </section>
 
     <section className="card overflow-hidden">
-      <SectionHeader title="Today’s jobs" subtitle={`${todaysJobs.length} active job${todaysJobs.length === 1 ? "" : "s"} due today`} href="/today" />
+      <SectionHeader title="Today’s jobs" subtitle={`${todaysJobs.length} active job${todaysJobs.length === 1 ? "" : "s"} due today`} href="/jobs" />
       <div className="grid gap-3 p-3 md:grid-cols-2">
         {todaysJobs.length ? todaysJobs.map((job) => <TodayJobCard key={job.jobId} job={job} />) : <Empty text="No active jobs due today." />}
       </div>

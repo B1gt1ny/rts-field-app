@@ -1,2 +1,9 @@
-import { JobsView } from "@/components/JobsView";
-export default function TodayPage() { return <JobsView title="Today’s Jobs" description="The work due today across all assigned employees." preset={{ today: true }} />; }
+import { TodayCommandView } from "@/components/TodayCommandView";
+import { getJobs } from "@/lib/jobs";
+import { filterServerJobsForUser } from "@/lib/server-auth";
+
+export const dynamic = "force-dynamic";
+
+export default async function TodayPage() {
+  return <TodayCommandView jobs={await filterServerJobsForUser(await getJobs())} />;
+}
