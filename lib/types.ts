@@ -143,7 +143,7 @@ export type FactoryCostTracker = {
   otherReceiptsTotal: string;
   notes?: string;
 };
-export type FileCategory = "Work Order" | "Paperwork" | "Receipt" | "Signed Document" | "Other";
+export type FileCategory = "Work Order" | "Paperwork" | "Receipt" | "Signed Document" | "Before" | "Progress" | "After" | "Damage" | "Serial / Tags" | "Parts" | "Other";
 export type WorkOrderFile = {
   id: string;
   fileName: string;
@@ -153,6 +153,8 @@ export type WorkOrderFile = {
   storagePath?: string;
   storageUrl?: string;
   category?: FileCategory;
+  caption?: string;
+  uploadedBy?: string;
   uploadedAt: string;
   extractedText?: string;
 };

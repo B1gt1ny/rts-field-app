@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { requireRole } from "@/lib/auth";
+import { getUserEmployee, requireRole } from "@/lib/auth";
 import type { FileCategory, WorkOrderFile } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +22,9 @@ export async function POST(request: Request) {
 
   const jobId = cleanSegment(String(formData.get("jobId") || "draft"));
   const category = String(formData.get("category") || "Other") as FileCategory;
+  const caption = String(formData.get("caption") || "").trim();
+  const employee = getUserEmployee(access.user || null);
+  const uploadedBy = employee.employeeName || access.user?.email || undefined;
   const buffer = Buffer.from(await file.arrayBuffer());
   const id = `file-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const fileName = file.name || "upload";
@@ -29,7 +32,7 @@ export async function POST(request: Request) {
   const storagePath = `${jobId}/${cleanSegment(category)}/${id}.${extension}`;
 
   const db = database();
-  if (!db) return NextResponse.json(await fallbackFile(file, buffer, id, category));
+  if (!db) return NextResponse.json(await fallbackFile(file, buffer, id, category, caption, uploadedBy));
 
   const bucket = await db.storage.getBucket(bucketName);
   if (bucket.error) {
@@ -43,7 +46,7 @@ export async function POST(request: Request) {
 
   if (upload.error) {
     console.warn(`Supabase Storage upload failed; using data URL fallback: ${upload.error.message}`);
-    return NextResponse.json(await fallbackFile(file, buffer, id, category));
+    return NextResponse.json(await fallbackFile(file, buffer, id, category, caption, uploadedBy));
   }
 
   const storedFile: WorkOrderFile = {
@@ -55,12 +58,14 @@ export async function POST(request: Request) {
     storagePath,
     storageUrl: `/api/files/view?path=${encodeURIComponent(storagePath)}`,
     category,
+    caption: caption || undefined,
+    uploadedBy,
     uploadedAt: new Date().toISOString(),
   };
   return NextResponse.json(storedFile, { status: 201 });
 }
 
-async function fallbackFile(file: File, buffer: Buffer, id: string, category: FileCategory): Promise<WorkOrderFile> {
+async function fallbackFile(file: File, buffer: Buffer, id: string, category: FileCategory, caption?: string, uploadedBy?: string): Promise<WorkOrderFile> {
   return {
     id,
     fileName: file.name || "upload",
@@ -68,6 +73,8 @@ async function fallbackFile(file: File, buffer: Buffer, id: string, category: Fi
     fileSize: file.size,
     dataUrl: `data:${file.type || "application/octet-stream"};base64,${buffer.toString("base64")}`,
     category,
+    caption: caption || undefined,
+    uploadedBy,
     uploadedAt: new Date().toISOString(),
   };
 }

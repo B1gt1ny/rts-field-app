@@ -125,9 +125,14 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
       <WorkspaceSection id="checklist" title="Checklist" summary={`${complete} of ${job.checklist.length} complete`} openSection={openSection} setOpenSection={setOpenSection}>
         <ChecklistPanel job={job} saving={saving} complete={complete} percent={checklistPercent} onToggle={toggle} />
       </WorkspaceSection>
-      <WorkspaceSection id="photos" title="Photos" summary={`${(job.beforePhotos || []).length + (job.damagePhotos || []).length + (job.serialTagPhotos || []).length + (job.afterPhotos || []).length} saved`} openSection={openSection} setOpenSection={setOpenSection}>
+      <WorkspaceSection id="photos" title="Photos" summary={`${photoTotal(job)} saved`} openSection={openSection} setOpenSection={setOpenSection}>
         <PhotoUploadPanel job={job} saving={saving} onSave={saveJobPatch} />
-        <CompanyCamPanel job={job} status={companyCam} setStatus={setCompanyCam} onJobSynced={setJob} />
+        <details id="companycam" className="scroll-mt-24">
+          <summary className="cursor-pointer rounded-xl border border-black/10 bg-white px-4 py-3 text-lg font-black">More actions / CompanyCam fallback</summary>
+          <div className="mt-4">
+            <CompanyCamPanel job={job} status={companyCam} setStatus={setCompanyCam} onJobSynced={setJob} />
+          </div>
+        </details>
       </WorkspaceSection>
       <WorkspaceSection id="parts" title="Parts" summary={`${job.partsItems?.length || 0} tracked`} openSection={openSection} setOpenSection={setOpenSection}>
         <PartsPanel job={job} saving={saving} onSave={saveJobPatch} />
@@ -686,14 +691,38 @@ function Info({ icon, label, children }: { icon: React.ReactNode; label: string;
 function PhotoCount({ label, count }: { label: string; count: number }) { return <div className="rounded-xl bg-sand p-3 text-center"><p className="text-2xl font-black">{count}</p><p className="text-xs font-bold text-black/45">{label}</p></div>; }
 
 type PhotoBucket = "beforePhotos" | "damagePhotos" | "serialTagPhotos" | "afterPhotos";
+type NativePhotoCategory = Extract<FileCategory, "Before" | "Progress" | "After" | "Damage" | "Serial / Tags" | "Parts" | "Paperwork" | "Receipt">;
+type PhotoGalleryItem = {
+  id: string;
+  category: NativePhotoCategory;
+  url: string;
+  fileName: string;
+  fileSize?: number;
+  uploadedAt?: string;
+  caption?: string;
+  uploadedBy?: string;
+  source: "file" | "legacy";
+};
+
+const photoCategories: { category: NativePhotoCategory; label: string; help: string; legacyBucket?: PhotoBucket }[] = [
+  { category: "Before", label: "Before", help: "Start-of-job proof", legacyBucket: "beforePhotos" },
+  { category: "Progress", label: "Progress", help: "Work in progress" },
+  { category: "After", label: "After", help: "Completion proof", legacyBucket: "afterPhotos" },
+  { category: "Damage", label: "Damage", help: "Issues or warranty proof", legacyBucket: "damagePhotos" },
+  { category: "Serial / Tags", label: "Serial / Tags", help: "VIN, data plates, labels", legacyBucket: "serialTagPhotos" },
+  { category: "Parts", label: "Parts", help: "Parts used or needed" },
+  { category: "Paperwork", label: "Paperwork", help: "Forms and job docs" },
+  { category: "Receipt", label: "Receipts", help: "Receipt backup photos" },
+];
 
 function PhotoUploadPanel({ job, saving, onSave }: { job: Job; saving: boolean; onSave: (patch: Partial<Job>) => Promise<Job | undefined> }) {
-  const buckets: { key: PhotoBucket; label: string; help: string }[] = [
-    { key: "beforePhotos", label: "Before", help: "Start-of-job proof" },
-    { key: "damagePhotos", label: "Damage", help: "Issues or warranty proof" },
-    { key: "serialTagPhotos", label: "Serial / VIN", help: "Required tag photo" },
-    { key: "afterPhotos", label: "After", help: "Completion proof" },
-  ];
+  const [selectedCategory, setSelectedCategory] = useState<NativePhotoCategory>("Before");
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [caption, setCaption] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState("");
+  const [message, setMessage] = useState("");
+  const gallery = groupJobPhotos(job);
   const proofChecks = [
     { label: "Before photos", complete: (job.beforePhotos || []).length > 0, detail: `${(job.beforePhotos || []).length} uploaded` },
     { label: "Serial/VIN tag", complete: (job.serialTagPhotos || []).length > 0, detail: `${(job.serialTagPhotos || []).length} uploaded` },
@@ -701,16 +730,46 @@ function PhotoUploadPanel({ job, saving, onSave }: { job: Job; saving: boolean; 
     { label: "Damage photos", complete: (job.damagePhotos || []).length > 0 || !/damage|repair|warranty/i.test(`${job.jobType} ${job.scopeNotes}`), detail: `${(job.damagePhotos || []).length} uploaded` },
   ];
   const proofReady = proofChecks.filter((check) => check.complete).length;
-  const totalPhotos = (job.beforePhotos || []).length + (job.damagePhotos || []).length + (job.serialTagPhotos || []).length + (job.afterPhotos || []).length;
+  const totalPhotos = photoTotal(job);
 
-  async function addPhotos(key: PhotoBucket, files: FileList | null) {
-    if (!files?.length) return;
-    const images = await Promise.all(Array.from(files).map(readAsDataUrl));
-    const existing = job[key] || [];
-    await onSave({
-      [key]: [...existing, ...images],
-      activityLog: addJobActivity(job, `${images.length} ${images.length === 1 ? "photo" : "photos"} added to ${key.replace("Photos", "").replace("serialTag", "serial/VIN")}.`, "Note"),
-    } as Partial<Job>);
+  function chooseFiles(files: FileList | null) {
+    setSelectedFiles(Array.from(files || []).filter((file) => file.type.startsWith("image/")));
+    setMessage("");
+  }
+
+  async function uploadSelectedPhotos() {
+    if (!selectedFiles.length) {
+      setMessage("Choose at least one photo first.");
+      return;
+    }
+    setUploading(true);
+    setMessage("");
+    const uploaded: WorkOrderFile[] = [];
+    try {
+      for (let index = 0; index < selectedFiles.length; index += 1) {
+        setUploadProgress(`Uploading ${index + 1} of ${selectedFiles.length}`);
+        const prepared = await preparePhotoForUpload(selectedFiles[index]);
+        uploaded.push(await uploadStoredFile(prepared, job.jobId, selectedCategory, caption.trim()));
+      }
+      const patch: Partial<Job> = {
+        workOrderFiles: [...uploaded, ...(job.workOrderFiles || [])],
+        activityLog: addJobActivity(job, `${uploaded.length} ${uploaded.length === 1 ? "photo" : "photos"} uploaded to ${selectedCategory}.`, "Note"),
+      };
+      const legacyBucket = photoCategories.find((item) => item.category === selectedCategory)?.legacyBucket;
+      if (legacyBucket) {
+        const urls = uploaded.map((file) => file.storageUrl || file.dataUrl).filter(Boolean);
+        patch[legacyBucket] = [...(job[legacyBucket] || []), ...urls];
+      }
+      await onSave(patch);
+      setSelectedFiles([]);
+      setCaption("");
+      setMessage(`${uploaded.length} ${uploaded.length === 1 ? "photo" : "photos"} uploaded to ${selectedCategory}.`);
+    } catch (caught) {
+      setMessage(caught instanceof Error ? caught.message : "Photos could not be uploaded.");
+    } finally {
+      setUploading(false);
+      setUploadProgress("");
+    }
   }
 
   async function copyProofSummary() {
@@ -720,6 +779,13 @@ function PhotoUploadPanel({ job, saving, onSave }: { job: Job; saving: boolean; 
       ...proofChecks.map((check) => `${check.complete ? "READY" : "NEEDED"}: ${check.label} (${check.detail})`),
     ].filter(Boolean).join("\n");
     await navigator.clipboard.writeText(summary).then(() => window.alert("Photo proof summary copied."), () => window.alert(summary));
+  }
+
+  async function updatePhotoCaption(fileId: string, nextCaption: string) {
+    await onSave({
+      workOrderFiles: (job.workOrderFiles || []).map((file) => file.id === fileId ? { ...file, caption: nextCaption.trim() || undefined } : file),
+      activityLog: addJobActivity(job, "Photo caption updated.", "Note"),
+    });
   }
 
   return <section id="photos" className="card p-4 sm:p-6">
@@ -747,23 +813,141 @@ function PhotoUploadPanel({ job, saving, onSave }: { job: Job; saving: boolean; 
         </div>)}
       </div>
     </div>
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      {buckets.map((bucket) => {
-        const photos = job[bucket.key] || [];
-        return <div key={bucket.key} className="rounded-2xl border border-black/10 bg-sand p-3">
+    <div className="rounded-2xl border border-black/10 bg-sand p-3 sm:p-4">
+      <div className="grid gap-3 lg:grid-cols-[1fr_1fr]">
+        <label className="block"><span className="label">Category</span><select className="field" value={selectedCategory} disabled={saving || uploading} onChange={(event) => setSelectedCategory(event.target.value as NativePhotoCategory)}>{photoCategories.map((item) => <option key={item.category} value={item.category}>{item.label}</option>)}</select></label>
+        <label className="block"><span className="label">Optional caption</span><input className="field" value={caption} disabled={saving || uploading} onChange={(event) => setCaption(event.target.value)} placeholder="Short note for this upload batch" /></label>
+      </div>
+      <div className="mt-3 grid gap-2 sm:grid-cols-3">
+        <label className={`flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-xl bg-forest px-4 py-3 text-center font-black text-white ${(saving || uploading) ? "opacity-50" : ""}`}>
+          <CameraIcon className="size-5" /> Take Photo
+          <input type="file" accept="image/*" capture="environment" className="hidden" disabled={saving || uploading} onChange={(event) => chooseFiles(event.target.files)} />
+        </label>
+        <label className={`flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-black/10 bg-white px-4 py-3 text-center font-black text-ink ${(saving || uploading) ? "opacity-50" : ""}`}>
+          <CameraIcon className="size-5" /> Upload Photos
+          <input type="file" accept="image/*" multiple className="hidden" disabled={saving || uploading} onChange={(event) => chooseFiles(event.target.files)} />
+        </label>
+        <button type="button" disabled={saving || uploading || selectedFiles.length === 0} onClick={uploadSelectedPhotos} className="min-h-14 rounded-xl bg-lime px-4 py-3 font-black text-ink disabled:opacity-50">{uploading ? uploadProgress || "Uploading…" : `Upload ${selectedFiles.length || ""}`.trim()}</button>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold text-black/45">
+        <span className="rounded-full bg-white px-3 py-1">{selectedFiles.length ? `${selectedFiles.length} selected` : "No photos selected"}</span>
+        <span className="rounded-full bg-white px-3 py-1">Large photos are resized before upload</span>
+      </div>
+      {message && <p role="status" className="mt-3 rounded-xl bg-white p-3 text-sm font-bold text-forest">{message}</p>}
+    </div>
+    <div className="mt-4 grid gap-3 lg:grid-cols-2">
+      {photoCategories.map((bucket) => {
+        const photos = gallery[bucket.category] || [];
+        return <div key={bucket.category} className="rounded-2xl border border-black/10 bg-white p-3">
           <div className="mb-3 flex items-start justify-between gap-3">
             <div><p className="font-black">{bucket.label}</p><p className="text-xs font-semibold text-black/45">{bucket.help}</p></div>
-            <span className="rounded-full bg-white px-2.5 py-1 text-xs font-black text-forest">{photos.length}</span>
+            <span className="rounded-full bg-sand px-2.5 py-1 text-xs font-black text-forest">{photos.length}</span>
           </div>
-          <label className="flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl bg-forest px-4 py-3 text-center text-sm font-black text-white">
-            <CameraIcon className="size-5" /> Add Photos
-            <input type="file" accept="image/*" capture="environment" multiple className="hidden" disabled={saving} onChange={(event) => addPhotos(bucket.key, event.target.files)} />
-          </label>
-          {photos.length > 0 && <div className="mt-3 grid grid-cols-3 gap-2">{photos.slice(-6).map((photo, index) => <a key={`${bucket.key}-${index}`} href={photo} target="_blank" className="aspect-square overflow-hidden rounded-lg bg-white"><img src={photo} alt={`${bucket.label} ${index + 1}`} className="size-full object-cover" /></a>)}</div>}
+          {photos.length > 0 ? <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{photos.map((photo, index) => <PhotoGalleryTile key={photo.id} photo={photo} label={`${bucket.label} ${index + 1}`} onCaptionSave={updatePhotoCaption} />)}</div> : <p className="rounded-xl bg-sand p-3 text-sm font-semibold text-black/45">No photos yet.</p>}
         </div>;
       })}
     </div>
   </section>;
+}
+
+function PhotoGalleryTile({ photo, label, onCaptionSave }: { photo: PhotoGalleryItem; label: string; onCaptionSave: (fileId: string, caption: string) => Promise<void> }) {
+  const [editing, setEditing] = useState(false);
+  const [caption, setCaption] = useState(photo.caption || "");
+  const [saving, setSaving] = useState(false);
+  async function saveCaption() {
+    if (photo.source !== "file") return;
+    setSaving(true);
+    await onCaptionSave(photo.id, caption);
+    setSaving(false);
+    setEditing(false);
+  }
+  return <div className="overflow-hidden rounded-xl border border-black/10 bg-sand">
+    <a href={photo.url} target="_blank" className="block aspect-square bg-white">
+      <img src={photo.url} alt={label} loading="lazy" className="size-full object-cover" />
+    </a>
+    <div className="p-2">
+      <p className="truncate text-xs font-black">{photo.fileName}</p>
+      <p className="mt-0.5 text-[11px] font-semibold text-black/40">{photo.uploadedBy ? `${photo.uploadedBy} · ` : ""}{photo.fileSize ? `${(photo.fileSize / 1024).toFixed(0)} KB` : "Saved photo"}</p>
+      {editing ? <div className="mt-2 space-y-2">
+        <input className="field !min-h-10 !py-2 text-xs" value={caption} onChange={(event) => setCaption(event.target.value)} placeholder="Caption" />
+        <button type="button" disabled={saving} onClick={saveCaption} className="min-h-10 w-full rounded-lg bg-forest px-3 py-2 text-xs font-black text-white disabled:opacity-50">{saving ? "Saving…" : "Save caption"}</button>
+      </div> : <>
+        {photo.caption && <p className="mt-2 text-xs font-semibold text-black/55">{photo.caption}</p>}
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <a href={photo.url} target="_blank" className="min-h-10 rounded-lg bg-white px-3 py-2 text-center text-xs font-black text-forest">Open</a>
+          {photo.source === "file" && <button type="button" onClick={() => setEditing(true)} className="min-h-10 rounded-lg bg-white px-3 py-2 text-xs font-black text-ink">Caption</button>}
+        </div>
+      </>}
+    </div>
+  </div>;
+}
+
+function groupJobPhotos(job: Job): Record<NativePhotoCategory, PhotoGalleryItem[]> {
+  const groups = photoCategories.reduce((accumulator, item) => {
+    accumulator[item.category] = [];
+    return accumulator;
+  }, {} as Record<NativePhotoCategory, PhotoGalleryItem[]>);
+  const seen = new Set<string>();
+  for (const file of job.workOrderFiles || []) {
+    if (!isNativePhotoCategory(file.category) || !file.fileType.startsWith("image/")) continue;
+    const url = file.storageUrl || file.dataUrl;
+    if (!url) continue;
+    seen.add(url);
+    groups[file.category].push({
+      id: file.id,
+      category: file.category,
+      url,
+      fileName: file.fileName,
+      fileSize: file.fileSize,
+      uploadedAt: file.uploadedAt,
+      caption: file.caption,
+      uploadedBy: file.uploadedBy,
+      source: "file",
+    });
+  }
+  for (const bucket of photoCategories) {
+    if (!bucket.legacyBucket) continue;
+    for (const [index, url] of (job[bucket.legacyBucket] || []).entries()) {
+      if (!url || seen.has(url)) continue;
+      groups[bucket.category].push({
+        id: `${bucket.legacyBucket}-${index}`,
+        category: bucket.category,
+        url,
+        fileName: `${bucket.label} photo`,
+        source: "legacy",
+      });
+    }
+  }
+  return groups;
+}
+
+function photoTotal(job: Job) {
+  const groups = groupJobPhotos(job);
+  return photoCategories.reduce((total, category) => total + groups[category.category].length, 0);
+}
+
+function isNativePhotoCategory(category: FileCategory | undefined): category is NativePhotoCategory {
+  return Boolean(category && photoCategories.some((item) => item.category === category));
+}
+
+async function preparePhotoForUpload(file: File) {
+  if (!file.type.startsWith("image/") || file.size < 900_000) return file;
+  const bitmap = await createImageBitmap(file).catch(() => null);
+  if (!bitmap) return file;
+  const maxLongEdge = 2200;
+  const longEdge = Math.max(bitmap.width, bitmap.height);
+  if (longEdge <= maxLongEdge && file.size < 2_500_000) return file;
+  const scale = Math.min(1, maxLongEdge / longEdge);
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  const context = canvas.getContext("2d");
+  if (!context) return file;
+  context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.82));
+  if (!blob || blob.size >= file.size) return file;
+  const name = file.name.replace(/\.[^.]+$/, "") || "photo";
+  return new File([blob], `${name}.jpg`, { type: "image/jpeg", lastModified: Date.now() });
 }
 
 function CompleteJobFlow({ job, saving, onSave }: { job: Job; saving: boolean; onSave: (patch: Partial<Job>) => Promise<Job | undefined> }) {
@@ -1790,17 +1974,18 @@ function FileList({ files }: { files: WorkOrderFile[] }) {
   </div>)}</div>;
 }
 
-async function uploadStoredFile(file: File, jobId: string, category: FileCategory): Promise<WorkOrderFile> {
+async function uploadStoredFile(file: File, jobId: string, category: FileCategory, caption = ""): Promise<WorkOrderFile> {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("jobId", jobId);
   formData.append("category", category);
+  if (caption) formData.append("caption", caption);
   const response = await authFetch("/api/files/upload", { method: "POST", body: formData });
   if (response.ok) return response.json();
-  return fallbackStoredFile(file, category);
+  return fallbackStoredFile(file, category, caption);
 }
 
-function fallbackStoredFile(file: File, category: FileCategory) {
+function fallbackStoredFile(file: File, category: FileCategory, caption = "") {
   return new Promise<WorkOrderFile>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve({
@@ -1810,6 +1995,7 @@ function fallbackStoredFile(file: File, category: FileCategory) {
       fileSize: file.size,
       dataUrl: String(reader.result || ""),
       category,
+      caption: caption || undefined,
       uploadedAt: new Date().toISOString(),
     });
     reader.onerror = () => reject(reader.error);
@@ -1835,7 +2021,7 @@ function CompanyCamPanel({ job, status, setStatus, onJobSynced }: { job: Job; st
     }
   }
 
-  return <section id="companycam" className="card p-4 sm:p-6">
+  return <section id="companycam-panel" className="card p-4 sm:p-6">
     <div className="mb-4 flex items-start gap-3">
       <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-blue-100 text-blue-800"><CameraIcon className="size-5" /></span>
       <div>
