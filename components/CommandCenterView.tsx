@@ -1,201 +1,312 @@
 import Link from "next/link";
-import { BellAlertIcon, CalendarDaysIcon, CameraIcon, ClipboardDocumentListIcon, CurrencyDollarIcon, ExclamationTriangleIcon, UserGroupIcon, WrenchScrewdriverIcon } from "@heroicons/react/24/outline";
-import type { Job } from "@/lib/types";
-import { isReadyForBilling, openParts } from "@/lib/job-readiness";
-import { isReceiptBackupMissing } from "@/lib/receipt-backup";
-import { PriorityBadge, StatusBadge } from "./StatusBadge";
+import { ClockIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
+import type { Job, TimeEntry } from "@/lib/types";
+import { closeoutChecks } from "@/lib/job-readiness";
+import { StatusBadge } from "./StatusBadge";
 
-type IssueType = "Overdue" | "Waiting Parts" | "Missing Paperwork" | "Missing Photos" | "Needs Review" | "Ready Billing" | "Overdue Follow-up" | "Unassigned" | "Unscheduled";
-type IssueItem = {
+type EmployeeReview = {
+  name: string;
+  jobs: Job[];
+  activeJob?: Job;
+  travelStarted?: TimeEntry;
+  arrived?: TimeEntry;
+  workStarted?: TimeEntry;
+  finishedWork?: TimeEntry;
+  mileage: number;
+  openJobs: number;
+  reviewNeeded: number;
+  missingCloseout: number;
+};
+
+type DailyIssue = {
+  id: string;
+  title: string;
+  detail: string;
+  employee: string;
   job: Job;
-  issues: IssueType[];
-  primaryReason: string;
   href: string;
   rank: number;
 };
 
+type TodaySummary = {
+  employeesWorking: number;
+  jobsStarted: number;
+  jobsCompleted: number;
+  jobsAwaitingReview: number;
+  milesRecorded: number;
+  travelSessions: number;
+  workSessions: number;
+};
+
 const closedStatuses = ["Complete", "Billed", "Paid"];
-const issueOrder: IssueType[] = ["Overdue", "Waiting Parts", "Missing Paperwork", "Missing Photos", "Needs Review", "Ready Billing", "Overdue Follow-up", "Unassigned", "Unscheduled"];
 
 export function CommandCenterView({ jobs }: { jobs: Job[] }) {
   const today = new Date().toLocaleDateString("en-CA");
-  const active = jobs.filter((job) => !closedStatuses.includes(job.status));
-  const counts = buildIssueCounts(jobs, today);
-  const queue = buildIssueQueue(jobs, today).slice(0, 10);
-  const totalIssues = Object.values(counts).reduce((sum, count) => sum + count, 0);
+  const todayJobs = jobs.filter((job) => isTodayJob(job, today));
+  const employeeReviews = buildEmployeeReviews(todayJobs, today);
+  const issues = buildDailyIssues(employeeReviews, today).slice(0, 10);
+  const summary = buildTodaySummary(todayJobs, employeeReviews, today);
 
-  return <div className="mx-auto max-w-7xl space-y-5">
+  return <div className="mx-auto max-w-6xl space-y-4">
     <section className="rounded-3xl bg-ink p-5 text-white sm:p-7">
       <div className="flex items-start gap-3">
-        <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-lime text-ink"><BellAlertIcon className="size-7" /></span>
-        <div>
-          <p className="text-xs font-black uppercase tracking-widest text-lime">Manager exceptions</p>
-          <h1 className="text-3xl font-black">Operations</h1>
-          <p className="mt-1 text-sm text-white/55">What operational problem needs manager action?</p>
+        <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-lime text-ink"><ClockIcon className="size-7" /></span>
+        <div className="min-w-0">
+          <p className="text-xs font-black uppercase tracking-widest text-lime">{formatToday(today)}</p>
+          <h1 className="mt-1 text-3xl font-black">Daily Review</h1>
+          <p className="mt-1 text-sm text-white/55">Today&apos;s active employee work, open closeout items, and manager review needs.</p>
         </div>
       </div>
-      <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <HeroMetric label="Open jobs" value={active.length} />
-        <HeroMetric label="Issue types" value={issueOrder.filter((issue) => counts[issue] > 0).length} />
-        <HeroMetric label="Total flags" value={totalIssues} />
-        <HeroMetric label="Shown now" value={queue.length} />
+      <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+        <SummaryCard label="Employees working" value={summary.employeesWorking} />
+        <SummaryCard label="Jobs started" value={summary.jobsStarted} />
+        <SummaryCard label="Jobs completed" value={summary.jobsCompleted} />
+        <SummaryCard label="Awaiting review" value={summary.jobsAwaitingReview} />
+        <SummaryCard label="Miles recorded" value={formatMiles(summary.milesRecorded)} />
+        <SummaryCard label="Travel sessions" value={summary.travelSessions} />
+        <SummaryCard label="Work sessions" value={summary.workSessions} />
       </div>
     </section>
 
-    <section className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-9">
-      <IssueCountCard label="Overdue" value={counts.Overdue} href="/jobs" icon={<ExclamationTriangleIcon />} tone={counts.Overdue ? "bg-red-100 text-red-900" : "bg-black/5 text-black/45"} />
-      <IssueCountCard label="Parts" value={counts["Waiting Parts"]} href="/waiting-on-parts" icon={<WrenchScrewdriverIcon />} tone={counts["Waiting Parts"] ? "bg-orange-100 text-orange-900" : "bg-black/5 text-black/45"} />
-      <IssueCountCard label="Paperwork" value={counts["Missing Paperwork"]} href="/documents" icon={<ClipboardDocumentListIcon />} tone={counts["Missing Paperwork"] ? "bg-amber-100 text-amber-900" : "bg-black/5 text-black/45"} />
-      <IssueCountCard label="Photos" value={counts["Missing Photos"]} href="/tasks" icon={<CameraIcon />} tone={counts["Missing Photos"] ? "bg-blue-100 text-blue-900" : "bg-black/5 text-black/45"} />
-      <IssueCountCard label="Review" value={counts["Needs Review"]} href="/ready-check" icon={<ClipboardDocumentListIcon />} tone={counts["Needs Review"] ? "bg-violet-100 text-violet-900" : "bg-black/5 text-black/45"} />
-      <IssueCountCard label="Billing" value={counts["Ready Billing"]} href="/billing" icon={<CurrencyDollarIcon />} tone={counts["Ready Billing"] ? "bg-emerald-100 text-emerald-900" : "bg-black/5 text-black/45"} />
-      <IssueCountCard label="Follow-up" value={counts["Overdue Follow-up"]} href="/communication?filter=follow-up" icon={<BellAlertIcon />} tone={counts["Overdue Follow-up"] ? "bg-red-100 text-red-900" : "bg-black/5 text-black/45"} />
-      <IssueCountCard label="Unassigned" value={counts.Unassigned} href="/dispatch" icon={<UserGroupIcon />} tone={counts.Unassigned ? "bg-orange-100 text-orange-900" : "bg-black/5 text-black/45"} />
-      <IssueCountCard label="Unscheduled" value={counts.Unscheduled} href="/schedule" icon={<CalendarDaysIcon />} tone={counts.Unscheduled ? "bg-blue-100 text-blue-900" : "bg-black/5 text-black/45"} />
+    <section className="space-y-3">
+      <div className="flex items-end justify-between gap-3 px-1">
+        <div>
+          <h2 className="text-lg font-black">Employee Cards</h2>
+          <p className="text-sm font-semibold text-black/45">One card per employee active on today&apos;s jobs.</p>
+        </div>
+        <span className="rounded-full bg-sand px-3 py-1 text-xs font-black text-black/45">{employeeReviews.length} working</span>
+      </div>
+      <div className="grid gap-3">
+        {employeeReviews.length ? employeeReviews.map((employee) => <EmployeeCard key={employee.name} employee={employee} />) : <Empty text="No employees are assigned to or logging time on today&apos;s work." />}
+      </div>
     </section>
 
     <section className="card overflow-hidden">
-      <div className="flex flex-col gap-1 bg-sand p-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex items-center justify-between gap-3 bg-sand p-4">
         <div>
-          <h2 className="text-lg font-black">Manager exception queue</h2>
-          <p className="text-sm font-semibold text-black/45">Top {queue.length} jobs needing manager action, grouped so each job appears once.</p>
+          <h2 className="text-lg font-black">Today&apos;s Action Items</h2>
+          <p className="text-sm font-semibold text-black/45">Showing up to 10 problems from today&apos;s active work.</p>
         </div>
-        <Link href="/tasks" className="text-sm font-black text-forest">View tasks</Link>
+        <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-black/45">{issues.length}</span>
       </div>
       <div className="divide-y divide-black/5">
-        {queue.length ? queue.map((item) => <IssueRow key={item.job.jobId} item={item} />) : <p className="p-6 text-center text-sm font-semibold text-black/35">No manager exceptions are open right now.</p>}
+        {issues.length ? issues.map((issue) => <IssueRow key={issue.id} issue={issue} />) : <Empty text="No actionable problems are open for today." />}
       </div>
     </section>
   </div>;
 }
 
-function buildIssueCounts(jobs: Job[], today: string): Record<IssueType, number> {
-  return Object.fromEntries(issueOrder.map((issue) => [issue, jobs.filter((job) => jobIssues(job, today).includes(issue)).length])) as Record<IssueType, number>;
-}
+function EmployeeCard({ employee }: { employee: EmployeeReview }) {
+  const href = employee.activeJob ? `/jobs/${employee.activeJob.jobId}#time-log` : "/jobs";
 
-function buildIssueQueue(jobs: Job[], today: string): IssueItem[] {
-  return jobs.map((job) => {
-    const issues = jobIssues(job, today);
-    return {
-      job,
-      issues,
-      primaryReason: issueReason(job, issues[0], today),
-      href: issueHref(job, issues[0]),
-      rank: issueRank(issues[0]),
-    };
-  }).filter((item) => item.issues.length > 0)
-    .sort((a, b) => a.rank - b.rank || priorityRank(a.job.priority) - priorityRank(b.job.priority) || dueRank(a.job).localeCompare(dueRank(b.job)));
-}
-
-function jobIssues(job: Job, today: string): IssueType[] {
-  const isClosed = closedStatuses.includes(job.status);
-  const reviewStage = isReviewOrCloseoutStage(job);
-  const issues: IssueType[] = [];
-  if (!isClosed && job.dueDate && job.dueDate < today) issues.push("Overdue");
-  if (!isClosed && (job.status === "Waiting on Parts" || openParts(job).length > 0)) issues.push("Waiting Parts");
-  if (reviewStage && missingRequiredPaperwork(job)) issues.push("Missing Paperwork");
-  if (reviewStage && missingRequiredPhotos(job)) issues.push("Missing Photos");
-  if (!isClosed && job.status === "Needs Inspection") issues.push("Needs Review");
-  if (isReadyForBilling(job) && !["Paid", "Sent", "Sent to Billing"].includes(job.invoiceStatus || "")) issues.push("Ready Billing");
-  if ((job.activityLog || []).some((entry) => entry.notify && !entry.resolvedAt && entry.followUpDueDate && entry.followUpDueDate < today)) issues.push("Overdue Follow-up");
-  if (!isClosed && !job.fullCrew && !job.assignedEmployeeIds?.length && (!job.assignedCrew || job.assignedCrew === "Unassigned")) issues.push("Unassigned");
-  if (["New", "Scheduled", "In Progress"].includes(job.status) && !job.dueDate) issues.push("Unscheduled");
-  return issues;
-}
-
-function isReviewOrCloseoutStage(job: Job) {
-  return job.status === "Needs Inspection" || closedStatuses.includes(job.status) || ["Ready", "Draft", "Sent to Billing", "Sent"].includes(job.invoiceStatus || "");
-}
-
-function missingRequiredPaperwork(job: Job) {
-  return !job.paperworkPickedUp && !(job.workOrderFiles || []).length && !(job.paperworkItems || []).some((item) => ["Collected", "Submitted", "Not needed"].includes(item.status)) || isReceiptBackupMissing(job);
-}
-
-function missingRequiredPhotos(job: Job) {
-  if (job.status === "Paid" || job.status === "Billed") return false;
-  return !(job.afterPhotos || []).length;
-}
-
-function issueReason(job: Job, issue: IssueType | undefined, today: string) {
-  if (issue === "Overdue") return `Due ${formatDate(job.dueDate)} and still ${job.status}.`;
-  if (issue === "Waiting Parts") return openParts(job).length ? `${openParts(job).length} open part request${openParts(job).length === 1 ? "" : "s"}.` : "Job is marked waiting on parts.";
-  if (issue === "Missing Paperwork") return isReceiptBackupMissing(job) ? "Receipt backup or job paperwork is missing." : "Work order or paperwork pickup is missing.";
-  if (issue === "Missing Photos") return "After photos are missing from review or closeout.";
-  if (issue === "Needs Review") return "Job is waiting for manager review.";
-  if (issue === "Ready Billing") return "Job is marked ready for billing.";
-  if (issue === "Overdue Follow-up") return overdueFollowUpText(job, today);
-  if (issue === "Unassigned") return "No crew or employee assignment is set.";
-  if (issue === "Unscheduled") return "Active job does not have a due date.";
-  return "Review this job.";
-}
-
-function issueHref(job: Job, issue: IssueType | undefined) {
-  if (issue === "Waiting Parts") return `/jobs/${job.jobId}#parts-needed`;
-  if (issue === "Missing Paperwork") return `/jobs/${job.jobId}#paperwork`;
-  if (issue === "Missing Photos") return `/jobs/${job.jobId}#photos`;
-  if (issue === "Ready Billing") return `/jobs/${job.jobId}#billing-handoff`;
-  if (issue === "Overdue Follow-up") return `/jobs/${job.jobId}#operations`;
-  if (issue === "Unassigned" || issue === "Unscheduled") return `/jobs/${job.jobId}/edit`;
-  return `/jobs/${job.jobId}`;
-}
-
-function IssueRow({ item }: { item: IssueItem }) {
-  return <div className="p-4 hover:bg-black/[.02]">
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+  return <Link href={href} className="card block p-4 transition active:scale-[.99]">
+    <div className="flex items-start justify-between gap-3">
       <div className="min-w-0">
-        <p className="truncate text-xs font-black uppercase tracking-wide text-forest">{item.job.jobId}</p>
-        <h3 className="mt-1 text-lg font-black">{item.job.customerName}</h3>
-        <p className="mt-1 text-sm font-semibold text-black/55">{item.primaryReason}</p>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {item.issues.slice(0, 4).map((issue) => <span key={issue} className="rounded-full bg-sand px-3 py-1 text-xs font-black text-black/55">{issue}</span>)}
-          {item.issues.length > 4 && <span className="rounded-full bg-sand px-3 py-1 text-xs font-black text-black/55">+{item.issues.length - 4} more</span>}
-        </div>
+        <p className="truncate text-xl font-black">{employee.name}</p>
+        <p className="mt-1 text-sm font-bold text-black/45">{employee.jobs.length} Job{employee.jobs.length === 1 ? "" : "s"}</p>
       </div>
-      <div className="flex shrink-0 flex-row gap-2 sm:flex-col sm:items-end">
-        <StatusBadge status={item.job.status} />
-        <PriorityBadge priority={item.job.priority} />
-      </div>
+      {employee.activeJob && <StatusBadge status={employee.activeJob.status} />}
     </div>
-    <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-[1fr_1fr_auto]">
-      <Link href={item.href} className="min-h-11 rounded-xl bg-forest px-3 py-2 text-center text-sm font-black text-white">Open Issue</Link>
-      <Link href={`/jobs/${item.job.jobId}`} className="min-h-11 rounded-xl border border-black/10 bg-white px-3 py-2 text-center text-sm font-black text-ink">Open Job</Link>
-      <span className="hidden min-h-11 items-center rounded-xl bg-sand px-3 py-2 text-sm font-bold text-black/45 sm:inline-flex">{item.job.assignedCrew || "Unassigned"}</span>
+    <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
+      <CardMetric label="Travel" value={formatTime(employee.travelStarted?.createdAt)} />
+      <CardMetric label="Arrived" value={formatTime(employee.arrived?.createdAt)} />
+      <CardMetric label="Started" value={formatTime(employee.workStarted?.createdAt)} />
+      <CardMetric label="Finished" value={formatTime(employee.finishedWork?.createdAt)} />
+      <CardMetric label="Mileage" value={formatMiles(employee.mileage)} />
+      <CardMetric label="Review Needed" value={employee.reviewNeeded} />
+      <CardMetric label="Open Jobs" value={employee.openJobs} />
+      <CardMetric label="Missing Closeout" value={employee.missingCloseout} />
     </div>
-  </div>;
-}
-
-function IssueCountCard({ label, value, href, icon, tone }: { label: string; value: number; href: string; icon: React.ReactNode; tone: string }) {
-  return <Link href={href} className="card block p-3 transition active:scale-[.98]">
-    <div className={`mb-2 grid size-9 place-items-center rounded-xl ${tone} [&>svg]:size-5`}>{icon}</div>
-    <p className="text-2xl font-black">{value}</p>
-    <p className="mt-0.5 text-[11px] font-black uppercase tracking-wide text-black/45">{label}</p>
+    {employee.activeJob && <p className="mt-3 truncate text-xs font-black uppercase tracking-wide text-forest">{employee.activeJob.jobId} · {employee.activeJob.customerName}</p>}
   </Link>;
 }
 
-function HeroMetric({ label, value }: { label: string; value: number }) {
-  return <div className="rounded-2xl bg-white/10 p-4">
-    <p className="text-3xl font-black">{value}</p>
+function IssueRow({ issue }: { issue: DailyIssue }) {
+  return <Link href={issue.href} className="block p-4 hover:bg-black/[.02]">
+    <div className="flex items-start gap-3">
+      <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-xl bg-orange-100 text-orange-900"><ExclamationTriangleIcon className="size-5" /></span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-xs font-black uppercase tracking-wide text-forest">{issue.employee} · {issue.job.jobId}</p>
+        <h3 className="mt-1 font-black">{issue.title}</h3>
+        <p className="mt-1 text-sm font-semibold text-black/50">{issue.detail}</p>
+      </div>
+      <StatusBadge status={issue.job.status} />
+    </div>
+  </Link>;
+}
+
+function SummaryCard({ label, value }: { label: string; value: string | number }) {
+  return <div className="rounded-2xl bg-white/10 p-3">
+    <p className="text-2xl font-black">{value}</p>
     <p className="mt-1 text-xs font-bold text-white/55">{label}</p>
   </div>;
 }
 
-function overdueFollowUpText(job: Job, today: string) {
-  const entry = (job.activityLog || []).find((item) => item.notify && !item.resolvedAt && item.followUpDueDate && item.followUpDueDate < today);
-  return entry ? `Follow-up overdue: ${entry.message}` : "Follow-up is overdue.";
+function CardMetric({ label, value }: { label: string; value: string | number }) {
+  return <div className="rounded-2xl bg-sand p-3">
+    <p className="text-lg font-black">{value || "—"}</p>
+    <p className="mt-0.5 text-[11px] font-black uppercase tracking-wide text-black/40">{label}</p>
+  </div>;
 }
 
-function formatDate(value: string) {
-  return value ? new Date(`${value}T12:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "no date";
+function Empty({ text }: { text: string }) {
+  return <p className="p-5 text-center text-sm font-semibold text-black/35">{text}</p>;
 }
 
-function issueRank(issue: IssueType | undefined) {
-  return issue ? issueOrder.indexOf(issue) : 99;
+function buildEmployeeReviews(jobs: Job[], today: string): EmployeeReview[] {
+  const employees = new Map<string, EmployeeReview>();
+
+  for (const job of jobs) {
+    const todayEntries = entriesForDate(job, today);
+    const names = new Set<string>([
+      ...assignedEmployeeNames(job),
+      ...todayEntries.map((entry) => entry.employeeName).filter(Boolean),
+    ]);
+
+    for (const name of names) {
+      if (!employees.has(name)) {
+        employees.set(name, {
+          name,
+          jobs: [],
+          mileage: 0,
+          openJobs: 0,
+          reviewNeeded: 0,
+          missingCloseout: 0,
+        });
+      }
+      const review = employees.get(name);
+      if (!review) continue;
+      review.jobs.push(job);
+      review.activeJob ||= !closedStatuses.includes(job.status) ? job : undefined;
+      review.openJobs += closedStatuses.includes(job.status) ? 0 : 1;
+      review.reviewNeeded += job.status === "Needs Inspection" ? 1 : 0;
+      review.missingCloseout += needsCloseout(job, today) ? 1 : 0;
+
+      const employeeEntries = todayEntries.filter((entry) => sameEmployee(entry.employeeName, name));
+      review.travelStarted = earliest(review.travelStarted, employeeEntries.find(isTravelStarted));
+      review.arrived = earliest(review.arrived, employeeEntries.find((entry) => entry.type === "Arrived"));
+      review.workStarted = earliest(review.workStarted, employeeEntries.find((entry) => entry.type === "Work started"));
+      review.finishedWork = latest(review.finishedWork, employeeEntries.find((entry) => entry.type === "Departed"));
+      review.mileage += employeeEntries.reduce((sum, entry) => sum + mileageValue(entry), 0);
+    }
+  }
+
+  return [...employees.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
-function dueRank(job: Job) {
-  return job.dueDate || "9999-99-99";
+function buildTodaySummary(jobs: Job[], employeeReviews: EmployeeReview[], today: string): TodaySummary {
+  const entries = jobs.flatMap((job) => entriesForDate(job, today));
+  const jobsStarted = jobs.filter((job) => entriesForDate(job, today).some((entry) => entry.type === "Work started")).length;
+  const jobsCompleted = jobs.filter((job) => entriesForDate(job, today).some((entry) => entry.type === "Departed")).length;
+  return {
+    employeesWorking: employeeReviews.length,
+    jobsStarted,
+    jobsCompleted,
+    jobsAwaitingReview: jobs.filter((job) => job.status === "Needs Inspection").length,
+    milesRecorded: entries.reduce((sum, entry) => sum + mileageValue(entry), 0),
+    travelSessions: entries.filter(isTravelStarted).length,
+    workSessions: entries.filter((entry) => entry.type === "Work started").length,
+  };
 }
 
-function priorityRank(priority: Job["priority"]) {
-  return { Urgent: 0, High: 1, Normal: 2, Low: 3 }[priority] || 4;
+function buildDailyIssues(employees: EmployeeReview[], today: string): DailyIssue[] {
+  const seenJobLevelIssues = new Set<string>();
+  return employees.flatMap((employee) => employee.jobs.flatMap((job) => {
+    const entries = entriesForDate(job, today).filter((entry) => sameEmployee(entry.employeeName, employee.name));
+    const travelStarted = entries.some(isTravelStarted);
+    const arrived = entries.some((entry) => entry.type === "Arrived");
+    const workStarted = entries.some((entry) => entry.type === "Work started");
+    const finished = entries.some((entry) => entry.type === "Departed");
+    const issues: Omit<DailyIssue, "id" | "employee" | "job">[] = [];
+
+    if (travelStarted && !arrived) issues.push({ title: "Travel started but never arrived", detail: `${employee.name} has travel logged without an arrival.`, href: `/jobs/${job.jobId}#time-log`, rank: 0 });
+    if (arrived && !workStarted) issues.push({ title: "Arrived but never started work", detail: `${employee.name} arrived today without a work start.`, href: `/jobs/${job.jobId}#time-log`, rank: 1 });
+    if (workStarted && !finished && !closedStatuses.includes(job.status)) issues.push({ title: "Started work but never finished", detail: `${employee.name} has an open work session.`, href: `/jobs/${job.jobId}#time-log`, rank: 2 });
+    if ((travelStarted || arrived || workStarted || finished) && !entries.some((entry) => mileageValue(entry) > 0)) issues.push({ title: "No mileage entered", detail: "Today has field activity with no mileage recorded.", href: `/jobs/${job.jobId}#time-log`, rank: 3 });
+    if (needsCloseout(job, today) && markOnce(seenJobLevelIssues, `${job.jobId}-closeout`)) issues.push({ title: "Closeout incomplete", detail: closeoutDetail(job), href: closeoutHref(job), rank: 4 });
+    if (job.status === "Needs Inspection" && markOnce(seenJobLevelIssues, `${job.jobId}-review`)) issues.push({ title: "Waiting on manager review", detail: "Job is ready for manager review today.", href: `/jobs/${job.jobId}#complete-job`, rank: 5 });
+
+    return issues.map((issue, index) => ({
+      ...issue,
+      id: `${employee.name}-${job.jobId}-${issue.title}-${index}`,
+      employee: employee.name,
+      job,
+    }));
+  })).sort((a, b) => a.rank - b.rank || a.employee.localeCompare(b.employee) || a.job.jobId.localeCompare(b.job.jobId));
+}
+
+function isTodayJob(job: Job, today: string) {
+  return job.dueDate === today || entriesForDate(job, today).length > 0 || hasTodayActivity(job, today);
+}
+
+function hasTodayActivity(job: Job, today: string) {
+  return (job.activityLog || []).some((entry) => entry.createdAt?.slice(0, 10) === today);
+}
+
+function entriesForDate(job: Job, today: string) {
+  return (job.timeEntries || []).filter((entry) => entry.createdAt?.slice(0, 10) === today);
+}
+
+function assignedEmployeeNames(job: Job) {
+  if (!job.assignedCrew || job.assignedCrew === "Unassigned") return [];
+  return job.assignedCrew.split(/,|&|\band\b/i).map((name) => name.trim()).filter(Boolean);
+}
+
+function isTravelStarted(entry: TimeEntry) {
+  return entry.notes === "Started Travel";
+}
+
+function sameEmployee(a: string, b: string) {
+  return a.trim().toLowerCase() === b.trim().toLowerCase();
+}
+
+function mileageValue(entry: TimeEntry) {
+  return Number(entry.mileage) || 0;
+}
+
+function needsCloseout(job: Job, today: string) {
+  const closeoutDue = job.status === "Needs Inspection" || entriesForDate(job, today).some((entry) => entry.type === "Departed") || closedStatuses.includes(job.status);
+  return closeoutDue && closeoutChecks(job).some((check) => !check.ok && ["Completion notes", "After photos", "Paperwork", "Completion sign-off", "Open parts"].includes(check.label));
+}
+
+function closeoutDetail(job: Job) {
+  const blockers = closeoutChecks(job).filter((check) => !check.ok && ["Completion notes", "After photos", "Paperwork", "Completion sign-off", "Open parts"].includes(check.label));
+  return blockers.length ? blockers.map((blocker) => blocker.label).join(", ") : "Closeout needs review.";
+}
+
+function closeoutHref(job: Job) {
+  const blockers = closeoutChecks(job).filter((check) => !check.ok);
+  if (blockers.some((blocker) => blocker.label === "After photos")) return `/jobs/${job.jobId}#photos`;
+  if (blockers.some((blocker) => blocker.label === "Paperwork")) return `/jobs/${job.jobId}#paperwork`;
+  return `/jobs/${job.jobId}#complete-job`;
+}
+
+function markOnce(seen: Set<string>, key: string) {
+  if (seen.has(key)) return false;
+  seen.add(key);
+  return true;
+}
+
+function earliest(current: TimeEntry | undefined, next: TimeEntry | undefined) {
+  if (!next) return current;
+  if (!current) return next;
+  return next.createdAt < current.createdAt ? next : current;
+}
+
+function latest(current: TimeEntry | undefined, next: TimeEntry | undefined) {
+  if (!next) return current;
+  if (!current) return next;
+  return next.createdAt > current.createdAt ? next : current;
+}
+
+function formatTime(value?: string) {
+  return value ? new Date(value).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "—";
+}
+
+function formatMiles(value: number) {
+  return value.toFixed(1);
+}
+
+function formatToday(today: string) {
+  return new Date(`${today}T12:00:00`).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
 }
