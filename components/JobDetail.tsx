@@ -1609,6 +1609,56 @@ function getWorkSession(job: Job) {
   };
 }
 
+function getTravelState(job: Job) {
+  const entries = [...(job.timeEntries || [])].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const started = entries.find((entry) => entry.notes === "Started Travel");
+  const arrived = entries.find((entry) => entry.type === "Arrived");
+  return {
+    started,
+    arrived,
+    active: Boolean(started && (!arrived || started.createdAt > arrived.createdAt)),
+  };
+}
+
+function buildTimeActivity(job: Job, employeeName: string, message: string) {
+  const entry: JobActivity = {
+    id: `activity-${Date.now()}`,
+    type: "Time",
+    message,
+    createdAt: new Date().toISOString(),
+    createdBy: employeeName,
+    audience: "All",
+  };
+  return [entry, ...(job.activityLog || [])].slice(0, 50);
+}
+
+function activityMessageForTimeEntry(entry: TimeEntry) {
+  if (entry.notes === "Started Travel") return "Started Travel";
+  if (entry.type === "Arrived") return "Arrived at Job";
+  if (entry.type === "Mileage") return `Mileage Added${entry.mileage ? ` (${entry.mileage} miles)` : ""}${entry.notes ? ` - ${entry.notes}` : ""}`;
+  if (entry.type === "Departed") return "Departed";
+  if (entry.type === "Work started") return "Started Job";
+  return `Time log: ${entry.type}${entry.notes ? ` - ${entry.notes}` : ""}`;
+}
+
+function validMileage(value: string) {
+  const parsed = Number(value.trim());
+  return Number.isFinite(parsed) && parsed >= 0;
+}
+
+function travelLabel(travel: ReturnType<typeof getTravelState>) {
+  if (travel.active) return "Travel is active. Tap Arrive at Job when you get on site.";
+  if (travel.started && travel.arrived && travel.arrived.createdAt > travel.started.createdAt) return "Arrived at job. Start or continue work separately.";
+  if (travel.started) return "Travel was started. Arrival has not been recorded.";
+  return "No travel started for this job yet.";
+}
+
+function travelDuration(travel: ReturnType<typeof getTravelState>) {
+  if (!travel.started) return "Not available";
+  const end = travel.arrived && travel.arrived.createdAt > travel.started.createdAt ? travel.arrived.createdAt : undefined;
+  return formatElapsed(travel.started.createdAt, end);
+}
+
 function formatSessionDate(value: string) {
   return new Date(value).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 }
@@ -2012,37 +2062,56 @@ function TimeLogPanel({ job, saving, onSave }: { job: Job; saving: boolean; onSa
   const user = useAuthUser();
   const [mileage, setMileage] = useState("");
   const [notes, setNotes] = useState("");
+  const [mileageError, setMileageError] = useState("");
   const entries = job.timeEntries || [];
   const employeeName = user?.employeeName || user?.email || "Field";
   const today = new Date().toLocaleDateString("en-CA");
   const todayEntries = entries.filter((entry) => entry.createdAt.slice(0, 10) === today);
   const mileageTotal = entries.reduce((sum, entry) => sum + (Number(entry.mileage) || 0), 0);
   const session = getWorkSession(job);
+  const travel = getTravelState(job);
   const lastUpdated = entries[0]?.createdAt;
 
   async function addTimeEntry(type: TimeEntry["type"], options: { mileage?: string; notes?: string } = {}) {
+    const trimmedMileage = options.mileage?.trim() || "";
     const entry: TimeEntry = {
       id: `time-${Date.now()}`,
       type,
       employeeName,
       createdAt: new Date().toISOString(),
-      mileage: options.mileage?.trim(),
+      mileage: trimmedMileage || undefined,
       notes: options.notes?.trim(),
     };
     const statusPatch: Partial<Job> = type === "Work started" && ["New", "Scheduled"].includes(job.status) ? { status: "In Progress" } : {};
+    const activity = buildTimeActivity(job, employeeName, activityMessageForTimeEntry(entry));
     await onSave({
       ...statusPatch,
       timeEntries: [entry, ...entries].slice(0, 100),
-      activityLog: addJobActivity(job, `Time log: ${type}${entry.mileage ? ` (${entry.mileage} miles)` : ""}${entry.notes ? ` — ${entry.notes}` : ""}.`, "Time"),
+      activityLog: activity,
     });
   }
 
   async function submitNote(event: React.FormEvent) {
     event.preventDefault();
+    setMileageError("");
     if (!mileage.trim() && !notes.trim()) return;
+    if (mileage.trim() && !validMileage(mileage)) {
+      setMileageError("Enter miles as a number zero or greater.");
+      return;
+    }
     await addTimeEntry(mileage.trim() ? "Mileage" : "Note", { mileage, notes });
     setMileage("");
     setNotes("");
+  }
+
+  async function startTravel() {
+    if (travel.active) return;
+    await addTimeEntry("Note", { notes: "Started Travel" });
+  }
+
+  async function arriveAtJob() {
+    if (!travel.active) return;
+    await addTimeEntry("Arrived", { notes: "Arrived at job." });
   }
 
   return <section id="time-log" className="card p-4 sm:p-6">
@@ -2063,6 +2132,24 @@ function TimeLogPanel({ job, saving, onSave }: { job: Job; saving: boolean; onSa
       <MiniMetric label="Total entries" value={entries.length} icon={<ClipboardDocumentListIcon />} />
       <MiniMetric label="Mileage" value={mileageTotal.toFixed(1)} icon={<MapPinIcon />} />
     </div>
+    <div className="mt-4 rounded-2xl border border-black/10 bg-sand p-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-black">Travel and mileage</p>
+          <p className="text-xs font-semibold text-black/45">{travelLabel(travel)}</p>
+        </div>
+        {travel.active
+          ? <button type="button" disabled={saving} onClick={arriveAtJob} className="min-h-11 rounded-xl bg-forest px-4 py-2 text-sm font-black text-white disabled:opacity-50">{saving ? "Saving..." : "Arrive at Job"}</button>
+          : !travel.started && !session.started
+            ? <button type="button" disabled={saving} onClick={startTravel} className="min-h-11 rounded-xl bg-forest px-4 py-2 text-sm font-black text-white disabled:opacity-50">{saving ? "Saving..." : "Start Travel"}</button>
+            : <span className="inline-flex min-h-11 items-center justify-center rounded-xl bg-white px-4 py-2 text-sm font-black text-black/45">Travel Recorded</span>}
+      </div>
+      <div className="mt-3 grid gap-2 sm:grid-cols-3">
+        <MiniMetric label="Travel started" value={travel.started ? formatSessionDate(travel.started.createdAt) : "Not started"} icon={<MapPinIcon />} />
+        <MiniMetric label="Arrival" value={travel.active ? "In travel" : travel.arrived ? formatSessionDate(travel.arrived.createdAt) : "Not recorded"} icon={<MapPinIcon />} />
+        <MiniMetric label="Drive time" value={travelDuration(travel)} icon={<ClockIcon />} />
+      </div>
+    </div>
     <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
       {(["Arrived", "Work started", "Paused", "Departed"] as TimeEntry["type"][]).map((type) => <button key={type} type="button" disabled={saving} onClick={() => addTimeEntry(type)} className="min-h-12 rounded-xl bg-forest px-3 py-3 text-sm font-black text-white disabled:opacity-50">{type}</button>)}
     </div>
@@ -2071,6 +2158,7 @@ function TimeLogPanel({ job, saving, onSave }: { job: Job; saving: boolean; onSa
       <input className="field !min-h-11 !py-2 text-sm" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Trip/time note" />
       <button disabled={saving || (!mileage.trim() && !notes.trim())} className="min-h-11 rounded-xl bg-ink px-4 py-2 font-black text-white disabled:opacity-50">Add Log</button>
     </form>
+    {mileageError && <p role="alert" className="mt-2 rounded-xl bg-orange-50 p-3 text-sm font-bold text-orange-800">{mileageError}</p>}
     <div className="mt-4 space-y-2">
       {entries.length ? entries.slice(0, 8).map((entry) => <div key={entry.id} className="rounded-xl bg-sand p-3">
         <div className="flex items-start justify-between gap-3">

@@ -175,6 +175,80 @@ export function FieldAppView() {
     }
   }
 
+  async function startTravel(job: Job) {
+    const travel = getTravelState(job);
+    if (travel.active) return;
+    setSavingJobId(job.jobId);
+    const employeeName = employee?.name || user?.employeeName || "Crew";
+    const now = new Date().toISOString();
+    const activity: JobActivity = {
+      id: `activity-${Date.now()}`,
+      type: "Time",
+      message: "Started Travel",
+      createdAt: now,
+      createdBy: employeeName,
+      audience: "All",
+    };
+    const timeEntry: NonNullable<Job["timeEntries"]>[number] = {
+      id: `time-${Date.now()}`,
+      type: "Note",
+      employeeName,
+      createdAt: now,
+      notes: "Started Travel",
+    };
+    try {
+      const response = await authFetch(`/api/jobs/${job.jobId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          activityLog: [activity, ...(job.activityLog || [])].slice(0, 50),
+          timeEntries: [timeEntry, ...(job.timeEntries || [])].slice(0, 100),
+        }),
+      });
+      const saved = await response.json();
+      if (response.ok) setJobs((old) => old.map((item) => item.jobId === job.jobId ? { ...item, ...saved } : item));
+    } finally {
+      setSavingJobId("");
+    }
+  }
+
+  async function arriveAtJob(job: Job) {
+    const travel = getTravelState(job);
+    if (!travel.active) return;
+    setSavingJobId(job.jobId);
+    const employeeName = employee?.name || user?.employeeName || "Crew";
+    const now = new Date().toISOString();
+    const activity: JobActivity = {
+      id: `activity-${Date.now()}`,
+      type: "Time",
+      message: "Arrived at Job",
+      createdAt: now,
+      createdBy: employeeName,
+      audience: "All",
+    };
+    const timeEntry: NonNullable<Job["timeEntries"]>[number] = {
+      id: `time-${Date.now()}`,
+      type: "Arrived",
+      employeeName,
+      createdAt: now,
+      notes: "Arrived at job from Field App.",
+    };
+    try {
+      const response = await authFetch(`/api/jobs/${job.jobId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          activityLog: [activity, ...(job.activityLog || [])].slice(0, 50),
+          timeEntries: [timeEntry, ...(job.timeEntries || [])].slice(0, 100),
+        }),
+      });
+      const saved = await response.json();
+      if (response.ok) setJobs((old) => old.map((item) => item.jobId === job.jobId ? { ...item, ...saved } : item));
+    } finally {
+      setSavingJobId("");
+    }
+  }
+
   async function toggleChecklist(job: Job, itemId: string) {
     setSavingJobId(job.jobId);
     const employeeName = employee?.name || user?.employeeName || "Crew";
@@ -356,7 +430,7 @@ export function FieldAppView() {
       <Link href="/employees" className="btn-primary mt-4">Open Employees</Link>
     </section> : null}
 
-    {!loading && employee && <CurrentJobPanel job={currentJob} saving={savingJobId === currentJob?.jobId} permissions={fieldPermissions} onStart={(job) => startJob(job)} />}
+    {!loading && employee && <CurrentJobPanel job={currentJob} saving={savingJobId === currentJob?.jobId} permissions={fieldPermissions} onStart={(job) => startJob(job)} onStartTravel={(job) => startTravel(job)} onArrive={(job) => arriveAtJob(job)} />}
 
     {!loading && employee && <TodayAssignments jobs={todayRemainingJobs} />}
 
@@ -388,13 +462,14 @@ export function FieldAppView() {
   </div>;
 }
 
-function CurrentJobPanel({ job, saving, permissions, onStart }: { job?: Job; saving: boolean; permissions: FieldPermissions; onStart: (job: Job) => void }) {
+function CurrentJobPanel({ job, saving, permissions, onStart, onStartTravel, onArrive }: { job?: Job; saving: boolean; permissions: FieldPermissions; onStart: (job: Job) => void; onStartTravel: (job: Job) => void; onArrive: (job: Job) => void }) {
   if (!job) return <section className="card p-5 text-center">
     <p className="text-lg font-black">No assigned work right now.</p>
     <p className="mt-1 text-sm font-semibold text-black/45">Assigned jobs will show here when dispatch puts them on your crew list.</p>
   </section>;
   const action = primaryFieldAction(job);
   const session = getWorkSession(job);
+  const travel = getTravelState(job);
   return <section className="card overflow-hidden">
     <div className="bg-sand p-4">
       <p className="text-xs font-black uppercase tracking-widest text-forest">Current / next job</p>
@@ -407,15 +482,19 @@ function CurrentJobPanel({ job, saving, permissions, onStart }: { job?: Job; sav
         <StatusBadge status={job.status} />
       </div>
       {job.assignedCrew && <p className="mt-2 text-xs font-black uppercase tracking-wide text-black/40">Crew: {job.assignedCrew}</p>}
-      <p className="mt-2 text-xs font-black uppercase tracking-wide text-black/40">{session.started ? "Started" : "Not Started"}</p>
+      <p className="mt-2 text-xs font-black uppercase tracking-wide text-black/40">{travel.active ? "Traveling" : session.started ? "Started" : travel.arrived ? "Arrived" : "Not Started"}</p>
       <p className="mt-3 rounded-xl bg-white p-3 text-sm font-bold text-black/65">{nextActionReason(job)}</p>
     </div>
     <div className="space-y-3 p-4">
-      {session.started
-        ? <Link href={`/jobs/${job.jobId}`} className="block min-h-12 rounded-xl bg-forest px-4 py-3 text-center font-black text-white">Continue Job</Link>
-        : permissions.employeeCanStartJobs
-          ? <button type="button" disabled={saving} onClick={() => onStart(job)} className="block min-h-12 w-full rounded-xl bg-forest px-4 py-3 text-center font-black text-white disabled:opacity-50">{saving ? "Saving..." : "Start Job"}</button>
-          : <Link href={action.href} className="block min-h-12 rounded-xl bg-forest px-4 py-3 text-center font-black text-white">{action.label}</Link>}
+      {action.kind === "arrive"
+        ? <button type="button" disabled={saving} onClick={() => onArrive(job)} className="block min-h-12 w-full rounded-xl bg-forest px-4 py-3 text-center font-black text-white disabled:opacity-50">{saving ? "Saving..." : action.label}</button>
+        : action.kind === "travel"
+          ? <button type="button" disabled={saving} onClick={() => onStartTravel(job)} className="block min-h-12 w-full rounded-xl bg-forest px-4 py-3 text-center font-black text-white disabled:opacity-50">{saving ? "Saving..." : action.label}</button>
+          : session.started
+            ? <Link href={`/jobs/${job.jobId}`} className="block min-h-12 rounded-xl bg-forest px-4 py-3 text-center font-black text-white">{action.label}</Link>
+            : permissions.employeeCanStartJobs && action.kind === "start"
+              ? <button type="button" disabled={saving} onClick={() => onStart(job)} className="block min-h-12 w-full rounded-xl bg-forest px-4 py-3 text-center font-black text-white disabled:opacity-50">{saving ? "Saving..." : action.label}</button>
+              : <Link href={action.href} className="block min-h-12 rounded-xl bg-forest px-4 py-3 text-center font-black text-white">{action.label}</Link>}
       <QuickCurrentJobActions job={job} canUpload={permissions.employeeCanUploadFiles} />
     </div>
   </section>;
@@ -975,13 +1054,23 @@ function fieldHelpMessage(job: Job, review: ReturnType<typeof fieldReviewStatus>
 type FieldBlocker = { job: Job; label: string; detail: string; href: string };
 
 function primaryFieldAction(job: Job) {
-  if (job.status === "In Progress") return { label: "Continue Job", href: `/jobs/${job.jobId}` };
-  if (job.status === "Waiting on Parts") return { label: "Review Parts", href: `/jobs/${job.jobId}#parts` };
-  if (["New", "Scheduled"].includes(job.status)) return { label: "Start Job", href: `/jobs/${job.jobId}` };
-  return { label: "Open Job", href: `/jobs/${job.jobId}` };
+  const travel = getTravelState(job);
+  const session = getWorkSession(job);
+  if (travel.active) return { kind: "arrive" as const, label: "Arrive at Job", href: `/jobs/${job.jobId}#time-log` };
+  if (!travel.started && !session.started && ["New", "Scheduled"].includes(job.status)) return { kind: "travel" as const, label: "Start Travel", href: `/jobs/${job.jobId}#time-log` };
+  if (session.active) return { kind: "continue" as const, label: "Continue Job", href: `/jobs/${job.jobId}` };
+  if (travel.arrived && !session.started && ["New", "Scheduled"].includes(job.status)) return { kind: "start" as const, label: "Start Job", href: `/jobs/${job.jobId}` };
+  if (job.status === "In Progress") return { kind: "continue" as const, label: "Continue Job", href: `/jobs/${job.jobId}` };
+  if (job.status === "Waiting on Parts") return { kind: "open" as const, label: "Review Parts", href: `/jobs/${job.jobId}#parts` };
+  if (["New", "Scheduled"].includes(job.status)) return { kind: "start" as const, label: "Start Job", href: `/jobs/${job.jobId}` };
+  return { kind: "open" as const, label: "Open Job", href: `/jobs/${job.jobId}` };
 }
 
 function nextActionReason(job: Job) {
+  const travel = getTravelState(job);
+  if (travel.active) return "Travel is active. Tap Arrive at Job when you get on site.";
+  if (!travel.started && !getWorkSession(job).started && ["New", "Scheduled"].includes(job.status)) return "Heading out? Start travel first, then arrive before starting work.";
+  if (travel.arrived && !getWorkSession(job).started) return "Arrived on site. Start the job when work begins.";
   if (job.status === "In Progress") return "Already started. Continue the guided job workspace.";
   if (job.status === "Waiting on Parts") return "Parts are blocking the job. Review the parts section.";
   if (job.status === "Needs Inspection") return "Ready for manager review. Check closeout if anything was returned.";
@@ -1089,6 +1178,17 @@ function getWorkSession(job: Job) {
     started,
     finished,
     active: Boolean(started && (!finished || started.createdAt > finished.createdAt)),
+  };
+}
+
+function getTravelState(job: Job) {
+  const entries = [...(job.timeEntries || [])].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const started = entries.find((entry) => entry.notes === "Started Travel");
+  const arrived = entries.find((entry) => entry.type === "Arrived");
+  return {
+    started,
+    arrived,
+    active: Boolean(started && (!arrived || started.createdAt > arrived.createdAt)),
   };
 }
 
