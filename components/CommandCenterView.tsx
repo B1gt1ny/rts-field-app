@@ -122,17 +122,22 @@ function EmployeeCard({ employee }: { employee: EmployeeReview }) {
 }
 
 function IssueRow({ issue }: { issue: DailyIssue }) {
-  return <Link href={issue.href} className="block p-4 hover:bg-black/[.02]">
-    <div className="flex items-start gap-3">
-      <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-xl bg-orange-100 text-orange-900"><ExclamationTriangleIcon className="size-5" /></span>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-xs font-black uppercase tracking-wide text-forest">{issue.employee} · {issue.job.jobId}</p>
-        <h3 className="mt-1 font-black">{issue.title}</h3>
-        <p className="mt-1 text-sm font-semibold text-black/50">{issue.detail}</p>
+  return <div className="p-4 hover:bg-black/[.02]">
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <Link href={issue.href} className="flex min-w-0 flex-1 items-start gap-3">
+        <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-xl bg-orange-100 text-orange-900"><ExclamationTriangleIcon className="size-5" /></span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-xs font-black uppercase tracking-wide text-forest">{issue.employee} · {issue.job.jobId}</p>
+          <h3 className="mt-1 font-black">{issue.title}</h3>
+          <p className="mt-1 text-sm font-semibold text-black/50">{issue.detail}</p>
+        </div>
+      </Link>
+      <div className="flex shrink-0 items-center gap-2">
+        <StatusBadge status={issue.job.status} />
+        <Link href={`/jobs/${issue.job.jobId}`} className="rounded-xl bg-forest px-3 py-2 text-sm font-black text-white">Open job</Link>
       </div>
-      <StatusBadge status={issue.job.status} />
     </div>
-  </Link>;
+  </div>;
 }
 
 function SummaryCard({ label, value }: { label: string; value: string | number }) {
