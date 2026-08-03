@@ -20,6 +20,8 @@ type CompanyCamState = {
   error?: string;
 };
 
+type WorkspaceSectionId = "overview" | "checklist" | "photos" | "parts" | "documents" | "notes" | "time" | "closeout" | "history";
+
 export function JobDetail({ initialJob }: { initialJob: Job }) {
   const [job, setJob] = useState<Job>({
     ...initialJob,
@@ -35,6 +37,7 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
   });
   const [saving, setSaving] = useState(false);
   const [detailMessage, setDetailMessage] = useState("");
+  const [openSection, setOpenSection] = useState<WorkspaceSectionId>("overview");
   const [companyCam, setCompanyCam] = useState<CompanyCamState>({
     configured: false,
     connected: Boolean(initialJob.companyCamProjectId),
@@ -43,6 +46,7 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
     projectUrl: initialJob.companyCamProjectUrl,
   });
   const complete = job.checklist.filter((item) => item.complete).length;
+  const checklistPercent = job.checklist.length ? (complete / job.checklist.length) * 100 : 0;
   async function saveJobPatch(patch: Partial<Job>) {
     setSaving(true);
     setDetailMessage("");
@@ -70,6 +74,21 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
       .catch(() => { if (active) setCompanyCam((old) => ({ ...old, error: "CompanyCam status could not be loaded." })); });
     return () => { active = false; };
   }, [job.jobId]);
+  useEffect(() => {
+    const openFromHash = () => {
+      const hash = window.location.hash.replace("#", "");
+      const section = sectionForAnchor(hash);
+      if (section) {
+        setOpenSection(section);
+        window.setTimeout(() => {
+          (document.getElementById(hash) || document.getElementById(`${section}-workspace`))?.scrollIntoView({ block: "start" });
+        }, 0);
+      }
+    };
+    openFromHash();
+    window.addEventListener("hashchange", openFromHash);
+    return () => window.removeEventListener("hashchange", openFromHash);
+  }, []);
   async function toggle(id: string) {
     const checklist = job.checklist.map((item) => item.id === id ? { ...item, complete: !item.complete } : item);
     await saveJobPatch({ checklist });
@@ -83,46 +102,123 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
         <Link href={`/jobs/${job.jobId}/edit`} className="btn-secondary !px-3 sm:!px-4"><PencilSquareIcon className="size-5" /><span className="hidden sm:inline">Edit</span></Link>
       </div>
     </div>
-    <JobCommandHub job={job} companyCam={companyCam} />
-    <NextActionStrip job={job} companyCam={companyCam} />
     <QuickActions job={job} />
-    <FieldWorkspace job={job} companyCam={companyCam} />
-    <CommunicationHandoffPanel job={job} saving={saving} onSave={saveJobPatch} />
     {detailMessage && <p role="alert" className="mb-5 rounded-xl border border-red-200 bg-red-50 p-4 font-bold text-red-700">{detailMessage}</p>}
-    <div className="grid gap-5 xl:grid-cols-[1.35fr_.65fr]">
-      <div className="space-y-5">
-        <section className="card p-4 sm:p-6"><h2 className="mb-4 text-lg font-black">Job information</h2><div className="grid gap-4 sm:grid-cols-2">
-          <Info icon={<MapPinIcon />} label="Location"><a className="font-bold text-forest" href={`https://maps.google.com/?q=${encodeURIComponent(`${job.address}, ${job.city}`)}`} target="_blank">{job.address}<br />{job.city} <ArrowTopRightOnSquareIcon className="inline size-3" /></a></Info>
-          <Info icon={<PhoneIcon />} label="Customer phone"><a className="font-bold text-forest" href={`tel:${job.phone}`}>{job.phone || "Not provided"}</a></Info>
-          <Info icon={<CalendarDaysIcon />} label="Due date">{new Date(`${job.dueDate}T12:00:00`).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</Info>
-          <Info icon={<UserGroupIcon />} label="Assigned employees">{job.assignedCrew || "Unassigned"}</Info>
-        </div></section>
-        <ProfileSheetPanel job={job} />
-        <TimeLogPanel job={job} saving={saving} onSave={saveJobPatch} />
+    <div className="space-y-3">
+      <WorkspaceSection id="overview" title="Overview" summary={`${job.jobId} · ${job.status} · ${job.assignedCrew || "Unassigned"}`} openSection={openSection} setOpenSection={setOpenSection}>
+        <OverviewPanel job={job} companyCam={companyCam} />
         <CalendarPanel job={job} setJob={setJob} />
-        <section className="card p-4 sm:p-6"><h2 className="mb-4 text-lg font-black">Scope of work</h2><p className="whitespace-pre-wrap leading-relaxed text-black/65">{job.scopeNotes || "No scope notes added."}</p>{job.partsNeeded && <div className="mt-5 rounded-xl bg-orange-50 p-4"><p className="mb-1 text-xs font-black uppercase tracking-wide text-orange-700">Parts needed</p><p className="font-semibold text-orange-950">{job.partsNeeded}</p></div>}</section>
-        <PartsPanel job={job} saving={saving} onSave={saveJobPatch} />
-        <GuidedCloseoutPanel job={job} />
-        <CloseoutQualityPanel job={job} />
-        <FactoryCostTrackerPanel job={job} saving={saving} onSave={saveJobPatch} />
-        <BillingHandoffPanel job={job} saving={saving} onSave={saveJobPatch} />
+        <ProfileSheetPanel job={job} />
+        <ScopePanel job={job} />
+      </WorkspaceSection>
+      <WorkspaceSection id="checklist" title="Checklist" summary={`${complete} of ${job.checklist.length} complete`} openSection={openSection} setOpenSection={setOpenSection}>
+        <ChecklistPanel job={job} saving={saving} complete={complete} percent={checklistPercent} onToggle={toggle} />
+      </WorkspaceSection>
+      <WorkspaceSection id="photos" title="Photos" summary={`${(job.beforePhotos || []).length + (job.damagePhotos || []).length + (job.serialTagPhotos || []).length + (job.afterPhotos || []).length} saved`} openSection={openSection} setOpenSection={setOpenSection}>
         <PhotoUploadPanel job={job} saving={saving} onSave={saveJobPatch} />
         <CompanyCamPanel job={job} status={companyCam} setStatus={setCompanyCam} onJobSynced={setJob} />
+      </WorkspaceSection>
+      <WorkspaceSection id="parts" title="Parts" summary={`${job.partsItems?.length || 0} tracked`} openSection={openSection} setOpenSection={setOpenSection}>
+        <PartsPanel job={job} saving={saving} onSave={saveJobPatch} />
+      </WorkspaceSection>
+      <WorkspaceSection id="documents" title="Documents" summary={`${(job.workOrderFiles || []).length} files · ${(job.receipts || []).length} receipts`} openSection={openSection} setOpenSection={setOpenSection}>
+        <OperationsPanel job={job} setJob={setJob} mode="documents" />
+      </WorkspaceSection>
+      <WorkspaceSection id="notes" title="Notes" summary={`${job.activityLog?.length || 0} activity notes`} openSection={openSection} setOpenSection={setOpenSection}>
+        <CommunicationHandoffPanel job={job} saving={saving} onSave={saveJobPatch} />
+        <OperationsPanel job={job} setJob={setJob} mode="notes" />
+        <OfflineDraftPanel job={job} saving={saving} onSave={saveJobPatch} />
+        {job.completionNotes && <section className="card p-4 sm:p-6"><h2 className="mb-2 text-lg font-black">Completion notes</h2><p className="text-black/65">{job.completionNotes}</p></section>}
+      </WorkspaceSection>
+      <WorkspaceSection id="time" title="Time" summary={`${job.timeEntries?.length || 0} entries`} openSection={openSection} setOpenSection={setOpenSection}>
+        <TimeLogPanel job={job} saving={saving} onSave={saveJobPatch} />
+        <FactoryCostTrackerPanel job={job} saving={saving} onSave={saveJobPatch} />
+      </WorkspaceSection>
+      <WorkspaceSection id="closeout" title="Closeout" summary={`${readinessScore(job)}% billing ready`} openSection={openSection} setOpenSection={setOpenSection}>
+        <GuidedCloseoutPanel job={job} />
+        <CloseoutQualityPanel job={job} />
         <CompleteJobFlow job={job} saving={saving} onSave={saveJobPatch} />
         <SignoffPanel job={job} saving={saving} onSave={saveJobPatch} />
-        <OfflineDraftPanel job={job} saving={saving} onSave={saveJobPatch} />
-        <OperationsPanel job={job} setJob={setJob} />
-        {job.completionNotes && <section className="card p-4 sm:p-6"><h2 className="mb-2 text-lg font-black">Completion notes</h2><p className="text-black/65">{job.completionNotes}</p></section>}
-      </div>
-      <aside>
-        <section className="card p-4 sm:p-6 xl:sticky xl:top-24"><div className="mb-4 flex items-start justify-between"><div><h2 className="text-lg font-black">Job checklist</h2><p className="text-sm text-black/45">{complete} of {job.checklist.length} completed</p></div>{saving && <span className="text-xs font-bold text-black/35">Saving…</span>}</div>
-          <div className="mb-5 h-2 overflow-hidden rounded-full bg-black/5"><div className="h-full rounded-full bg-forest transition-all" style={{ width: `${(complete / job.checklist.length) * 100}%` }} /></div>
-          <div className="space-y-2">{job.checklist.map((item) => <button key={item.id} onClick={() => toggle(item.id)} className={`flex min-h-12 w-full items-center gap-3 rounded-xl border p-3 text-left text-sm font-bold transition ${item.complete ? "border-forest/10 bg-forest/5 text-black/50" : "border-black/10 bg-white"}`}><span className={`grid size-6 shrink-0 place-items-center rounded-md border ${item.complete ? "border-forest bg-forest text-white" : "border-black/20"}`}>{item.complete && <CheckIcon className="size-4 stroke-[3]" />}</span><span className={item.complete ? "line-through" : ""}>{item.label}</span></button>)}</div>
-          <div className="mt-5 border-t border-black/5 pt-4 text-sm"><div className="flex justify-between"><span className="text-black/45">Invoice</span><span className="font-extrabold">{job.invoiceStatus}</span></div><p className="mt-3 text-xs text-black/40">Invoice Simple integration can be connected here later.</p></div>
-        </section>
-      </aside>
+        <BillingHandoffPanel job={job} saving={saving} onSave={saveJobPatch} />
+        <section className="card p-4 sm:p-6"><Link href={`/jobs/${job.jobId}/packet`} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-ink px-4 py-3 font-black text-white sm:w-auto"><ClipboardDocumentListIcon className="size-5" />Open Closeout Packet</Link></section>
+      </WorkspaceSection>
+      <WorkspaceSection id="history" title="History" summary={`${job.activityLog?.length || 0} records`} openSection={openSection} setOpenSection={setOpenSection}>
+        <OperationsPanel job={job} setJob={setJob} mode="history" />
+      </WorkspaceSection>
     </div>
   </>;
+}
+
+function sectionForAnchor(anchor: string): WorkspaceSectionId | undefined {
+  if (["overview", "profile-sheet", "scheduling"].includes(anchor)) return "overview";
+  if (anchor === "checklist") return "checklist";
+  if (["photos", "companycam"].includes(anchor)) return "photos";
+  if (["parts", "parts-needed"].includes(anchor)) return "parts";
+  if (["documents", "paperwork", "receipts"].includes(anchor)) return "documents";
+  if (["notes", "operations", "communication-handoff"].includes(anchor)) return "notes";
+  if (["time", "time-log", "factory-costs"].includes(anchor)) return "time";
+  if (["closeout", "complete-job", "signoffs", "billing-handoff"].includes(anchor)) return "closeout";
+  if (anchor === "history") return "history";
+  return undefined;
+}
+
+function WorkspaceSection({ id, title, summary, openSection, setOpenSection, children }: { id: WorkspaceSectionId; title: string; summary: string; openSection: WorkspaceSectionId; setOpenSection: (section: WorkspaceSectionId) => void; children: React.ReactNode }) {
+  const open = openSection === id;
+  return <section id={`${id}-workspace`} className="scroll-mt-24">
+    <button type="button" onClick={() => setOpenSection(id)} className={`flex min-h-16 w-full items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left ${open ? "border-forest/20 bg-forest/5" : "border-black/10 bg-white"}`}>
+      <span>
+        <span className="block text-lg font-black">{title}</span>
+        <span className="mt-0.5 block text-xs font-bold text-black/45">{summary}</span>
+      </span>
+      <span className={`rounded-full px-3 py-1 text-xs font-black uppercase tracking-wide ${open ? "bg-forest text-white" : "bg-sand text-black/45"}`}>{open ? "Open" : "View"}</span>
+    </button>
+    {open && <div className="mt-3 space-y-5">{children}</div>}
+  </section>;
+}
+
+function OverviewPanel({ job, companyCam }: { job: Job; companyCam: CompanyCamState }) {
+  const mapsUrl = `https://maps.google.com/?q=${encodeURIComponent(`${job.address}, ${job.city}`)}`;
+  return <section className="card p-4 sm:p-6">
+    <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div>
+        <h2 className="text-lg font-black">Job information</h2>
+        <p className="text-sm font-semibold text-black/45">{job.source}{job.dealerName ? ` · ${job.dealerName}` : ""}{job.factoryWorkOrderNumber ? ` · WO ${job.factoryWorkOrderNumber}` : ""}</p>
+      </div>
+      <div className="flex flex-wrap gap-2"><StatusBadge status={job.status} /><PriorityBadge priority={job.priority} /></div>
+    </div>
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <Info icon={<ClipboardDocumentListIcon />} label="Job ID">{job.jobId}</Info>
+      <Info icon={<UserGroupIcon />} label="Customer">{job.customerName}</Info>
+      <Info icon={<MapPinIcon />} label="Address">{job.address}<br />{job.city}</Info>
+      <Info icon={<PhoneIcon />} label="Phone">{job.phone || "Not provided"}</Info>
+      <Info icon={<ClipboardDocumentListIcon />} label="Dealer / Factory">{job.dealerName || job.factoryWorkOrderNumber || job.source}</Info>
+      <Info icon={<UserGroupIcon />} label="Assigned employees">{job.assignedCrew || "Unassigned"}</Info>
+      <Info icon={<CalendarDaysIcon />} label="Due date">{formatJobDate(job.dueDate)}</Info>
+      <Info icon={<CameraIcon />} label="CompanyCam">{companyCam.projectUrl ? "Linked" : companyCam.configured ? "Ready" : "Not connected"}</Info>
+    </div>
+    <div className="mt-4 grid gap-2 sm:grid-cols-2">
+      <a href={mapsUrl} target="_blank" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-forest px-4 py-3 font-black text-white"><MapPinIcon className="size-5" />Open Maps</a>
+      <a href={`tel:${job.phone}`} className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border-2 border-black/10 bg-white px-4 py-3 font-black ${job.phone ? "text-ink" : "pointer-events-none text-black/25"}`}><PhoneIcon className="size-5" />Call Customer</a>
+    </div>
+  </section>;
+}
+
+function ScopePanel({ job }: { job: Job }) {
+  return <section className="card p-4 sm:p-6"><h2 className="mb-4 text-lg font-black">Scope of work</h2><p className="whitespace-pre-wrap leading-relaxed text-black/65">{job.scopeNotes || "No scope notes added."}</p>{job.partsNeeded && <div className="mt-5 rounded-xl bg-orange-50 p-4"><p className="mb-1 text-xs font-black uppercase tracking-wide text-orange-700">Parts needed</p><p className="font-semibold text-orange-950">{job.partsNeeded}</p></div>}</section>;
+}
+
+function ChecklistPanel({ job, saving, complete, percent, onToggle }: { job: Job; saving: boolean; complete: number; percent: number; onToggle: (id: string) => void }) {
+  return <section id="checklist-panel" className="card p-4 sm:p-6">
+    <div className="mb-4 flex items-start justify-between"><div><h2 className="text-lg font-black">Job checklist</h2><p className="text-sm text-black/45">{complete} of {job.checklist.length} completed</p></div>{saving && <span className="text-xs font-bold text-black/35">Saving…</span>}</div>
+    <div className="mb-5 h-2 overflow-hidden rounded-full bg-black/5"><div className="h-full rounded-full bg-forest transition-all" style={{ width: `${percent}%` }} /></div>
+    <div className="grid gap-2 sm:grid-cols-2">{job.checklist.map((item) => <button key={item.id} onClick={() => onToggle(item.id)} className={`flex min-h-12 w-full items-center gap-3 rounded-xl border p-3 text-left text-sm font-bold transition ${item.complete ? "border-forest/10 bg-forest/5 text-black/50" : "border-black/10 bg-white"}`}><span className={`grid size-6 shrink-0 place-items-center rounded-md border ${item.complete ? "border-forest bg-forest text-white" : "border-black/20"}`}>{item.complete && <CheckIcon className="size-4 stroke-[3]" />}</span><span className={item.complete ? "line-through" : ""}>{item.label}</span></button>)}</div>
+    <div className="mt-5 border-t border-black/5 pt-4 text-sm"><div className="flex justify-between"><span className="text-black/45">Invoice</span><span className="font-extrabold">{job.invoiceStatus}</span></div><p className="mt-3 text-xs text-black/40">Invoice Simple integration can be connected here later.</p></div>
+  </section>;
+}
+
+function formatJobDate(date: string) {
+  if (!date) return "Not scheduled";
+  return new Date(`${date}T12:00:00`).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
 }
 
 function JobCommandHub({ job, companyCam }: { job: Job; companyCam: CompanyCamState }) {
@@ -1068,7 +1164,7 @@ function defaultPaperwork(job: Job): PaperworkItem[] {
   ];
 }
 
-function OperationsPanel({ job, setJob }: { job: Job; setJob: React.Dispatch<React.SetStateAction<Job>> }) {
+function OperationsPanel({ job, setJob, mode }: { job: Job; setJob: React.Dispatch<React.SetStateAction<Job>>; mode: "documents" | "notes" | "history" }) {
   const [note, setNote] = useState("");
   const [audience, setAudience] = useState<JobActivity["audience"]>("All");
   const [notify, setNotify] = useState(false);
@@ -1157,90 +1253,113 @@ function OperationsPanel({ job, setJob }: { job: Job; setJob: React.Dispatch<Rea
     });
   }
 
-  return <section id="operations" className="card p-4 sm:p-6">
-    <div className="mb-4 flex items-start gap-3">
-      <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-lime text-ink"><ChatBubbleLeftRightIcon className="size-5" /></span>
-      <div>
-        <h2 className="text-lg font-black">Operations</h2>
-        <p className="text-sm text-black/50">Communication, paperwork, and receipts for this job.</p>
-      </div>
-    </div>
-    {error && <p role="alert" className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-700">{error}</p>}
-    <div className="grid gap-3 sm:grid-cols-3">
-      <MiniMetric label="Updates" value={activity.length} icon={<ChatBubbleLeftRightIcon />} />
-      <MiniMetric label="Paperwork" value={`${collected}/${paperwork.length}`} icon={<ClipboardDocumentListIcon />} />
-      <MiniMetric label="Receipts" value={`$${receiptTotal.toFixed(2)}`} icon={<ReceiptPercentIcon />} />
-    </div>
-    <div className="mt-3 grid grid-cols-2 gap-2 text-xs font-black text-black/55 sm:grid-cols-5">
-      <FileSummaryPill label="Work orders" value={fileSummary.workOrders} />
-      <FileSummaryPill label="Paperwork" value={fileSummary.paperwork} />
-      <FileSummaryPill label="Signed docs" value={fileSummary.signedDocs} />
-      <FileSummaryPill label="Receipt files" value={fileSummary.receipts} />
-      <FileSummaryPill label="Other" value={fileSummary.other} />
-    </div>
-    <div className="mt-5 rounded-2xl border border-black/10 bg-white p-3">
-      <label className="label">Add job update</label>
-      <textarea className="field min-h-24 resize-y" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Example: Customer called, parts ordered, dealer notified..." />
-      <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto]">
-        <label><span className="label">Who is this update for?</span><select value={audience} onChange={(event) => setAudience(event.target.value as JobActivity["audience"])} className="field !min-h-11 !py-2 text-sm font-bold">
-          {["All", "Admin", "Manager", "Employee"].map((option) => <option key={option}>{option}</option>)}
-        </select></label>
-        <label className="flex min-h-11 items-center gap-2 self-end rounded-xl border border-black/10 bg-sand px-3 py-2 text-sm font-bold"><input type="checkbox" checked={notify} onChange={(event) => setNotify(event.target.checked)} className="size-4 accent-forest" /> Flag for follow-up</label>
-      </div>
-      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {(["Customer contacted", "Left voicemail", "Text sent", "Parts ordered", "Dealer/factory notified", "Work complete"] as const).map((template) => <button key={template} type="button" onClick={() => submitNote(template, template === "Parts ordered" ? "Parts" : template === "Work complete" ? "Status" : template === "Dealer/factory notified" ? "Source" : "Customer")} className="min-h-11 rounded-xl border border-black/10 bg-sand px-3 py-2 text-xs font-black text-ink">{template}</button>)}
-      </div>
-      <button type="button" disabled={saving || !note.trim()} onClick={() => submitNote()} className="mt-3 min-h-12 w-full rounded-xl bg-forest px-4 py-3 font-black text-white disabled:opacity-50">{saving ? "Saving…" : "Save Update"}</button>
-    </div>
-    <div className="mt-5 grid gap-4 lg:grid-cols-2">
-      <div id="paperwork" className="rounded-2xl border border-black/10 bg-white p-3">
-        <h3 className="mb-3 font-black">Paperwork</h3>
-        <div className="mb-3 grid gap-2 sm:grid-cols-3">
-          <FileUploadButton label="Upload work order" category="Work Order" disabled={saving} onFile={addPaperworkFile} />
-          <FileUploadButton label="Upload paperwork" category="Paperwork" disabled={saving} onFile={addPaperworkFile} />
-          <FileUploadButton label="Upload signed doc" category="Signed Document" disabled={saving} onFile={addPaperworkFile} />
+  if (mode === "documents") {
+    return <section id="documents-panel" className="card p-4 sm:p-6">
+      <div className="mb-4 flex items-start gap-3">
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-lime text-ink"><ClipboardDocumentListIcon className="size-5" /></span>
+        <div>
+          <h2 className="text-lg font-black">Documents</h2>
+          <p className="text-sm text-black/50">Paperwork, receipts, signed documents, and work order files for this job.</p>
         </div>
-        {workOrderFiles.length > 0 && <FileList files={workOrderFiles} />}
-        <div className="space-y-2">{paperwork.map((item) => <div key={item.id} className="rounded-xl bg-sand p-3">
-          <p className="font-extrabold">{item.label}</p>
-          {item.notes && <p className="text-xs font-semibold text-black/45">{item.notes}</p>}
-          <select className="field mt-2 !min-h-10 !py-2 text-sm" value={item.status} onChange={(event) => updatePaperwork(item.id, event.target.value as PaperworkItem["status"])}>
-            {["Needed", "Collected", "Submitted", "Not needed"].map((status) => <option key={status}>{status}</option>)}
-          </select>
-        </div>)}</div>
       </div>
-      <div id="receipts" className="rounded-2xl border border-black/10 bg-white p-3">
-        <h3 className="mb-3 font-black">Receipts</h3>
-        <form onSubmit={addReceipt} className="grid gap-2">
-          <input name="vendor" className="field !min-h-11 !py-2 text-sm" placeholder="Vendor / store" />
-          <div className="grid grid-cols-2 gap-2">
-            <input name="amount" className="field !min-h-11 !py-2 text-sm" inputMode="decimal" placeholder="Amount" />
-            <input name="date" type="date" className="field !min-h-11 !py-2 text-sm" defaultValue={new Date().toLocaleDateString("en-CA")} />
+      {error && <p role="alert" className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-700">{error}</p>}
+      <div className="grid gap-3 sm:grid-cols-3">
+        <MiniMetric label="Paperwork" value={`${collected}/${paperwork.length}`} icon={<ClipboardDocumentListIcon />} />
+        <MiniMetric label="Receipts" value={`$${receiptTotal.toFixed(2)}`} icon={<ReceiptPercentIcon />} />
+        <MiniMetric label="Files" value={workOrderFiles.length} icon={<ClipboardDocumentListIcon />} />
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-2 text-xs font-black text-black/55 sm:grid-cols-5">
+        <FileSummaryPill label="Work orders" value={fileSummary.workOrders} />
+        <FileSummaryPill label="Paperwork" value={fileSummary.paperwork} />
+        <FileSummaryPill label="Signed docs" value={fileSummary.signedDocs} />
+        <FileSummaryPill label="Receipt files" value={fileSummary.receipts} />
+        <FileSummaryPill label="Other" value={fileSummary.other} />
+      </div>
+      <div className="mt-5 grid gap-4 lg:grid-cols-2">
+        <div id="paperwork" className="rounded-2xl border border-black/10 bg-white p-3">
+          <h3 className="mb-3 font-black">Paperwork</h3>
+          <div className="mb-3 grid gap-2 sm:grid-cols-3">
+            <FileUploadButton label="Upload work order" category="Work Order" disabled={saving} onFile={addPaperworkFile} />
+            <FileUploadButton label="Upload paperwork" category="Paperwork" disabled={saving} onFile={addPaperworkFile} />
+            <FileUploadButton label="Upload signed doc" category="Signed Document" disabled={saving} onFile={addPaperworkFile} />
           </div>
-          <select name="category" className="field !min-h-11 !py-2 text-sm">{["Materials", "Parts", "Fuel", "Tools", "Other"].map((category) => <option key={category}>{category}</option>)}</select>
-          <label className="flex min-h-10 items-center gap-2 text-sm font-bold"><input name="reimbursable" type="checkbox" className="size-4 accent-forest" /> Reimbursable</label>
-          <input name="notes" className="field !min-h-11 !py-2 text-sm" placeholder="Notes" />
-          <label className="flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed border-black/15 bg-sand px-3 py-3 text-center text-sm font-black text-ink">
-            Upload receipt photo/PDF
-            <input name="receiptFile" type="file" accept="image/*,.pdf" className="hidden" />
-          </label>
-          <button type="submit" disabled={saving} className="min-h-11 rounded-xl bg-ink px-4 py-2 font-black text-white disabled:opacity-50">Add Receipt</button>
-        </form>
-        <div className="mt-3 space-y-2">{receipts.slice(0, 5).map((receipt) => <div key={receipt.id} className="rounded-xl bg-sand p-3 text-sm">
-          <div className="flex justify-between gap-3"><span className="font-extrabold">{receipt.vendor}</span><span className="font-black">${receipt.amount || "0"}</span></div>
-          <p className="text-xs font-semibold text-black/45">{receipt.category} · {receipt.date}{receipt.reimbursable ? " · Reimbursable" : ""}</p>
-          {receipt.notes && <p className="mt-1 text-xs text-black/55">{receipt.notes}</p>}
-          {receipt.file && <a href={receipt.file.storageUrl || receipt.file.dataUrl} target="_blank" className="mt-2 inline-flex min-h-10 items-center justify-center rounded-lg bg-white px-3 py-2 text-xs font-black text-forest">Open receipt file</a>}
-        </div>)}</div>
+          {workOrderFiles.length > 0 && <FileList files={workOrderFiles} />}
+          <div className="space-y-2">{paperwork.map((item) => <div key={item.id} className="rounded-xl bg-sand p-3">
+            <p className="font-extrabold">{item.label}</p>
+            {item.notes && <p className="text-xs font-semibold text-black/45">{item.notes}</p>}
+            <select className="field mt-2 !min-h-10 !py-2 text-sm" value={item.status} onChange={(event) => updatePaperwork(item.id, event.target.value as PaperworkItem["status"])}>
+              {["Needed", "Collected", "Submitted", "Not needed"].map((status) => <option key={status}>{status}</option>)}
+            </select>
+          </div>)}</div>
+        </div>
+        <div id="receipts" className="rounded-2xl border border-black/10 bg-white p-3">
+          <h3 className="mb-3 font-black">Receipts</h3>
+          <form onSubmit={addReceipt} className="grid gap-2">
+            <input name="vendor" className="field !min-h-11 !py-2 text-sm" placeholder="Vendor / store" />
+            <div className="grid grid-cols-2 gap-2">
+              <input name="amount" className="field !min-h-11 !py-2 text-sm" inputMode="decimal" placeholder="Amount" />
+              <input name="date" type="date" className="field !min-h-11 !py-2 text-sm" defaultValue={new Date().toLocaleDateString("en-CA")} />
+            </div>
+            <select name="category" className="field !min-h-11 !py-2 text-sm">{["Materials", "Parts", "Fuel", "Tools", "Other"].map((category) => <option key={category}>{category}</option>)}</select>
+            <label className="flex min-h-10 items-center gap-2 text-sm font-bold"><input name="reimbursable" type="checkbox" className="size-4 accent-forest" /> Reimbursable</label>
+            <input name="notes" className="field !min-h-11 !py-2 text-sm" placeholder="Notes" />
+            <label className="flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed border-black/15 bg-sand px-3 py-3 text-center text-sm font-black text-ink">
+              Upload receipt photo/PDF
+              <input name="receiptFile" type="file" accept="image/*,.pdf" className="hidden" />
+            </label>
+            <button type="submit" disabled={saving} className="min-h-11 rounded-xl bg-ink px-4 py-2 font-black text-white disabled:opacity-50">Add Receipt</button>
+          </form>
+          <div className="mt-3 space-y-2">{receipts.slice(0, 5).map((receipt) => <div key={receipt.id} className="rounded-xl bg-sand p-3 text-sm">
+            <div className="flex justify-between gap-3"><span className="font-extrabold">{receipt.vendor}</span><span className="font-black">${receipt.amount || "0"}</span></div>
+            <p className="text-xs font-semibold text-black/45">{receipt.category} · {receipt.date}{receipt.reimbursable ? " · Reimbursable" : ""}</p>
+            {receipt.notes && <p className="mt-1 text-xs text-black/55">{receipt.notes}</p>}
+            {receipt.file && <a href={receipt.file.storageUrl || receipt.file.dataUrl} target="_blank" className="mt-2 inline-flex min-h-10 items-center justify-center rounded-lg bg-white px-3 py-2 text-xs font-black text-forest">Open receipt file</a>}
+          </div>)}</div>
+        </div>
+      </div>
+    </section>;
+  }
+
+  if (mode === "notes") {
+    return <section id="operations" className="card p-4 sm:p-6">
+      <div className="mb-4 flex items-start gap-3">
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-lime text-ink"><ChatBubbleLeftRightIcon className="size-5" /></span>
+        <div>
+          <h2 className="text-lg font-black">Notes</h2>
+          <p className="text-sm text-black/50">Customer, dealer/factory, manager, and field notes for this job.</p>
+        </div>
+      </div>
+      {error && <p role="alert" className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-700">{error}</p>}
+      <MiniMetric label="Updates" value={activity.length} icon={<ChatBubbleLeftRightIcon />} />
+      <div className="mt-5 rounded-2xl border border-black/10 bg-white p-3">
+        <label className="label">Add job update</label>
+        <textarea className="field min-h-24 resize-y" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Example: Customer called, parts ordered, dealer notified..." />
+        <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto]">
+          <label><span className="label">Who is this update for?</span><select value={audience} onChange={(event) => setAudience(event.target.value as JobActivity["audience"])} className="field !min-h-11 !py-2 text-sm font-bold">
+            {["All", "Admin", "Manager", "Employee"].map((option) => <option key={option}>{option}</option>)}
+          </select></label>
+          <label className="flex min-h-11 items-center gap-2 self-end rounded-xl border border-black/10 bg-sand px-3 py-2 text-sm font-bold"><input type="checkbox" checked={notify} onChange={(event) => setNotify(event.target.checked)} className="size-4 accent-forest" /> Flag for follow-up</label>
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {(["Customer contacted", "Left voicemail", "Text sent", "Parts ordered", "Dealer/factory notified", "Work complete"] as const).map((template) => <button key={template} type="button" onClick={() => submitNote(template, template === "Parts ordered" ? "Parts" : template === "Work complete" ? "Status" : template === "Dealer/factory notified" ? "Source" : "Customer")} className="min-h-11 rounded-xl border border-black/10 bg-sand px-3 py-2 text-xs font-black text-ink">{template}</button>)}
+        </div>
+        <button type="button" disabled={saving || !note.trim()} onClick={() => submitNote()} className="mt-3 min-h-12 w-full rounded-xl bg-forest px-4 py-3 font-black text-white disabled:opacity-50">{saving ? "Saving…" : "Save Update"}</button>
+      </div>
+    </section>;
+  }
+
+  return <section id="history" className="card p-4 sm:p-6">
+    <div className="mb-4 flex items-start gap-3">
+      <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-lime text-ink"><ClipboardDocumentListIcon className="size-5" /></span>
+      <div>
+        <h2 className="text-lg font-black">History</h2>
+        <p className="text-sm text-black/50">Existing activity log records for this job.</p>
       </div>
     </div>
-    <div className="mt-5 rounded-2xl border border-black/10 bg-white p-3">
-      <h3 className="mb-3 font-black">Job activity</h3>
-      <div className="space-y-2">{activity.length ? activity.slice(0, 8).map((entry) => <div key={entry.id} className="rounded-xl bg-sand p-3">
-        <div className="flex items-start justify-between gap-3"><p className="font-bold">{entry.message}</p><span className="rounded-full bg-white px-2 py-1 text-[10px] font-black uppercase tracking-wide text-black/45">{entry.type}</span></div>
-        <p className="mt-1 text-xs font-semibold text-black/40">{entry.createdBy} · {new Date(entry.createdAt).toLocaleString()} · {entry.audience || "All"}{entry.notify ? " · Follow-up flagged" : ""}</p>
-      </div>) : <p className="rounded-xl bg-sand p-3 text-sm font-semibold text-black/45">No updates yet.</p>}</div>
-    </div>
+    <div className="space-y-2">{activity.length ? activity.slice(0, 8).map((entry) => <div key={entry.id} className="rounded-xl bg-sand p-3">
+      <div className="flex items-start justify-between gap-3"><p className="font-bold">{entry.message}</p><span className="rounded-full bg-white px-2 py-1 text-[10px] font-black uppercase tracking-wide text-black/45">{entry.type}</span></div>
+      <p className="mt-1 text-xs font-semibold text-black/40">{entry.createdBy} · {new Date(entry.createdAt).toLocaleString()} · {entry.audience || "All"}{entry.notify ? " · Follow-up flagged" : ""}</p>
+    </div>) : <p className="rounded-xl bg-sand p-3 text-sm font-semibold text-black/45">No updates yet.</p>}</div>
   </section>;
 }
 
