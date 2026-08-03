@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { BellAlertIcon, CalendarDaysIcon, CameraIcon, ClipboardDocumentListIcon, CurrencyDollarIcon, ExclamationTriangleIcon, UserGroupIcon, WrenchScrewdriverIcon } from "@heroicons/react/24/outline";
 import type { Job } from "@/lib/types";
-import { openParts } from "@/lib/job-readiness";
+import { isReadyForBilling, openParts } from "@/lib/job-readiness";
 import { isReceiptBackupMissing } from "@/lib/receipt-backup";
 import { PriorityBadge, StatusBadge } from "./StatusBadge";
 
@@ -89,30 +89,38 @@ function buildIssueQueue(jobs: Job[], today: string): IssueItem[] {
 
 function jobIssues(job: Job, today: string): IssueType[] {
   const isClosed = closedStatuses.includes(job.status);
+  const reviewStage = isReviewOrCloseoutStage(job);
   const issues: IssueType[] = [];
   if (!isClosed && job.dueDate && job.dueDate < today) issues.push("Overdue");
-  if (!isClosed && (job.status === "Waiting on Parts" || Boolean(job.partsNeeded.trim()) || openParts(job).length > 0)) issues.push("Waiting Parts");
-  if (!isClosed && (!job.paperworkPickedUp || !(job.workOrderFiles || []).length || isReceiptBackupMissing(job))) issues.push("Missing Paperwork");
-  if (missingRequiredPhotos(job)) issues.push("Missing Photos");
+  if (!isClosed && (job.status === "Waiting on Parts" || openParts(job).length > 0)) issues.push("Waiting Parts");
+  if (reviewStage && missingRequiredPaperwork(job)) issues.push("Missing Paperwork");
+  if (reviewStage && missingRequiredPhotos(job)) issues.push("Missing Photos");
   if (!isClosed && job.status === "Needs Inspection") issues.push("Needs Review");
-  if (job.invoiceStatus === "Ready") issues.push("Ready Billing");
+  if (isReadyForBilling(job) && !["Paid", "Sent", "Sent to Billing"].includes(job.invoiceStatus || "")) issues.push("Ready Billing");
   if ((job.activityLog || []).some((entry) => entry.notify && !entry.resolvedAt && entry.followUpDueDate && entry.followUpDueDate < today)) issues.push("Overdue Follow-up");
   if (!isClosed && !job.fullCrew && !job.assignedEmployeeIds?.length && (!job.assignedCrew || job.assignedCrew === "Unassigned")) issues.push("Unassigned");
-  if (!isClosed && !job.dueDate) issues.push("Unscheduled");
+  if (["New", "Scheduled", "In Progress"].includes(job.status) && !job.dueDate) issues.push("Unscheduled");
   return issues;
+}
+
+function isReviewOrCloseoutStage(job: Job) {
+  return job.status === "Needs Inspection" || closedStatuses.includes(job.status) || ["Ready", "Draft", "Sent to Billing", "Sent"].includes(job.invoiceStatus || "");
+}
+
+function missingRequiredPaperwork(job: Job) {
+  return !job.paperworkPickedUp && !(job.workOrderFiles || []).length && !(job.paperworkItems || []).some((item) => ["Collected", "Submitted", "Not needed"].includes(item.status)) || isReceiptBackupMissing(job);
 }
 
 function missingRequiredPhotos(job: Job) {
   if (job.status === "Paid" || job.status === "Billed") return false;
-  if (job.status === "Complete") return !(job.afterPhotos || []).length;
-  return !closedStatuses.includes(job.status) && (!(job.beforePhotos || []).length || !(job.serialTagPhotos || []).length);
+  return !(job.afterPhotos || []).length;
 }
 
 function issueReason(job: Job, issue: IssueType | undefined, today: string) {
   if (issue === "Overdue") return `Due ${formatDate(job.dueDate)} and still ${job.status}.`;
-  if (issue === "Waiting Parts") return openParts(job).length ? `${openParts(job).length} open part request${openParts(job).length === 1 ? "" : "s"}.` : job.partsNeeded || "Job is waiting on parts.";
+  if (issue === "Waiting Parts") return openParts(job).length ? `${openParts(job).length} open part request${openParts(job).length === 1 ? "" : "s"}.` : "Job is marked waiting on parts.";
   if (issue === "Missing Paperwork") return isReceiptBackupMissing(job) ? "Receipt backup or job paperwork is missing." : "Work order or paperwork pickup is missing.";
-  if (issue === "Missing Photos") return job.status === "Complete" ? "After photos are missing from closeout." : "Before or serial/VIN photos are missing.";
+  if (issue === "Missing Photos") return "After photos are missing from review or closeout.";
   if (issue === "Needs Review") return "Job is waiting for manager review.";
   if (issue === "Ready Billing") return "Job is marked ready for billing.";
   if (issue === "Overdue Follow-up") return overdueFollowUpText(job, today);
