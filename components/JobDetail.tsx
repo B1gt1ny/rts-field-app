@@ -23,6 +23,7 @@ type CompanyCamState = {
 type WorkspaceSectionId = "overview" | "checklist" | "photos" | "parts" | "documents" | "notes" | "time" | "closeout" | "history";
 
 export function JobDetail({ initialJob }: { initialJob: Job }) {
+  const user = useAuthUser();
   const [job, setJob] = useState<Job>({
     ...initialJob,
     checklist: initialJob.checklist?.length ? initialJob.checklist : makeChecklist(),
@@ -47,6 +48,8 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
   });
   const complete = job.checklist.filter((item) => item.complete).length;
   const checklistPercent = job.checklist.length ? (complete / job.checklist.length) * 100 : 0;
+  const isEmployee = user?.role === "Employee";
+  const canManageJob = !isEmployee;
   async function saveJobPatch(patch: Partial<Job>) {
     setSaving(true);
     setDetailMessage("");
@@ -95,14 +98,22 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
   }
   return <>
     <div className="mb-5 flex items-start justify-between gap-3">
-      <div><p className="mb-1 text-sm font-extrabold uppercase tracking-widest text-forest">{job.jobId} · {job.source}</p><h1 className="text-3xl font-black tracking-tight">{job.customerName}</h1><div className="mt-2 flex items-center gap-2"><StatusBadge status={job.status} /><PriorityBadge priority={job.priority} /></div></div>
-      <div className="flex gap-2 print:hidden">
+      <div>
+        <p className="mb-1 text-sm font-extrabold uppercase tracking-widest text-forest">{job.jobId} · {job.source}</p>
+        <h1 className="text-3xl font-black tracking-tight">{job.customerName}</h1>
+        <div className="mt-2 flex flex-wrap items-center gap-2"><StatusBadge status={job.status} /><PriorityBadge priority={job.priority} /></div>
+        <div className="mt-3 flex flex-wrap gap-2 text-xs font-black text-black/45">
+          <span className="rounded-full bg-sand px-3 py-1">{formatJobDate(job.dueDate)}</span>
+          <span className="rounded-full bg-sand px-3 py-1">{job.assignedCrew || "Unassigned"}</span>
+        </div>
+      </div>
+      {canManageJob && <div className="flex gap-2 print:hidden">
         <Link href={`/jobs/${job.jobId}/packet`} className="btn-secondary !px-3 sm:!px-4"><ClipboardDocumentListIcon className="size-5" /><span className="hidden sm:inline">Packet</span></Link>
         <button type="button" onClick={() => window.print()} className="btn-secondary !px-3 sm:!px-4"><PrinterIcon className="size-5" /><span className="hidden sm:inline">Print</span></button>
         <Link href={`/jobs/${job.jobId}/edit`} className="btn-secondary !px-3 sm:!px-4"><PencilSquareIcon className="size-5" /><span className="hidden sm:inline">Edit</span></Link>
-      </div>
+      </div>}
     </div>
-    <QuickActions job={job} />
+    <JobWorkflowGuide job={job} canManageJob={canManageJob} />
     {detailMessage && <p role="alert" className="mb-5 rounded-xl border border-red-200 bg-red-50 p-4 font-bold text-red-700">{detailMessage}</p>}
     <div className="space-y-3">
       <WorkspaceSection id="overview" title="Overview" summary={`${job.jobId} · ${job.status} · ${job.assignedCrew || "Unassigned"}`} openSection={openSection} setOpenSection={setOpenSection}>
@@ -135,12 +146,11 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
         <FactoryCostTrackerPanel job={job} saving={saving} onSave={saveJobPatch} />
       </WorkspaceSection>
       <WorkspaceSection id="closeout" title="Closeout" summary={`${readinessScore(job)}% billing ready`} openSection={openSection} setOpenSection={setOpenSection}>
-        <GuidedCloseoutPanel job={job} />
-        <CloseoutQualityPanel job={job} />
+        <GuidedCloseoutPanel job={job} canManageJob={canManageJob} />
+        {canManageJob && <CloseoutQualityPanel job={job} />}
         <CompleteJobFlow job={job} saving={saving} onSave={saveJobPatch} />
         <SignoffPanel job={job} saving={saving} onSave={saveJobPatch} />
-        <BillingHandoffPanel job={job} saving={saving} onSave={saveJobPatch} />
-        <section className="card p-4 sm:p-6"><Link href={`/jobs/${job.jobId}/packet`} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-ink px-4 py-3 font-black text-white sm:w-auto"><ClipboardDocumentListIcon className="size-5" />Open Closeout Packet</Link></section>
+        {canManageJob && <BillingHandoffPanel job={job} saving={saving} onSave={saveJobPatch} />}
       </WorkspaceSection>
       <WorkspaceSection id="history" title="History" summary={`${job.activityLog?.length || 0} records`} openSection={openSection} setOpenSection={setOpenSection}>
         <OperationsPanel job={job} setJob={setJob} mode="history" />
@@ -317,39 +327,156 @@ function missingHref(label: string, jobId: string) {
   return `/jobs/${jobId}/edit`;
 }
 
-function QuickActions({ job }: { job: Job }) {
-  const mapsUrl = `https://maps.google.com/?q=${encodeURIComponent(`${job.address}, ${job.city}`)}`;
-  const customerText = `sms:${job.phone}?&body=${encodeURIComponent(buildCustomerText(job))}`;
-  return <section className="card mb-5 p-3 print:hidden">
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
-      <QuickAction href={`tel:${job.phone}`} label="Call Customer" icon={<PhoneIcon />} disabled={!job.phone} />
-      <QuickAction href={customerText} label="Text Customer" icon={<ChatBubbleLeftRightIcon />} disabled={!job.phone} />
-      <QuickAction href={mapsUrl} label="Open Maps" icon={<MapPinIcon />} external />
-      <QuickShareAction job={job} />
-      <QuickAction href={`/jobs/${job.jobId}/edit`} label="Edit Job" icon={<PencilSquareIcon />} />
-      <QuickAction href={`/jobs/${job.jobId}/packet`} label="Packet" icon={<ClipboardDocumentListIcon />} />
-      <QuickAction href="/field" label="Field View" icon={<WrenchScrewdriverIcon />} />
-      <QuickAction href="#photos" label="Add Photo" icon={<CameraIcon />} />
-      <QuickAction href="#paperwork" label="Paperwork" icon={<ClipboardDocumentListIcon />} />
-      <QuickAction href="#receipts" label="Receipts" icon={<ReceiptPercentIcon />} />
-      <QuickAction href="#operations" label="Add Note" icon={<ChatBubbleLeftRightIcon />} />
-      <QuickAction href="#parts-needed" label="Need Parts" icon={<ReceiptPercentIcon />} />
-      <QuickAction href="#time-log" label="Time Log" icon={<ClockIcon />} />
-      <QuickAction href="#complete-job" label="Mark Complete" icon={<CheckCircleIcon />} />
-      <QuickAction href="#signoffs" label="Sign-off" icon={<CheckCircleIcon />} />
-      <QuickAction href="#scheduling" label="Calendar" icon={<CalendarDaysIcon />} />
-      <QuickAction href="#companycam" label="CompanyCam" icon={<CameraIcon />} />
-      <QuickAction href="#billing-handoff" label="Billing" icon={<BanknotesIcon />} />
+type JobAction = {
+  label: string;
+  detail?: string;
+  href: string;
+  icon: React.ReactNode;
+  external?: boolean;
+  disabled?: boolean;
+};
+
+type ProgressState = "complete" | "current" | "upcoming" | "neutral";
+
+function JobWorkflowGuide({ job, canManageJob }: { job: Job; canManageJob: boolean }) {
+  const primaryAction = getPrimaryJobAction(job, canManageJob);
+  const quickActions = getQuickJobActions(job);
+  const moreActions = getMoreJobActions(job, canManageJob);
+  const progressSteps = getJobProgressSteps(job);
+
+  return <section className="card mb-5 overflow-hidden print:hidden">
+    <div className="grid gap-4 p-4 lg:grid-cols-[1fr_.75fr]">
+      <div className="rounded-2xl bg-ink p-4 text-white">
+        <p className="text-xs font-black uppercase tracking-widest text-lime">Next action</p>
+        <h2 className="mt-1 text-2xl font-black">{primaryAction.label}</h2>
+        {primaryAction.detail && <p className="mt-1 text-sm font-semibold text-white/60">{primaryAction.detail}</p>}
+        <a href={primaryAction.href} target={primaryAction.external ? "_blank" : undefined} className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-lime px-4 py-3 font-black text-ink sm:w-auto">
+          <span className="[&>svg]:size-5">{primaryAction.icon}</span>
+          {primaryAction.label}
+        </a>
+      </div>
+      <div>
+        <p className="mb-2 text-xs font-black uppercase tracking-widest text-forest">Quick actions</p>
+        <div className="grid grid-cols-2 gap-2">
+          {quickActions.map((action) => <WorkflowAction key={action.label} action={action} />)}
+        </div>
+      </div>
     </div>
+    <div className="border-t border-black/5 px-4 py-3">
+      <p className="mb-2 text-xs font-black uppercase tracking-widest text-forest">Job progress</p>
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {progressSteps.map((step) => <a key={step.label} href={step.href} className={`min-w-32 rounded-xl border px-3 py-2 text-sm ${step.state === "complete" ? "border-forest/15 bg-forest/5 text-forest" : step.state === "current" ? "border-ink bg-ink text-white" : step.state === "upcoming" ? "border-black/10 bg-sand text-black/45" : "border-black/10 bg-white text-black/55"}`}>
+          <span className="block text-[10px] font-black uppercase tracking-wide opacity-70">{step.state === "complete" ? "Done" : step.state === "current" ? "Now" : step.state === "upcoming" ? "Next" : "Check"}</span>
+          <span className="mt-0.5 block font-black">{step.label}</span>
+        </a>)}
+      </div>
+    </div>
+    <details className="border-t border-black/5 px-4 py-3">
+      <summary className="cursor-pointer text-sm font-black text-forest">More Actions</summary>
+      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+        {moreActions.map((action) => action.label === "Share Job"
+          ? <QuickShareAction key={action.label} job={job} compact />
+          : <WorkflowAction key={action.label} action={action} />)}
+      </div>
+    </details>
   </section>;
 }
 
-function QuickAction({ href, label, icon, external, disabled }: { href: string; label: string; icon: React.ReactNode; external?: boolean; disabled?: boolean }) {
-  const className = `flex min-h-20 flex-col items-center justify-center gap-1.5 rounded-xl border px-2 py-3 text-center text-xs font-black ${disabled ? "pointer-events-none border-black/5 bg-black/5 text-black/25" : "border-black/10 bg-white text-ink active:scale-[.98]"}`;
-  return <a href={href} target={external ? "_blank" : undefined} className={className}><span className="text-forest [&>svg]:size-6">{icon}</span>{label}</a>;
+function getPrimaryJobAction(job: Job, canManageJob: boolean): JobAction {
+  const openParts = hasOpenParts(job);
+  const status = job.status;
+  if (openParts || status === "Waiting on Parts") return { label: "Review Parts", detail: "Parts are blocking or need a status update.", href: "#parts-needed", icon: <WrenchScrewdriverIcon /> };
+  if (status === "Needs Inspection") return { label: "Review Closeout", detail: "Field work is ready for manager review.", href: "#closeout", icon: <CheckCircleIcon /> };
+  if (["Complete", "Billed", "Paid"].includes(status)) {
+    if (canManageJob && billingBlockers(job).length === 0) return { label: "Open Billing", detail: "Closeout looks ready for invoice handoff.", href: "#billing-handoff", icon: <BanknotesIcon /> };
+    return { label: "Open Packet", detail: "Review job proof, paperwork, and closeout.", href: `/jobs/${job.jobId}/packet`, icon: <ClipboardDocumentListIcon /> };
+  }
+  if (status === "In Progress") {
+    if (!(job.afterPhotos || []).length) return { label: "Add Progress", detail: "Add photos, notes, or proof from the field.", href: "#photos", icon: <CameraIcon /> };
+    if (job.checklist.some((item) => !item.complete)) return { label: "Open Checklist", detail: "Finish the remaining field checklist items.", href: "#checklist", icon: <ClipboardDocumentListIcon /> };
+    return { label: "Continue Work", detail: "Keep work moving from the field workspace.", href: "#time-log", icon: <WrenchScrewdriverIcon /> };
+  }
+  if (["New", "Scheduled"].includes(status)) {
+    if (job.phone?.trim()) return { label: "Contact Customer", detail: "Confirm the visit before the crew rolls.", href: `tel:${job.phone}`, icon: <PhoneIcon /> };
+    if (job.address?.trim() || job.city?.trim()) return { label: "Open Maps", detail: "Review the job location.", href: mapsHref(job), icon: <MapPinIcon />, external: true };
+    return { label: canManageJob ? "Start Job" : "Open Field View", detail: "Open the field workflow for this job.", href: canManageJob ? "#time-log" : "/field", icon: <WrenchScrewdriverIcon /> };
+  }
+  return { label: "Continue Job", detail: "Open the workspace and move the job forward.", href: "#overview", icon: <ClipboardDocumentListIcon /> };
 }
 
-function QuickShareAction({ job }: { job: Job }) {
+function getQuickJobActions(job: Job): JobAction[] {
+  const mapsUrl = `https://maps.google.com/?q=${encodeURIComponent(`${job.address}, ${job.city}`)}`;
+  const hasLocation = Boolean(job.address?.trim() || job.city?.trim());
+  return [
+    { href: `tel:${job.phone}`, label: "Call", icon: <PhoneIcon />, disabled: !job.phone },
+    { href: mapsUrl, label: "Map", icon: <MapPinIcon />, external: true, disabled: !hasLocation },
+    { href: "#photos", label: "Add Photo", icon: <CameraIcon /> },
+    { href: "#operations", label: "Add Note", icon: <ChatBubbleLeftRightIcon /> },
+  ];
+}
+
+function getMoreJobActions(job: Job, canManageJob: boolean): JobAction[] {
+  const customerText = `sms:${job.phone}?&body=${encodeURIComponent(buildCustomerText(job))}`;
+  return [
+    { href: customerText, label: "Text Customer", icon: <ChatBubbleLeftRightIcon />, disabled: !job.phone },
+    { href: "#share", label: "Share Job", icon: <ShareIcon /> },
+    { href: "/field", label: "Field View", icon: <WrenchScrewdriverIcon /> },
+    { href: "#paperwork", label: "Paperwork", icon: <ClipboardDocumentListIcon /> },
+    { href: "#receipts", label: "Receipts", icon: <ReceiptPercentIcon /> },
+    { href: "#parts-needed", label: "Parts", icon: <WrenchScrewdriverIcon /> },
+    { href: "#time-log", label: "Time Log", icon: <ClockIcon /> },
+    { href: "#complete-job", label: "Mark Complete", icon: <CheckCircleIcon /> },
+    { href: "#signoffs", label: "Sign-off", icon: <CheckCircleIcon /> },
+    { href: "#scheduling", label: "Calendar", icon: <CalendarDaysIcon /> },
+    { href: "#companycam", label: "CompanyCam", icon: <CameraIcon /> },
+    canManageJob ? { href: "#billing-handoff", label: "Billing", icon: <BanknotesIcon /> } : undefined,
+  ].filter(Boolean) as JobAction[];
+}
+
+function getJobProgressSteps(job: Job): Array<{ label: string; href: string; state: ProgressState }> {
+  const checklistDone = (label: string) => job.checklist.some((item) => item.label === label && item.complete);
+  const started = ["In Progress", "Waiting on Parts", "Needs Inspection", "Complete", "Billed", "Paid"].includes(job.status) || (job.timeEntries || []).some((entry) => ["Arrived", "Work started"].includes(entry.type));
+  const beforeDone = (job.beforePhotos || []).length > 0 || checklistDone("Before photos taken");
+  const workDone = checklistDone("Work completed") || ["Needs Inspection", "Complete", "Billed", "Paid"].includes(job.status);
+  const partsDone = !hasOpenParts(job);
+  const afterDone = (job.afterPhotos || []).length > 0 || checklistDone("After photos taken");
+  const paperworkDone = (job.paperworkItems || defaultPaperwork(job)).some((item) => item.status === "Collected" || item.status === "Submitted");
+  const signoffDone = (job.signoffs || []).length > 0;
+  const billingDone = ["Complete", "Billed", "Paid"].includes(job.status) || ["Ready", "Sent to Billing", "Sent", "Paid"].includes(job.invoiceStatus);
+  const contactDone = job.activityLog?.some((entry) => entry.type === "Customer" || entry.type === "Source") || checklistDone("Customer/source notified");
+  const facts = [
+    { label: "Contact", href: "#communication-handoff", done: Boolean(contactDone), known: Boolean(job.phone || contactDone) },
+    { label: "Arrive / Start", href: "#time-log", done: started, known: true },
+    { label: "Before Photos", href: "#photos", done: beforeDone, known: true },
+    { label: "Work / Checklist", href: "#checklist", done: workDone, known: true },
+    { label: "Progress / Parts", href: "#parts-needed", done: partsDone, known: (job.partsItems || []).length > 0 || Boolean(job.partsNeeded) || hasOpenParts(job) },
+    { label: "After Photos", href: "#photos", done: afterDone, known: true },
+    { label: "Paperwork", href: "#paperwork", done: paperworkDone, known: true },
+    { label: "Sign-off", href: "#signoffs", done: signoffDone, known: true },
+    { label: "Review / Billing", href: "#billing-handoff", done: billingDone, known: true },
+  ];
+  const firstOpen = facts.findIndex((step) => step.known && !step.done);
+  return facts.map((step, index) => ({
+    label: step.label,
+    href: step.href,
+    state: step.done ? "complete" : !step.known ? "neutral" : index === firstOpen ? "current" : "upcoming",
+  }));
+}
+
+function hasOpenParts(job: Job) {
+  return (job.partsItems || []).some((part) => ["Needed", "Ordered", "Picked up"].includes(part.status)) || Boolean(job.partsNeeded?.trim());
+}
+
+function mapsHref(job: Job) {
+  return `https://maps.google.com/?q=${encodeURIComponent(`${job.address}, ${job.city}`)}`;
+}
+
+function WorkflowAction({ action }: { action: JobAction }) {
+  const className = `flex min-h-14 items-center justify-center gap-2 rounded-xl border px-3 py-2 text-center text-sm font-black ${action.disabled ? "pointer-events-none border-black/5 bg-black/5 text-black/25" : "border-black/10 bg-white text-ink active:scale-[.98]"}`;
+  return <a href={action.href} target={action.external ? "_blank" : undefined} className={className}><span className="text-forest [&>svg]:size-5">{action.icon}</span>{action.label}</a>;
+}
+
+function QuickShareAction({ job, compact = false }: { job: Job; compact?: boolean }) {
   async function share() {
     const text = buildFieldHandoff(job);
     if (navigator.share) {
@@ -358,7 +485,7 @@ function QuickShareAction({ job }: { job: Job }) {
     }
     await navigator.clipboard.writeText(text).catch(() => undefined);
   }
-  return <button type="button" onClick={share} className="flex min-h-20 flex-col items-center justify-center gap-1.5 rounded-xl border border-black/10 bg-white px-2 py-3 text-center text-xs font-black text-ink active:scale-[.98]"><span className="text-forest [&>svg]:size-6"><ShareIcon /></span>Share Job</button>;
+  return <button type="button" onClick={share} className={`flex items-center justify-center gap-2 rounded-xl border border-black/10 bg-white px-3 py-2 text-center font-black text-ink active:scale-[.98] ${compact ? "min-h-14 text-sm" : "min-h-20 flex-col text-xs"}`}><span className="text-forest [&>svg]:size-5"><ShareIcon /></span>Share Job</button>;
 }
 
 function FieldWorkspace({ job, companyCam }: { job: Job; companyCam: CompanyCamState }) {
@@ -795,7 +922,7 @@ function CloseoutCheck({ label, complete, detail }: { label: string; complete: b
   </div>;
 }
 
-function GuidedCloseoutPanel({ job }: { job: Job }) {
+function GuidedCloseoutPanel({ job, canManageJob }: { job: Job; canManageJob: boolean }) {
   const checks = closeoutChecks(job);
   const score = readinessScore(job);
   const blockers = billingBlockers(job);
@@ -807,8 +934,8 @@ function GuidedCloseoutPanel({ job }: { job: Job }) {
     { label: "Receipts", detail: `${job.receipts?.length || 0} receipt${job.receipts?.length === 1 ? "" : "s"}`, href: "#receipts", icon: <ReceiptPercentIcon />, ok: true },
     { label: "Parts closed", detail: checks.find((check) => check.label === "Open parts")?.detail || "Review", href: "#parts-needed", icon: <WrenchScrewdriverIcon />, ok: checks.find((check) => check.label === "Open parts")?.ok },
     { label: "Notify source", detail: checks.find((check) => check.label === "Customer/source notified")?.detail || "Not logged", href: "#operations", icon: <ChatBubbleLeftRightIcon />, ok: checks.find((check) => check.label === "Customer/source notified")?.ok },
-    { label: "Billing handoff", detail: job.invoiceStatus || "Not started", href: "#billing-handoff", icon: <BanknotesIcon />, ok: blockers.length === 0 },
-  ];
+    canManageJob ? { label: "Billing handoff", detail: job.invoiceStatus || "Not started", href: "#billing-handoff", icon: <BanknotesIcon />, ok: blockers.length === 0 } : undefined,
+  ].filter(Boolean) as Array<{ label: string; detail: string; href: string; icon: React.ReactNode; ok: boolean | undefined }>;
 
   return <section className="card overflow-hidden">
     <div className="bg-ink p-4 text-white">
@@ -833,10 +960,9 @@ function GuidedCloseoutPanel({ job }: { job: Job }) {
         <p className={`mt-3 rounded-xl px-3 py-2 text-center text-xs font-black ${action.ok ? "bg-white text-forest" : "bg-white text-orange-900"}`}>{action.ok ? "Ready" : "Needs attention"}</p>
       </a>)}
     </div>
-    <div className="grid gap-2 border-t border-black/5 p-4 sm:grid-cols-3">
+    <div className={`grid gap-2 border-t border-black/5 p-4 ${canManageJob ? "sm:grid-cols-2" : ""}`}>
       <a href="#complete-job" className="min-h-12 rounded-xl bg-forest px-4 py-3 text-center font-black text-white">Mark complete</a>
-      <Link href={`/jobs/${job.jobId}/packet`} className="min-h-12 rounded-xl border border-black/10 bg-white px-4 py-3 text-center font-black text-ink">Open packet</Link>
-      <a href="#billing-handoff" className="min-h-12 rounded-xl bg-ink px-4 py-3 text-center font-black text-white">Billing handoff</a>
+      {canManageJob && <a href="#billing-handoff" className="min-h-12 rounded-xl bg-ink px-4 py-3 text-center font-black text-white">Billing handoff</a>}
     </div>
     {blockers.length > 0 && <p className="mx-4 mb-4 rounded-xl bg-orange-50 p-3 text-sm font-bold text-orange-800">Before billing: {blockers.map((blocker) => blocker.label).join(", ")}.</p>}
   </section>;
