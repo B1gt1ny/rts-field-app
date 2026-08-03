@@ -153,7 +153,7 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
       <WorkspaceSection id="closeout" title="Closeout" summary={`${readinessScore(job)}% billing ready`} openSection={openSection} setOpenSection={setOpenSection}>
         <GuidedCloseoutPanel job={job} canManageJob={canManageJob} />
         {canManageJob && <CloseoutQualityPanel job={job} />}
-        <CompleteJobFlow job={job} saving={saving} onSave={saveJobPatch} />
+        <CompleteJobFlow job={job} saving={saving} canManageJob={canManageJob} onSave={saveJobPatch} />
         <SignoffPanel job={job} saving={saving} onSave={saveJobPatch} />
         {canManageJob && <BillingHandoffPanel job={job} saving={saving} onSave={saveJobPatch} />}
       </WorkspaceSection>
@@ -950,13 +950,115 @@ async function preparePhotoForUpload(file: File) {
   return new File([blob], `${name}.jpg`, { type: "image/jpeg", lastModified: Date.now() });
 }
 
-function CompleteJobFlow({ job, saving, onSave }: { job: Job; saving: boolean; onSave: (patch: Partial<Job>) => Promise<Job | undefined> }) {
+type CloseoutRequirementStatus = "complete" | "missing" | "not-required" | "not-due";
+type CloseoutStage = "current" | "review" | "billing";
+type CloseoutRequirement = {
+  name: string;
+  status: CloseoutRequirementStatus;
+  detail: string;
+  href?: string;
+  blocking: boolean;
+};
+
+function closeoutRequirements(job: Job, stage: CloseoutStage = "current", options: { requireAfterPhotos?: boolean } = {}): CloseoutRequirement[] {
+  const closeoutDue = isCloseoutDue(job, stage);
+  const billingDue = stage === "billing";
+  const started = hasStarted(job) || closeoutDue;
+  const checklistItems = job.checklist || [];
+  const requiredChecklist = checklistItems.filter((item) => !/invoice created/i.test(item.label));
+  const checklistComplete = requiredChecklist.every((item) => item.complete);
+  const beforeRequired = requiredChecklist.some((item) => /before photos/i.test(item.label));
+  const afterRequired = options.requireAfterPhotos ?? requiredChecklist.some((item) => /after photos/i.test(item.label));
+  const paperwork = job.paperworkItems || defaultPaperwork(job);
+  const paperworkReady = hasPaperwork(job, paperwork);
+  const completionSignoffItem = paperwork.find((item) => /completion sign-?off/i.test(item.label));
+  const signatureRequired = closeoutDue && Boolean(completionSignoffItem && completionSignoffItem.status !== "Not needed");
+  const signatureReady = hasCompletionSignoff(job) || ["Collected", "Submitted", "Not needed"].includes(completionSignoffItem?.status || "");
+  const laborTimeEntries = (job.timeEntries || []).filter((entry) => entry.type !== "Note");
+  const partsOpen = (job.partsItems || []).filter((part) => ["Needed", "Ordered", "Picked up"].includes(part.status));
+  const partsBlocking = job.status === "Waiting on Parts" || partsOpen.length > 0;
+  const receiptApplicable = receiptBackupApplies(job);
+  const receiptReady = !receiptApplicable || !isReceiptBackupMissing(job);
+  const managerReviewed = ["Complete", "Billed", "Paid"].includes(job.status);
+
+  return [
+    requirement("Work checklist", checklistItems.length === 0 ? "not-required" : checklistComplete ? "complete" : "missing", checklistItems.length === 0 ? "No checklist on this job" : checklistComplete ? "Checklist complete" : `${requiredChecklist.filter((item) => !item.complete).length} checklist item${requiredChecklist.filter((item) => !item.complete).length === 1 ? "" : "s"} open`, "#checklist", stage !== "current" || started),
+    requirement("Before photos", !beforeRequired ? "not-required" : !started ? "not-due" : hasBeforePhotos(job) ? "complete" : "missing", !beforeRequired ? "Not required by this workflow" : !started ? "Not due yet" : hasBeforePhotos(job) ? `${photoCountFor(job, "Before")} saved` : "Before photos missing", "#photos", started),
+    requirement("After photos", !afterRequired ? "not-required" : !closeoutDue ? "not-due" : hasAfterPhotos(job) ? "complete" : "missing", !afterRequired ? "Not required by this workflow" : !closeoutDue ? "Not due yet" : hasAfterPhotos(job) ? `${photoCountFor(job, "After")} saved` : "After photos missing", "#photos", closeoutDue),
+    requirement("Paperwork", !closeoutDue ? "not-due" : paperworkReady ? "complete" : "missing", !closeoutDue ? "Not due yet" : paperworkReady ? "Paperwork collected or attached" : "Paperwork or work order missing", "#paperwork", closeoutDue),
+    requirement("Customer signature", !signatureRequired ? "not-required" : signatureReady ? "complete" : "missing", !signatureRequired ? "No required sign-off identified" : signatureReady ? "Completion sign-off saved" : "Completion sign-off missing", "#signoffs", signatureRequired),
+    requirement("Time entered", !started ? "not-due" : laborTimeEntries.length > 0 ? "complete" : "missing", !started ? "Not due yet" : laborTimeEntries.length > 0 ? `${laborTimeEntries.length} labor/time entr${laborTimeEntries.length === 1 ? "y" : "ies"}` : "No labor/time entry", "#time-log", started || stage !== "current"),
+    requirement("Parts resolved", partsBlocking ? "missing" : (job.partsItems || []).length ? "complete" : "not-required", partsBlocking ? `${partsOpen.length || 1} open part issue${(partsOpen.length || 1) === 1 ? "" : "s"}` : (job.partsItems || []).length ? "No blocking parts open" : "No parts required", "#parts-needed", partsBlocking),
+    requirement("Receipt backup", !receiptApplicable ? "not-required" : receiptReady ? "complete" : "missing", !receiptApplicable ? "No receipt backup needed" : receiptReady ? "Receipt backup attached" : "Receipt dollars need backup", "#receipts", receiptApplicable),
+    requirement("Completion notes", !closeoutDue ? "not-due" : job.completionNotes?.trim() ? "complete" : "missing", !closeoutDue ? "Not due yet" : job.completionNotes?.trim() ? "Completion note saved" : "Completion note missing", "#complete-job", closeoutDue),
+    requirement("Manager review", !billingDue ? ["Complete", "Billed", "Paid"].includes(job.status) ? "complete" : job.status === "Needs Inspection" ? "missing" : "not-due" : managerReviewed ? "complete" : "missing", managerReviewed ? "Manager approved complete" : job.status === "Needs Inspection" ? "Manager review required" : "Not due yet", "#complete-job", billingDue || job.status === "Needs Inspection"),
+  ];
+}
+
+function requirement(name: string, status: CloseoutRequirementStatus, detail: string, href: string | undefined, due: boolean): CloseoutRequirement {
+  return { name, status, detail, href, blocking: due && status === "missing" };
+}
+
+function blockingRequirements(requirements: CloseoutRequirement[]) {
+  return requirements.filter((item) => item.blocking);
+}
+
+function closeoutReadiness(job: Job, canManageJob: boolean) {
+  const requirements = closeoutRequirements(job);
+  const blockers = blockingRequirements(requirements);
+  const missing = requirements.filter((item) => item.status === "missing").length;
+  const notDue = requirements.filter((item) => item.status === "not-due").length;
+  if (!blockers.length && ["Complete", "Billed", "Paid"].includes(job.status)) return { label: "Ready for Billing", detail: "Manager review is complete and closeout blockers are clear.", tone: "green" as const, missing, notDue };
+  if (job.status === "Needs Inspection") return { label: "Manager review required", detail: blockers.length ? `${blockers.length} blocking item${blockers.length === 1 ? "" : "s"} still open.` : "Field submitted this job for manager review.", tone: "blue" as const, missing, notDue };
+  if (!blockers.length && hasStarted(job)) return { label: "Ready for Review", detail: canManageJob ? "Requirements are clear for manager approval." : "This job can be submitted for manager review.", tone: "green" as const, missing, notDue };
+  if (blockers.length) return { label: "Missing items", detail: `${blockers.length} blocking item${blockers.length === 1 ? "" : "s"} must be completed first.`, tone: "orange" as const, missing, notDue };
+  return { label: "Not due yet", detail: "Closeout requirements unlock as the work starts and moves toward review.", tone: "blue" as const, missing, notDue };
+}
+
+function isCloseoutDue(job: Job, stage: CloseoutStage) {
+  return stage !== "current" || ["Needs Inspection", "Complete", "Billed", "Paid"].includes(job.status) || ["Ready", "Sent to Billing", "Sent", "Paid"].includes(job.invoiceStatus);
+}
+
+function hasStarted(job: Job) {
+  return ["In Progress", "Waiting on Parts", "Needs Inspection", "Complete", "Billed", "Paid"].includes(job.status) || (job.timeEntries || []).some((entry) => ["Arrived", "Work started"].includes(entry.type));
+}
+
+function photoCountFor(job: Job, category: NativePhotoCategory) {
+  return (groupJobPhotos(job)[category] || []).length;
+}
+
+function hasBeforePhotos(job: Job) {
+  return photoCountFor(job, "Before") > 0;
+}
+
+function hasAfterPhotos(job: Job) {
+  return photoCountFor(job, "After") > 0;
+}
+
+function hasPaperwork(job: Job, paperwork = job.paperworkItems || defaultPaperwork(job)) {
+  const paperworkItems = paperwork.filter((item) => !/sign-?off|invoice/i.test(item.label));
+  return Boolean(job.paperworkPickedUp || (job.workOrderFiles || []).some((file) => ["Work Order", "Paperwork", "Signed Document"].includes(file.category || "")) || paperworkItems.some((item) => ["Collected", "Submitted", "Not needed"].includes(item.status)));
+}
+
+function hasCompletionSignoff(job: Job) {
+  return (job.signoffs || []).some((signoff) => signoff.accepted && ["Completion Sign-off", "Customer Approval"].includes(signoff.type));
+}
+
+function receiptBackupApplies(job: Job) {
+  return isReceiptBackupMissing(job) || (job.receipts || []).some((receipt) => Boolean(receipt.amount || receipt.file)) || hasFactoryCostWork(job.factoryCost);
+}
+
+function CompleteJobFlow({ job, saving, canManageJob, onSave }: { job: Job; saving: boolean; canManageJob: boolean; onSave: (patch: Partial<Job>) => Promise<Job | undefined> }) {
   const [notes, setNotes] = useState(job.completionNotes || "");
   const [notified, setNotified] = useState(false);
   const [invoiceReady, setInvoiceReady] = useState(job.invoiceStatus === "Ready");
   const [requireAfterPhotos, setRequireAfterPhotos] = useState(true);
-  const afterPhotosReady = job.afterPhotos.length > 0;
-  const canComplete = (!requireAfterPhotos || afterPhotosReady) && notes.trim().length > 0;
+  const draftJob = { ...job, completionNotes: notes.trim() || job.completionNotes };
+  const reviewRequirements = closeoutRequirements(draftJob, "review", { requireAfterPhotos });
+  const reviewBlockers = blockingRequirements(reviewRequirements);
+  const afterPhotosReady = hasAfterPhotos(job);
+  const canSubmitForReview = reviewBlockers.length === 0;
+  const canComplete = canManageJob && canSubmitForReview;
 
   useEffect(() => {
     fetch("/api/settings")
@@ -981,7 +1083,7 @@ function CompleteJobFlow({ job, saving, onSave }: { job: Job; saving: boolean; o
   }
 
   async function sendForManagerReview() {
-    if (!notes.trim()) return;
+    if (!canSubmitForReview) return;
     const checklist = job.checklist.map((item) => {
       const completeLabels = ["Work completed", "After photos taken", "Completion notes added"];
       return completeLabels.includes(item.label) ? { ...item, complete: true } : item;
@@ -1003,19 +1105,20 @@ function CompleteJobFlow({ job, saving, onSave }: { job: Job; saving: boolean; o
       </div>
     </div>
     <div className="grid gap-3 sm:grid-cols-3">
-      <CloseoutCheck label="After photos" complete={afterPhotosReady} detail={`${job.afterPhotos.length} uploaded`} />
+      <CloseoutCheck label="After photos" complete={afterPhotosReady} detail={`${photoCountFor(job, "After")} uploaded`} />
       <CloseoutCheck label="Completion notes" complete={notes.trim().length > 0} detail={notes.trim() ? "Added" : "Required"} />
       <CloseoutCheck label="Status" complete={job.status === "Complete"} detail={job.status} />
     </div>
     <label className="mt-4 block"><span className="label">Completion notes</span><textarea className="field min-h-28 resize-y" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="What was completed, what was found, anything billing should know..." /></label>
-    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+    <div className={`mt-3 grid gap-2 ${canManageJob ? "sm:grid-cols-2" : ""}`}>
       <label className="flex min-h-12 items-center gap-3 rounded-xl border border-black/10 bg-sand p-3 text-sm font-bold"><input type="checkbox" checked={notified} onChange={(event) => setNotified(event.target.checked)} className="size-5 accent-forest" /> Customer/dealer/factory notified</label>
-      <label className="flex min-h-12 items-center gap-3 rounded-xl border border-black/10 bg-sand p-3 text-sm font-bold"><input type="checkbox" checked={invoiceReady} onChange={(event) => setInvoiceReady(event.target.checked)} className="size-5 accent-forest" /> Mark invoice ready</label>
+      {canManageJob && <label className="flex min-h-12 items-center gap-3 rounded-xl border border-black/10 bg-sand p-3 text-sm font-bold"><input type="checkbox" checked={invoiceReady} onChange={(event) => setInvoiceReady(event.target.checked)} className="size-5 accent-forest" /> Mark invoice ready</label>}
     </div>
     {requireAfterPhotos && !afterPhotosReady && <p className="mt-3 rounded-xl bg-orange-50 p-3 text-sm font-bold text-orange-800">Add at least one After photo before completing the job.</p>}
-    <div className="mt-4 grid gap-2 sm:grid-cols-2">
-      <button type="button" disabled={saving || notes.trim().length === 0} onClick={sendForManagerReview} className="min-h-12 rounded-xl border-2 border-black/10 bg-white px-4 py-3 font-black text-ink disabled:opacity-50">{saving ? "Saving…" : "Ready for Manager Review"}</button>
-      <button type="button" disabled={saving || !canComplete} onClick={completeJob} className="min-h-12 rounded-xl bg-forest px-4 py-3 font-black text-white disabled:opacity-50">{saving ? "Saving…" : "Mark Job Complete"}</button>
+    {reviewBlockers.length > 0 && <p className="mt-3 rounded-xl bg-orange-50 p-3 text-sm font-bold text-orange-800">Complete {reviewBlockers.length} item{reviewBlockers.length === 1 ? "" : "s"} first: {reviewBlockers.map((item) => item.name).join(", ")}.</p>}
+    <div className={`mt-4 grid gap-2 ${canManageJob ? "sm:grid-cols-2" : ""}`}>
+      <button type="button" disabled={saving || !canSubmitForReview} onClick={sendForManagerReview} className="min-h-12 rounded-xl border-2 border-black/10 bg-white px-4 py-3 font-black text-ink disabled:opacity-50">{saving ? "Saving…" : canSubmitForReview ? "Submit for Review" : `Complete ${reviewBlockers.length} items first`}</button>
+      {canManageJob && <button type="button" disabled={saving || !canComplete} onClick={completeJob} className="min-h-12 rounded-xl bg-forest px-4 py-3 font-black text-white disabled:opacity-50">{saving ? "Saving…" : "Manager Approve Complete"}</button>}
     </div>
   </section>;
 }
@@ -1106,56 +1209,61 @@ function CloseoutCheck({ label, complete, detail }: { label: string; complete: b
   </div>;
 }
 
+function CloseoutRequirementRow({ requirement }: { requirement: CloseoutRequirement }) {
+  const statusLabel: Record<CloseoutRequirementStatus, string> = {
+    complete: "Complete",
+    missing: "Missing",
+    "not-required": "Not required",
+    "not-due": "Not due yet",
+  };
+  const tone = requirement.status === "complete" ? "border-forest/15 bg-forest/5 text-forest" : requirement.status === "missing" ? "border-orange-200 bg-orange-50 text-orange-800" : "border-black/10 bg-sand text-black/45";
+  const content = <div className="flex min-h-14 items-start justify-between gap-3 rounded-xl border p-3">
+    <div className="min-w-0">
+      <p className="font-black text-ink">{requirement.name}</p>
+      <p className="mt-0.5 text-xs font-semibold text-black/45">{requirement.detail}</p>
+    </div>
+    <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wide ${tone}`}>{statusLabel[requirement.status]}</span>
+  </div>;
+  if (!requirement.href || requirement.status !== "missing") return content;
+  return <a href={requirement.href} className="block">{content}</a>;
+}
+
 function GuidedCloseoutPanel({ job, canManageJob }: { job: Job; canManageJob: boolean }) {
-  const checks = closeoutChecks(job);
-  const score = readinessScore(job);
-  const blockers = billingBlockers(job);
-  const actions = [
-    { label: "Photos", detail: `${(job.afterPhotos || []).length} after · ${(job.serialTagPhotos || []).length} serial/VIN`, href: "#photos", icon: <CameraIcon />, ok: checks.find((check) => check.label === "After photos")?.ok && checks.find((check) => check.label === "Serial/VIN photo")?.ok },
-    { label: "Completion notes", detail: job.completionNotes?.trim() ? "Added" : "Missing", href: "#complete-job", icon: <ClipboardDocumentListIcon />, ok: checks.find((check) => check.label === "Completion notes")?.ok },
-    { label: "Sign-off", detail: `${job.signoffs?.length || 0} saved`, href: "#signoffs", icon: <CheckCircleIcon />, ok: checks.find((check) => check.label === "Completion sign-off")?.ok },
-    { label: "Paperwork", detail: `${job.workOrderFiles?.length || 0} file${job.workOrderFiles?.length === 1 ? "" : "s"}`, href: "#paperwork", icon: <ClipboardDocumentListIcon />, ok: checks.find((check) => check.label === "Paperwork")?.ok },
-    { label: "Receipts", detail: `${job.receipts?.length || 0} receipt${job.receipts?.length === 1 ? "" : "s"}`, href: "#receipts", icon: <ReceiptPercentIcon />, ok: true },
-    { label: "Parts closed", detail: checks.find((check) => check.label === "Open parts")?.detail || "Review", href: "#parts-needed", icon: <WrenchScrewdriverIcon />, ok: checks.find((check) => check.label === "Open parts")?.ok },
-    { label: "Notify source", detail: checks.find((check) => check.label === "Customer/source notified")?.detail || "Not logged", href: "#operations", icon: <ChatBubbleLeftRightIcon />, ok: checks.find((check) => check.label === "Customer/source notified")?.ok },
-    canManageJob ? { label: "Billing handoff", detail: job.invoiceStatus || "Not started", href: "#billing-handoff", icon: <BanknotesIcon />, ok: blockers.length === 0 } : undefined,
-  ].filter(Boolean) as Array<{ label: string; detail: string; href: string; icon: React.ReactNode; ok: boolean | undefined }>;
+  const requirements = closeoutRequirements(job);
+  const summary = closeoutReadiness(job, canManageJob);
+  const blockers = blockingRequirements(requirements);
+  const nextAction = blockers.find((item) => item.href) || requirements.find((item) => item.status === "missing" && item.href);
+  const bannerClass = summary.tone === "green" ? "bg-forest text-white" : summary.tone === "orange" ? "bg-orange-50 text-orange-900" : "bg-blue-50 text-blue-900";
 
   return <section className="card overflow-hidden">
-    <div className="bg-ink p-4 text-white">
+    <div className={`p-4 ${bannerClass}`}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="text-xs font-black uppercase tracking-widest text-lime">Guided closeout</p>
-          <h2 className="mt-1 text-2xl font-black">Finish this job cleanly</h2>
-          <p className="mt-1 text-sm text-white/55">Walk the crew through proof, notes, sign-off, paperwork, packet, and billing handoff.</p>
+          <p className="text-xs font-black uppercase tracking-widest opacity-70">Smart closeout</p>
+          <h2 className="mt-1 text-2xl font-black">{summary.label}</h2>
+          <p className="mt-1 text-sm font-semibold opacity-75">{summary.detail}</p>
         </div>
-        <span className={`inline-flex min-h-11 items-center justify-center rounded-xl px-4 py-2 text-sm font-black ${blockers.length ? "bg-orange-100 text-orange-900" : "bg-lime text-ink"}`}>{score}% billing ready</span>
+        <div className="flex gap-2 text-center text-xs font-black">
+          <span className="rounded-xl bg-white/90 px-3 py-2 text-ink">{summary.missing} missing</span>
+          <span className="rounded-xl bg-white/90 px-3 py-2 text-ink">{summary.notDue} not due</span>
+        </div>
       </div>
     </div>
-    <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-4">
-      {actions.map((action) => <a key={action.label} href={action.href} className={`rounded-2xl border p-3 ${action.ok ? "border-forest/15 bg-forest/5" : "border-orange-200 bg-orange-50"}`}>
-        <div className="flex items-start gap-2">
-          <span className={`grid size-9 shrink-0 place-items-center rounded-xl ${action.ok ? "bg-forest text-white" : "bg-orange-100 text-orange-900"} [&>svg]:size-5`}>{action.icon}</span>
-          <div>
-            <p className="font-black">{action.label}</p>
-            <p className="mt-0.5 text-xs font-semibold text-black/45">{action.detail}</p>
-          </div>
-        </div>
-        <p className={`mt-3 rounded-xl px-3 py-2 text-center text-xs font-black ${action.ok ? "bg-white text-forest" : "bg-white text-orange-900"}`}>{action.ok ? "Ready" : "Needs attention"}</p>
-      </a>)}
+    <div className="space-y-2 p-4">
+      {requirements.map((item) => <CloseoutRequirementRow key={item.name} requirement={item} />)}
     </div>
-    <div className={`grid gap-2 border-t border-black/5 p-4 ${canManageJob ? "sm:grid-cols-2" : ""}`}>
-      <a href="#complete-job" className="min-h-12 rounded-xl bg-forest px-4 py-3 text-center font-black text-white">Mark complete</a>
-      {canManageJob && <a href="#billing-handoff" className="min-h-12 rounded-xl bg-ink px-4 py-3 text-center font-black text-white">Billing handoff</a>}
+    <div className="border-t border-black/5 p-4">
+      {nextAction?.href ? <a href={nextAction.href} className="block min-h-12 rounded-xl bg-forest px-4 py-3 text-center font-black text-white">{nextAction.status === "missing" ? `Fix: ${nextAction.name}` : "Continue Closeout"}</a> : canManageJob ? <a href="#billing-handoff" className="block min-h-12 rounded-xl bg-ink px-4 py-3 text-center font-black text-white">Billing handoff</a> : <a href="#complete-job" className="block min-h-12 rounded-xl bg-forest px-4 py-3 text-center font-black text-white">Submit for Review</a>}
     </div>
-    {blockers.length > 0 && <p className="mx-4 mb-4 rounded-xl bg-orange-50 p-3 text-sm font-bold text-orange-800">Before billing: {blockers.map((blocker) => blocker.label).join(", ")}.</p>}
+    {blockers.length > 0 && <p className="mx-4 mb-4 rounded-xl bg-orange-50 p-3 text-sm font-bold text-orange-800">Blocking closeout items: {blockers.map((blocker) => blocker.name).join(", ")}.</p>}
   </section>;
 }
 
 function CloseoutQualityPanel({ job }: { job: Job }) {
-  const checks = closeoutChecks(job);
-  const blockers = billingBlockers(job);
-  const score = readinessScore(job);
+  const checks = closeoutRequirements(job, "billing");
+  const blockers = blockingRequirements(checks);
+  const complete = checks.filter((check) => check.status === "complete" || check.status === "not-required").length;
+  const score = Math.round((complete / checks.length) * 100);
   return <section className="card p-4 sm:p-6">
     <div className="mb-4 flex items-start justify-between gap-3">
       <div>
@@ -1164,20 +1272,18 @@ function CloseoutQualityPanel({ job }: { job: Job }) {
       </div>
       <span className={`rounded-full px-3 py-1 text-xs font-black ${blockers.length ? "bg-orange-100 text-orange-800" : "bg-forest text-white"}`}>{score}% ready</span>
     </div>
-    <div className="grid gap-2 sm:grid-cols-2">
-      {checks.map((check) => <div key={check.label} className={`rounded-xl p-3 ${check.ok ? "bg-forest/5" : "bg-orange-50"}`}>
-        <p className={`text-xs font-black uppercase tracking-wide ${check.ok ? "text-forest" : "text-orange-800"}`}>{check.ok ? "Ready" : "Needed"}</p>
-        <p className="font-black">{check.label}</p>
-        <p className="text-xs font-semibold text-black/45">{check.detail}</p>
-      </div>)}
+    <div className="space-y-2">
+      {checks.map((check) => <CloseoutRequirementRow key={check.name} requirement={check} />)}
     </div>
-    {blockers.length > 0 && <p className="mt-3 rounded-xl bg-orange-50 p-3 text-sm font-bold text-orange-800">Billing blockers: {blockers.map((item) => item.label).join(", ")}.</p>}
+    {blockers.length > 0 && <p className="mt-3 rounded-xl bg-orange-50 p-3 text-sm font-bold text-orange-800">Billing blockers: {blockers.map((item) => item.name).join(", ")}.</p>}
   </section>;
 }
 
 function BillingHandoffPanel({ job, saving, onSave }: { job: Job; saving: boolean; onSave: (patch: Partial<Job>) => Promise<Job | undefined> }) {
-  const blockers = billingBlockers(job);
-  const score = readinessScore(job);
+  const billingRequirements = closeoutRequirements(job, "billing");
+  const blockers = blockingRequirements(billingRequirements);
+  const complete = billingRequirements.filter((check) => check.status === "complete" || check.status === "not-required").length;
+  const score = Math.round((complete / billingRequirements.length) * 100);
   const receiptTotal = (job.receipts || []).reduce((sum, receipt) => sum + (Number(receipt.amount) || 0), 0);
   const factoryCosts = getFactoryCostTotals(job.factoryCost);
   const factoryTotal = job.source === "Factory" ? factoryCosts.grandTotal : 0;
@@ -1217,7 +1323,7 @@ function BillingHandoffPanel({ job, saving, onSave }: { job: Job; saving: boolea
       `Files: ${job.workOrderFiles?.length || 0}`,
       `Sign-offs: ${job.signoffs?.length || 0}`,
       `Completion notes: ${job.completionNotes || "Missing"}`,
-      blockers.length ? `Blockers: ${blockers.map((blocker) => blocker.label).join(", ")}` : "Blockers: None",
+      blockers.length ? `Blockers: ${blockers.map((blocker) => blocker.name).join(", ")}` : "Blockers: None",
     ].join("\n");
     await navigator.clipboard?.writeText(summary);
     setCopied(true);
@@ -1238,15 +1344,15 @@ function BillingHandoffPanel({ job, saving, onSave }: { job: Job; saving: boolea
       <MiniMetric label="Blockers" value={blockers.length} icon={<ClipboardDocumentListIcon />} />
       <MiniMetric label={job.source === "Factory" ? "Factory total" : "Receipts"} value={`$${(job.source === "Factory" ? factoryTotal : receiptTotal).toFixed(0)}`} icon={<ReceiptPercentIcon />} />
     </div>
-    {blockers.length > 0 && <p className="mb-3 rounded-xl bg-orange-50 p-3 text-sm font-bold text-orange-800">Before billing: {blockers.map((blocker) => blocker.label).join(", ")}.</p>}
+    {blockers.length > 0 && <p className="mb-3 rounded-xl bg-orange-50 p-3 text-sm font-bold text-orange-800">Before billing: {blockers.map((blocker) => blocker.name).join(", ")}.</p>}
     {receiptBackupMissing && <p className="mb-3 rounded-xl border border-orange-200 bg-orange-50 p-3 text-sm font-bold text-orange-900">Receipt backup missing for entered dollars. <a href="#receipts" className="underline">Open receipts</a></p>}
     <div className="grid gap-2 sm:grid-cols-3">
       <button type="button" disabled={saving || blockers.length > 0} onClick={() => handoff("Ready", "Billing handoff: marked Ready for Invoice.")} className="min-h-12 rounded-xl bg-forest px-4 py-3 font-black text-white disabled:opacity-50">Ready for Invoice</button>
       <button type="button" disabled={saving} onClick={() => handoff("Needs more info", "Billing handoff: needs more information before invoice.")} className="min-h-12 rounded-xl border-2 border-orange-200 bg-orange-50 px-4 py-3 font-black text-orange-900 disabled:opacity-50">Needs More Info</button>
-      <button type="button" disabled={saving || job.invoiceStatus !== "Ready"} onClick={() => handoff("Sent to Billing", "Billing handoff: sent to billing queue.")} className="min-h-12 rounded-xl border-2 border-black/10 bg-white px-4 py-3 font-black disabled:opacity-50">Sent to Billing</button>
-      <button type="button" disabled={saving || !["Sent to Billing", "Ready", "Draft"].includes(job.invoiceStatus)} onClick={() => handoffWithJobPatch("Sent", "Billing handoff: invoice sent to customer.", { status: job.status === "Complete" ? "Billed" : job.status })} className="min-h-12 rounded-xl border-2 border-blue-200 bg-blue-50 px-4 py-3 font-black text-blue-900 disabled:opacity-50">Invoice Sent</button>
+      <button type="button" disabled={saving || blockers.length > 0 || job.invoiceStatus !== "Ready"} onClick={() => handoff("Sent to Billing", "Billing handoff: sent to billing queue.")} className="min-h-12 rounded-xl border-2 border-black/10 bg-white px-4 py-3 font-black disabled:opacity-50">Sent to Billing</button>
+      <button type="button" disabled={saving || blockers.length > 0 || !["Sent to Billing", "Ready", "Draft"].includes(job.invoiceStatus)} onClick={() => handoffWithJobPatch("Sent", "Billing handoff: invoice sent to customer.", { status: job.status === "Complete" ? "Billed" : job.status })} className="min-h-12 rounded-xl border-2 border-blue-200 bg-blue-50 px-4 py-3 font-black text-blue-900 disabled:opacity-50">Invoice Sent</button>
       <button type="button" disabled={saving} onClick={() => handoff("On hold", "Billing handoff: invoice placed on hold for follow-up.")} className="min-h-12 rounded-xl border-2 border-amber-200 bg-amber-50 px-4 py-3 font-black text-amber-900 disabled:opacity-50">On Hold</button>
-      <button type="button" disabled={saving || (!["Sent", "Paid"].includes(job.invoiceStatus) && job.status !== "Billed")} onClick={() => handoffWithJobPatch("Paid", "Billing handoff: invoice marked paid.", { status: "Paid" })} className="min-h-12 rounded-xl bg-lime px-4 py-3 font-black text-ink disabled:opacity-50">Paid</button>
+      <button type="button" disabled={saving || blockers.length > 0 || (!["Sent", "Paid"].includes(job.invoiceStatus) && job.status !== "Billed")} onClick={() => handoffWithJobPatch("Paid", "Billing handoff: invoice marked paid.", { status: "Paid" })} className="min-h-12 rounded-xl bg-lime px-4 py-3 font-black text-ink disabled:opacity-50">Paid</button>
     </div>
     <div className="mt-3 grid gap-2 sm:grid-cols-2">
       <button type="button" onClick={copyBillingSummary} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-black/10 bg-white px-4 py-3 font-black print:hidden"><ClipboardDocumentListIcon className="size-5" />{copied ? "Billing Summary Copied" : "Copy Billing Summary"}</button>
