@@ -123,7 +123,15 @@ export function FieldAppView() {
   const closeoutJobs = assignedJobs.filter((job) => needsFieldCloseout(job, reviewOptions));
   const actionJobs = activeJobs.filter((job) => job.dueDate <= today || needsFieldCloseout(job, reviewOptions)).sort((a, b) => fieldSort(a, b, today)).slice(0, 6);
   const filteredAssignedJobs = assignedJobs.filter((job) => matchesCrewFilter(job, crewFilter, today, reviewOptions)).sort((a, b) => fieldSort(a, b, today));
-  const nextJob = actionJobs[0] || todayJobs[0] || activeJobs.sort((a, b) => fieldSort(a, b, today))[0];
+  const sortedAssignedJobs = [...assignedJobs].sort((a, b) => fieldWorkSort(a, b, today));
+  const currentJob = sortedAssignedJobs.find((job) => job.status === "In Progress")
+    || sortedAssignedJobs.find((job) => job.dueDate === today)
+    || sortedAssignedJobs.find((job) => job.dueDate > today)
+    || sortedAssignedJobs[0];
+  const todayRemainingJobs = sortedAssignedJobs.filter((job) => job.dueDate === today && job.jobId !== currentJob?.jobId);
+  const fieldBlockers = getFieldBlockers(sortedAssignedJobs, reviewOptions, today).slice(0, 5);
+  const upcomingGroups = groupUpcomingAssignments(sortedAssignedJobs.filter((job) => job.jobId !== currentJob?.jobId), today, 7);
+  const recentFieldActivity = employee ? getRecentFieldActivity(assignedJobs, employee.name, today).slice(0, 5) : [];
   const crewFilterCounts: Record<CrewFilter, number> = {
     today: todayJobs.length,
     overdue: overdueJobs.length,
@@ -318,49 +326,27 @@ export function FieldAppView() {
     }
   }
 
-  return <div className="mx-auto max-w-5xl space-y-5">
-    <div className="rounded-3xl bg-ink p-5 text-white sm:p-7">
-      <div className="mb-5 flex items-start gap-3">
-        <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-lime text-ink"><UserCircleIcon className="size-7" /></span>
-        <div>
+  return <div className="mx-auto max-w-3xl space-y-4">
+    <section className="rounded-2xl bg-ink p-4 text-white sm:p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
           <p className="text-xs font-black uppercase tracking-widest text-lime">Employee field app</p>
-          <h1 className="text-3xl font-black">My assigned jobs</h1>
-          <p className="mt-1 text-sm text-white/55">Crew members can use this version without the admin settings screen.</p>
+          <h1 className="mt-1 truncate text-2xl font-black">{employee?.name || user?.employeeName || "Field work"}</h1>
+          <p className="mt-1 text-sm font-semibold text-white/60">{formatTodayLabel()} · {todayJobs.length} assigned today</p>
+          <p className="mt-2 text-sm text-white/70">Next job, next action, then the rest of today.</p>
         </div>
+        <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-lime text-ink"><UserCircleIcon className="size-6" /></span>
       </div>
-      <label>
-        <span className="mb-2 block text-sm font-black text-white/70">Choose employee</span>
-        <select value={employeeId} onChange={(event) => chooseEmployee(event.target.value)} disabled={lockedToLogin} className="field bg-white text-ink disabled:opacity-70">
+      {employees.length > 0 && !lockedToLogin && <label className="mt-4 block">
+        <span className="mb-2 block text-xs font-black uppercase tracking-wide text-white/60">Viewing employee</span>
+        <select value={employeeId} onChange={(event) => chooseEmployee(event.target.value)} className="field bg-white text-ink">
           {employees.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
         </select>
-        {lockedToLogin && <span className="mt-2 block text-xs font-bold text-white/45">This login is locked to {user?.employeeName || "the linked employee"}.</span>}
-      </label>
-    </div>
+      </label>}
+      {lockedToLogin && <p className="mt-3 text-xs font-bold text-white/45">This login is locked to {user?.employeeName || "the linked employee"}.</p>}
+    </section>
 
-    {!loading && employee && <MyDayCommand employeeName={employee.name} nextJob={nextJob} todayJobs={todayJobs.length} overdueJobs={overdueJobs.length} startedJobs={startedJobs.length} closeoutJobs={closeoutJobs.length} />}
-    {!loading && employee && <EmployeeHelpPanel employeeName={employee.name} fieldNotice={fieldNotice} reviewInstructions={reviewInstructions} />}
-
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      <Metric label="Today" value={todayJobs.length} icon={<CalendarDaysIcon />} />
-      <Metric label="Overdue" value={overdueJobs.length} icon={<ExclamationTriangleIcon />} />
-      <Metric label="Active" value={activeJobs.length} icon={<BriefcaseIcon />} />
-      <Metric label="Waiting parts" value={waitingJobs.length} icon={<UserGroupIcon />} />
-    </div>
-
-    {!loading && employee && <section id="field-actions" className="card overflow-hidden scroll-mt-24">
-      <div className="flex items-center justify-between gap-3 bg-sand p-4">
-        <div>
-          <h2 className="text-lg font-black">Field action list</h2>
-          <p className="text-sm font-semibold text-black/45">Due, overdue, or missing photos/notes/checklist items.</p>
-        </div>
-        <Link href="/today-command" className="text-sm font-extrabold text-forest">Today Command</Link>
-      </div>
-      <div className="grid gap-3 p-3 md:grid-cols-2">
-        {actionJobs.length ? actionJobs.map((job) => <FieldActionCard key={job.jobId} job={job} noteDraft={noteDrafts[job.jobId] || ""} saving={savingJobId === job.jobId} permissions={fieldPermissions} customerTextTemplate={customerTextTemplate} fieldNoteTemplates={fieldNoteTemplates} reviewInstructions={reviewInstructions} factoryCostInstructions={factoryCostInstructions} requireBeforePhotosForReview={requireBeforePhotosForReview} requireSerialTagPhotoForReview={requireSerialTagPhotoForReview} requireDamagePhotosForReview={requireDamagePhotosForReview} requireAfterPhotosForReview={requireAfterPhotosForReview} requireCompletionNotesForReview={requireCompletionNotesForReview} requireWorkCompleteForReview={requireWorkCompleteForReview} requirePartsClosedForReview={requirePartsClosedForReview} requireFactoryCostsForReview={requireFactoryCostsForReview} requireReceiptBackupForReview={requireReceiptBackupForReview} fieldSupportName={fieldSupportName} fieldSupportPhone={fieldSupportPhone} employeeHelpInstructions={employeeHelpInstructions} onStart={() => startJob(job)} onReadyReview={() => readyForManagerReview(job)} onChecklist={(itemId) => toggleChecklist(job, itemId)} onNote={(message, type) => saveFieldNote(job, message, type)} onCompletionNotes={(notes) => saveCompletionNotes(job, notes)} onFactoryCost={(costPatch) => saveFactoryCost(job, costPatch)} onNoteDraft={(value) => setNoteDrafts((old) => ({ ...old, [job.jobId]: value }))} />) : <p className="p-6 text-center text-sm font-semibold text-black/35 md:col-span-2">No urgent field actions for {employee.name} right now.</p>}
-      </div>
-    </section>}
-
-    {loading ? <p className="card p-5 text-sm font-bold text-black/45">Loading assigned jobs…</p> : null}
+    {loading ? <p className="card p-5 text-sm font-bold text-black/45">Loading assigned jobs...</p> : null}
 
     {!loading && !employees.length ? <section className="card p-6 text-center">
       <p className="font-black">No employees added yet.</p>
@@ -368,26 +354,150 @@ export function FieldAppView() {
       <Link href="/employees" className="btn-primary mt-4">Open Employees</Link>
     </section> : null}
 
-    {!loading && employee && <section id="all-assigned-work" className="scroll-mt-24">
-      <div className="mb-3 flex items-end justify-between gap-3">
-        <div>
-          <h2 className="text-xl font-black">{employee.name}&apos;s work</h2>
-          <p className="text-sm text-black/45">Full crew jobs are included automatically. Tap a lane to narrow the phone list.</p>
+    {!loading && employee && <CurrentJobPanel job={currentJob} permissions={fieldPermissions} />}
+
+    {!loading && employee && <TodayAssignments jobs={todayRemainingJobs} />}
+
+    {!loading && employee && fieldBlockers.length > 0 && <FieldBlockers blockers={fieldBlockers} />}
+
+    {!loading && employee && upcomingGroups.length > 0 && <UpcomingAssignments groups={upcomingGroups} />}
+
+    {!loading && employee && recentFieldActivity.length > 0 && <RecentFieldActivity items={recentFieldActivity} />}
+
+    {!loading && employee && assignedJobs.length ? <section id="all-assigned-work" className="scroll-mt-24">
+      <details>
+        <summary className="cursor-pointer rounded-xl border border-black/10 bg-white px-4 py-3 text-base font-black">All assigned work</summary>
+        <div className="mt-3">
+          <CrewFilterBar value={crewFilter} counts={crewFilterCounts} onChange={setCrewFilter} />
+          <div className="grid gap-3 md:grid-cols-2">{filteredAssignedJobs.map((job) => <FieldJobCard key={job.jobId} job={job} noteDraft={noteDrafts[job.jobId] || ""} saving={savingJobId === job.jobId} permissions={fieldPermissions} customerTextTemplate={customerTextTemplate} fieldNoteTemplates={fieldNoteTemplates} reviewInstructions={reviewInstructions} factoryCostInstructions={factoryCostInstructions} requireBeforePhotosForReview={requireBeforePhotosForReview} requireSerialTagPhotoForReview={requireSerialTagPhotoForReview} requireDamagePhotosForReview={requireDamagePhotosForReview} requireAfterPhotosForReview={requireAfterPhotosForReview} requireCompletionNotesForReview={requireCompletionNotesForReview} requireWorkCompleteForReview={requireWorkCompleteForReview} requirePartsClosedForReview={requirePartsClosedForReview} requireFactoryCostsForReview={requireFactoryCostsForReview} requireReceiptBackupForReview={requireReceiptBackupForReview} fieldSupportName={fieldSupportName} fieldSupportPhone={fieldSupportPhone} employeeHelpInstructions={employeeHelpInstructions} onStart={() => startJob(job)} onReadyReview={() => readyForManagerReview(job)} onChecklist={(itemId) => toggleChecklist(job, itemId)} onNote={(message, type) => saveFieldNote(job, message, type)} onCompletionNotes={(notes) => saveCompletionNotes(job, notes)} onFactoryCost={(costPatch) => saveFactoryCost(job, costPatch)} onNoteDraft={(value) => setNoteDrafts((old) => ({ ...old, [job.jobId]: value }))} />)}</div>
+          {assignedJobs.length > 0 && !filteredAssignedJobs.length && <div className="card p-6 text-center">
+            <p className="font-black">No jobs in this lane.</p>
+            <p className="mt-1 text-sm text-black/45">Try another crew filter or view all assigned work.</p>
+            <button type="button" onClick={() => setCrewFilter("all")} className="mt-4 min-h-11 rounded-xl bg-forest px-4 py-2 font-black text-white">Show All Work</button>
+          </div>}
         </div>
-        <Link href="/jobs" className="text-sm font-extrabold text-forest">All jobs</Link>
-      </div>
-      <CrewFilterBar value={crewFilter} counts={crewFilterCounts} onChange={setCrewFilter} />
-      {assignedJobs.length ? <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{filteredAssignedJobs.map((job) => <FieldJobCard key={job.jobId} job={job} noteDraft={noteDrafts[job.jobId] || ""} saving={savingJobId === job.jobId} permissions={fieldPermissions} customerTextTemplate={customerTextTemplate} fieldNoteTemplates={fieldNoteTemplates} reviewInstructions={reviewInstructions} factoryCostInstructions={factoryCostInstructions} requireBeforePhotosForReview={requireBeforePhotosForReview} requireSerialTagPhotoForReview={requireSerialTagPhotoForReview} requireDamagePhotosForReview={requireDamagePhotosForReview} requireAfterPhotosForReview={requireAfterPhotosForReview} requireCompletionNotesForReview={requireCompletionNotesForReview} requireWorkCompleteForReview={requireWorkCompleteForReview} requirePartsClosedForReview={requirePartsClosedForReview} requireFactoryCostsForReview={requireFactoryCostsForReview} requireReceiptBackupForReview={requireReceiptBackupForReview} fieldSupportName={fieldSupportName} fieldSupportPhone={fieldSupportPhone} employeeHelpInstructions={employeeHelpInstructions} onStart={() => startJob(job)} onReadyReview={() => readyForManagerReview(job)} onChecklist={(itemId) => toggleChecklist(job, itemId)} onNote={(message, type) => saveFieldNote(job, message, type)} onCompletionNotes={(notes) => saveCompletionNotes(job, notes)} onFactoryCost={(costPatch) => saveFactoryCost(job, costPatch)} onNoteDraft={(value) => setNoteDrafts((old) => ({ ...old, [job.jobId]: value }))} />)}</div> : <div className="card p-6 text-center">
+      </details>
+    </section> : null}
+
+    {!loading && employee && !assignedJobs.length ? <div className="card p-6 text-center">
         <p className="font-black">No jobs assigned to {employee.name}.</p>
         <p className="mt-1 text-sm text-black/45">Assign this employee on a job edit screen, or mark a job as Full Crew.</p>
-      </div>}
-      {assignedJobs.length > 0 && !filteredAssignedJobs.length && <div className="card p-6 text-center">
-        <p className="font-black">No jobs in this lane.</p>
-        <p className="mt-1 text-sm text-black/45">Try another crew filter or view all assigned work.</p>
-        <button type="button" onClick={() => setCrewFilter("all")} className="mt-4 min-h-11 rounded-xl bg-forest px-4 py-2 font-black text-white">Show All Work</button>
-      </div>}
-    </section>}
+      </div> : null}
   </div>;
+}
+
+function CurrentJobPanel({ job, permissions }: { job?: Job; permissions: FieldPermissions }) {
+  if (!job) return <section className="card p-5 text-center">
+    <p className="text-lg font-black">No assigned work right now.</p>
+    <p className="mt-1 text-sm font-semibold text-black/45">Assigned jobs will show here when dispatch puts them on your crew list.</p>
+  </section>;
+  const action = primaryFieldAction(job);
+  return <section className="card overflow-hidden">
+    <div className="bg-sand p-4">
+      <p className="text-xs font-black uppercase tracking-widest text-forest">Current / next job</p>
+      <div className="mt-2 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-black text-black/45">{job.jobId} · {job.priority}</p>
+          <h2 className="mt-1 truncate text-2xl font-black">{job.customerName}</h2>
+          <p className="mt-1 text-sm font-semibold text-black/55">{job.city || "No city"} · {formatDue(job.dueDate)}</p>
+        </div>
+        <StatusBadge status={job.status} />
+      </div>
+      {job.assignedCrew && <p className="mt-2 text-xs font-black uppercase tracking-wide text-black/40">Crew: {job.assignedCrew}</p>}
+      <p className="mt-3 rounded-xl bg-white p-3 text-sm font-bold text-black/65">{nextActionReason(job)}</p>
+    </div>
+    <div className="space-y-3 p-4">
+      <Link href={action.href} className="block min-h-12 rounded-xl bg-forest px-4 py-3 text-center font-black text-white">{action.label}</Link>
+      <QuickCurrentJobActions job={job} canUpload={permissions.employeeCanUploadFiles} />
+    </div>
+  </section>;
+}
+
+function QuickCurrentJobActions({ job, canUpload }: { job: Job; canUpload: boolean }) {
+  const actions = [
+    job.phone ? { label: "Call Customer", href: `tel:${job.phone}`, icon: <PhoneIcon className="size-5" /> } : null,
+    job.address || job.city ? { label: "Open Maps", href: `https://maps.google.com/?q=${encodeURIComponent(`${job.address}, ${job.city}`)}`, icon: <MapPinIcon className="size-5" />, external: true } : null,
+    canUpload ? { label: "Add Photo", href: `/jobs/${job.jobId}#photos`, icon: <CameraIcon className="size-5" /> } : null,
+    { label: "Open Checklist", href: `/jobs/${job.jobId}#checklist`, icon: <ClipboardDocumentCheckIcon className="size-5" /> },
+  ].filter(Boolean).slice(0, 4) as Array<{ label: string; href: string; icon: React.ReactNode; external?: boolean }>;
+  return <div className="grid grid-cols-2 gap-2">
+    {actions.map((action) => action.external
+      ? <a key={action.label} href={action.href} target="_blank" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-black/10 bg-white px-3 py-2 text-sm font-black text-ink">{action.icon}{action.label}</a>
+      : <Link key={action.label} href={action.href} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-black/10 bg-white px-3 py-2 text-sm font-black text-ink">{action.icon}{action.label}</Link>)}
+  </div>;
+}
+
+function TodayAssignments({ jobs }: { jobs: Job[] }) {
+  return <section className="card overflow-hidden">
+    <div className="border-b border-black/5 p-4">
+      <h2 className="text-lg font-black">Today&apos;s assignments</h2>
+      <p className="text-sm font-semibold text-black/45">{jobs.length ? "Remaining assigned work due today." : "No other assigned jobs due today."}</p>
+    </div>
+    {jobs.length ? <div className="divide-y divide-black/5">
+      {jobs.map((job, index) => <AssignmentRow key={job.jobId} job={job} order={index + 1} />)}
+    </div> : <p className="p-4 text-sm font-semibold text-black/40">Handle the current job above, then check upcoming assignments.</p>}
+  </section>;
+}
+
+function AssignmentRow({ job, order }: { job: Job; order: number }) {
+  return <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3 p-3">
+    <span className="grid size-8 place-items-center rounded-lg bg-sand text-sm font-black text-black/50">{order}</span>
+    <div className="min-w-0">
+      <p className="truncate text-sm font-black">{job.jobId} · {job.customerName}</p>
+      <p className="truncate text-xs font-bold text-black/45">{job.city || "No city"} · {job.status} · {nextActionReason(job)}</p>
+    </div>
+    <Link href={`/jobs/${job.jobId}`} className="rounded-lg bg-forest px-3 py-2 text-xs font-black text-white">Open</Link>
+  </div>;
+}
+
+function FieldBlockers({ blockers }: { blockers: FieldBlocker[] }) {
+  return <section className="card overflow-hidden">
+    <div className="border-b border-black/5 p-4">
+      <h2 className="text-lg font-black">Field blockers</h2>
+      <p className="text-sm font-semibold text-black/45">Only items tied to assigned work.</p>
+    </div>
+    <div className="divide-y divide-black/5">
+      {blockers.map((blocker) => <Link key={`${blocker.job.jobId}-${blocker.label}`} href={blocker.href} className="block p-3 active:bg-sand">
+        <p className="text-sm font-black text-orange-900">{blocker.label}</p>
+        <p className="mt-1 text-xs font-bold text-black/50">{blocker.job.jobId} · {blocker.job.customerName} · {blocker.detail}</p>
+      </Link>)}
+    </div>
+  </section>;
+}
+
+function UpcomingAssignments({ groups }: { groups: Array<{ label: string; jobs: Job[] }> }) {
+  return <section className="card overflow-hidden">
+    <div className="border-b border-black/5 p-4">
+      <h2 className="text-lg font-black">Upcoming assignments</h2>
+      <p className="text-sm font-semibold text-black/45">Next 7 days, limited to the first 7 jobs.</p>
+    </div>
+    <div className="divide-y divide-black/5">
+      {groups.map((group) => <div key={group.label} className="p-3">
+        <p className="mb-2 text-xs font-black uppercase tracking-wide text-forest">{group.label}</p>
+        <div className="space-y-2">
+          {group.jobs.map((job) => <Link key={job.jobId} href={`/jobs/${job.jobId}`} className="block rounded-xl bg-sand p-3">
+            <p className="truncate text-sm font-black">{job.jobId} · {job.customerName}</p>
+            <p className="mt-1 truncate text-xs font-bold text-black/45">{job.city || "No city"} · {job.status}</p>
+          </Link>)}
+        </div>
+      </div>)}
+    </div>
+  </section>;
+}
+
+function RecentFieldActivity({ items }: { items: Array<{ job: Job; activity: JobActivity }> }) {
+  return <section className="card overflow-hidden">
+    <div className="border-b border-black/5 p-4">
+      <h2 className="text-lg font-black">Recent field activity</h2>
+      <p className="text-sm font-semibold text-black/45">Today&apos;s updates by this employee.</p>
+    </div>
+    <div className="divide-y divide-black/5">
+      {items.map(({ job, activity }) => <Link key={activity.id} href={`/jobs/${job.jobId}#history`} className="block p-3">
+        <p className="line-clamp-2 text-sm font-black">{activity.message}</p>
+        <p className="mt-1 text-xs font-bold text-black/45">{job.jobId} · {new Date(activity.createdAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}</p>
+      </Link>)}
+    </div>
+  </section>;
 }
 
 function CrewFilterBar({ value, counts, onChange }: { value: CrewFilter; counts: Record<CrewFilter, number>; onChange: (value: CrewFilter) => void }) {
@@ -843,6 +953,99 @@ function fieldHelpMessage(job: Job, review: ReturnType<typeof fieldReviewStatus>
     : `Need help on ${job.jobId}: crew needs manager direction. Please call or review this job.`;
 }
 
+type FieldBlocker = { job: Job; label: string; detail: string; href: string };
+
+function primaryFieldAction(job: Job) {
+  if (job.status === "In Progress") return { label: "Continue Job", href: `/jobs/${job.jobId}` };
+  if (job.status === "Waiting on Parts") return { label: "Review Parts", href: `/jobs/${job.jobId}#parts` };
+  if (["New", "Scheduled"].includes(job.status)) return { label: "Start Job", href: `/jobs/${job.jobId}` };
+  return { label: "Open Job", href: `/jobs/${job.jobId}` };
+}
+
+function nextActionReason(job: Job) {
+  if (job.status === "In Progress") return "Already started. Continue the guided job workspace.";
+  if (job.status === "Waiting on Parts") return "Parts are blocking the job. Review the parts section.";
+  if (job.status === "Needs Inspection") return "Ready for manager review. Check closeout if anything was returned.";
+  if (job.dueDate === new Date().toLocaleDateString("en-CA")) return "Due today. Open the job before heading out.";
+  if (job.dueDate) return `Upcoming assignment for ${formatDue(job.dueDate)}.`;
+  return "Assigned with no due date. Open the job for details.";
+}
+
+function getFieldBlockers(jobs: Job[], options: FieldReviewOptions, today: string): FieldBlocker[] {
+  const blockers: FieldBlocker[] = [];
+  for (const job of jobs) {
+    if (job.status === "Waiting on Parts" || (job.partsItems || []).some((part) => ["Needed", "Ordered", "Picked up"].includes(part.status))) {
+      blockers.push({ job, label: "Waiting on parts", detail: "Parts need review before work can move.", href: `/jobs/${job.jobId}#parts` });
+    }
+    const contactActivity = (job.activityLog || []).find((activity) => !activity.resolvedAt && activity.notify && /customer|contact|call|not home/i.test(activity.message));
+    if (contactActivity) {
+      blockers.push({ job, label: "Customer contact required", detail: contactActivity.message, href: `/jobs/${job.jobId}#notes` });
+    }
+    if (job.dueDate === today && ["New", "Scheduled"].includes(job.status)) {
+      blockers.push({ job, label: "Today but not started", detail: "Open or start this assignment before the end of the day.", href: `/jobs/${job.jobId}` });
+    }
+    if (job.status === "Needs Inspection") {
+      const missingCloseout = fieldReviewStatusFromOptions(job, options).items.find((item) => !item.ok);
+      if (missingCloseout) blockers.push({ job, label: "Closeout item missing", detail: missingCloseout.label, href: missingCloseout.href });
+    }
+    const returned = (job.activityLog || []).find((activity) => !activity.resolvedAt && /return|returned|correction|fix/i.test(activity.message));
+    if (returned) {
+      blockers.push({ job, label: "Returned for correction", detail: returned.message, href: `/jobs/${job.jobId}#notes` });
+    }
+  }
+  return blockers;
+}
+
+function groupUpcomingAssignments(jobs: Job[], today: string, days: number) {
+  const end = addDays(today, days);
+  const upcoming = jobs
+    .filter((job) => job.dueDate && job.dueDate > today && job.dueDate <= end)
+    .sort((a, b) => fieldWorkSort(a, b, today))
+    .slice(0, 7);
+  const groups = new Map<string, Job[]>();
+  for (const job of upcoming) {
+    const label = formatDue(job.dueDate);
+    groups.set(label, [...(groups.get(label) || []), job]);
+  }
+  return Array.from(groups, ([label, groupJobs]) => ({ label, jobs: groupJobs }));
+}
+
+function getRecentFieldActivity(jobs: Job[], employeeName: string, today: string) {
+  return jobs.flatMap((job) => (job.activityLog || [])
+    .filter((activity) => activity.createdBy === employeeName && activity.createdAt.startsWith(today))
+    .map((activity) => ({ job, activity })))
+    .sort((a, b) => b.activity.createdAt.localeCompare(a.activity.createdAt));
+}
+
+function fieldWorkSort(a: Job, b: Job, today: string) {
+  return statusRank(a.status) - statusRank(b.status)
+    || (a.dueDate || "9999-99-99").localeCompare(b.dueDate || "9999-99-99")
+    || priorityRank(a.priority) - priorityRank(b.priority)
+    || a.jobId.localeCompare(b.jobId);
+}
+
+function statusRank(status: Job["status"]) {
+  if (status === "In Progress") return 0;
+  if (status === "Scheduled") return 1;
+  if (status === "New") return 2;
+  if (status === "Waiting on Parts") return 3;
+  if (status === "Needs Inspection") return 4;
+  return 5;
+}
+
+function priorityRank(priority: Job["priority"]) {
+  if (priority === "Urgent") return 0;
+  if (priority === "High") return 1;
+  if (priority === "Normal") return 2;
+  return 3;
+}
+
+function addDays(date: string, days: number) {
+  const next = new Date(`${date}T12:00:00`);
+  next.setDate(next.getDate() + days);
+  return next.toLocaleDateString("en-CA");
+}
+
 function fieldSort(a: Job, b: Job, today: string) {
   const aOverdue = a.dueDate && a.dueDate < today ? 0 : 1;
   const bOverdue = b.dueDate && b.dueDate < today ? 0 : 1;
@@ -861,6 +1064,10 @@ function matchesCrewFilter(job: Job, filter: CrewFilter, today: string, options:
 
 function formatDue(dueDate: string) {
   return dueDate ? new Date(`${dueDate}T12:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Not scheduled";
+}
+
+function formatTodayLabel() {
+  return new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
 }
 
 function formatCustomerText(template: string, job: Job) {
