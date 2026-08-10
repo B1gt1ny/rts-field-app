@@ -1,4 +1,5 @@
 import type { Job, JobActivity } from "./types";
+import { isReceiptBackupMissing } from "./receipt-backup";
 
 export type ReadinessCheck = {
   label: string;
@@ -7,6 +8,8 @@ export type ReadinessCheck = {
 };
 
 export type CorrectionCategory = "Photos" | "Paperwork" | "Checklist" | "Notes";
+export const billingBoardStates = ["Not Ready", "Ready to Invoice", "Invoiced", "Paid / Complete"] as const;
+export type BillingBoardState = typeof billingBoardStates[number];
 
 export const correctionCategories: CorrectionCategory[] = ["Photos", "Paperwork", "Checklist", "Notes"];
 const correctionPrefix = "Manager correction requested:";
@@ -97,6 +100,8 @@ export function correctionCategoryComplete(job: Job, category: CorrectionCategor
   };
   if (category === "Photos") return (job.workOrderFiles || []).some((file) => file.category === "After" && uploadedAfterRequest(file));
   if (category === "Paperwork") return (job.workOrderFiles || []).some((file) => ["Work Order", "Paperwork", "Signed Document"].includes(file.category || "") && uploadedAfterRequest(file));
+  if (category === "Checklist") return (job.checklist || []).filter((item) => !/invoice created/i.test(item.label)).every((item) => item.complete);
+  if (category === "Notes") return Boolean(job.completionNotes?.trim());
   return false;
 }
 
@@ -139,11 +144,64 @@ export function correctionResolutionPatch(current: Job, next: Job): Partial<Job>
 }
 
 export function billingBlockers(job: Job) {
-  return closeoutChecks(job).filter((check) => !check.ok && ["Job complete", "Completion notes", "After photos", "Paperwork", "Completion sign-off", "Open parts"].includes(check.label));
+  const closeoutBlockers = closeoutChecks(job).filter((check) => !check.ok && ["Job complete", "Completion notes", "After photos", "Paperwork", "Completion sign-off", "Open parts"].includes(check.label));
+  return [...closeoutBlockers, ...billingEvidenceChecks(job).filter((check) => !check.ok)];
 }
 
 export function isReadyForBilling(job: Job) {
   return billingBlockers(job).length === 0;
+}
+
+export function billingBoardState(job: Job): BillingBoardState {
+  if (job.status === "Paid" || job.invoiceStatus === "Paid") return "Paid / Complete";
+  if (job.status === "Billed" || ["Sent to Billing", "Sent"].includes(job.invoiceStatus)) return "Invoiced";
+  if (isReadyForBilling(job)) return "Ready to Invoice";
+  return "Not Ready";
+}
+
+function billingEvidenceChecks(job: Job): ReadinessCheck[] {
+  const entries = job.timeEntries || [];
+  const travelStarted = entries.some((entry) => entry.notes === "Started Travel");
+  const arrived = entries.some((entry) => entry.type === "Arrived");
+  const workStarted = entries.some((entry) => entry.type === "Work started");
+  const departed = entries.some((entry) => entry.type === "Departed");
+  const mileageRecorded = entries.some((entry) => entry.type === "Mileage" && entry.mileage !== undefined && entry.mileage !== "");
+  const helperHours = job.factoryCost?.helperHours?.trim() || "";
+  const helperRate = job.factoryCost?.helperRate?.trim() || "";
+  const correctionsOpen = hasActiveCorrections(job);
+
+  return [
+    {
+      label: "Travel arrival",
+      ok: !travelStarted || arrived,
+      detail: !travelStarted ? "No travel logged" : arrived ? "Arrival logged" : "Travel started without arrival",
+    },
+    {
+      label: "Mileage log",
+      ok: !travelStarted || mileageRecorded,
+      detail: !travelStarted ? "No travel logged" : mileageRecorded ? "Mileage logged" : "Travel logged without mileage",
+    },
+    {
+      label: "Work session",
+      ok: !workStarted || departed,
+      detail: !workStarted ? "No work session logged" : departed ? "Work departure logged" : "Work started without departure",
+    },
+    {
+      label: "Helper cost details",
+      ok: job.source !== "Factory" || Boolean(helperHours) === Boolean(helperRate),
+      detail: job.source !== "Factory" ? "Not a factory job" : !helperHours && !helperRate ? "No helper cost recorded" : helperHours && helperRate ? "Hours and rate recorded" : helperHours ? "Helper rate missing" : "Helper hours missing",
+    },
+    {
+      label: "Receipt backup",
+      ok: !isReceiptBackupMissing(job),
+      detail: isReceiptBackupMissing(job) ? "Receipt dollars need uploaded backup" : "No missing receipt backup",
+    },
+    {
+      label: "Manager corrections",
+      ok: !correctionsOpen,
+      detail: correctionsOpen ? `Open: ${activeCorrectionCategories(job).join(", ")}` : "No active corrections",
+    },
+  ];
 }
 
 export function dispatchChecks(job: Job): ReadinessCheck[] {

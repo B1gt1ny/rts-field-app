@@ -1553,9 +1553,111 @@ function CloseoutQualityPanel({ job }: { job: Job }) {
   </section>;
 }
 
+function billingBlockerAction(blocker: { label: string; detail: string }) {
+  switch (blocker.label) {
+    case "Job complete": return { label: "Incomplete closeout", href: "#complete-job" };
+    case "Completion notes": return { label: "Missing completion notes", href: "#complete-job" };
+    case "After photos": return { label: "Missing required photos", href: "#photos" };
+    case "Paperwork": return { label: "Missing paperwork", href: "#paperwork" };
+    case "Completion sign-off": return { label: "Missing signature", href: "#signoffs" };
+    case "Open parts": return { label: "Open parts", href: "#parts" };
+    case "Travel arrival": return { label: "Missing drive time", href: "#time-log" };
+    case "Mileage log": return { label: "Missing mileage", href: "#time-log" };
+    case "Work session": return { label: "Missing work hours", href: "#time-log" };
+    case "Helper cost details": return { label: blocker.detail === "Helper rate missing" ? "Missing helper rate" : "Missing helper hours", href: "#time-log" };
+    case "Receipt backup": return { label: "Missing required receipt/documentation", href: "#receipts" };
+    case "Manager corrections": return { label: "Correction required" };
+    default: return { label: blocker.label };
+  }
+}
+
+type InvoiceSummaryField = { label: string; value: string; href?: string };
+
+function ContractorInvoiceDataSummary({ job }: { job: Job }) {
+  const entries = job.timeEntries || [];
+  const receipts = job.receipts || [];
+  const paperwork = job.paperworkItems || defaultPaperwork(job);
+  const tracker = job.factoryCost;
+  const loggedMiles = entries.reduce((total, entry) => total + (Number(entry.mileage) || 0), 0);
+  const tripStarts = entries.filter((entry) => entry.notes === "Started Travel");
+  const receiptTotal = receipts.reduce((total, receipt) => total + (Number(receipt.amount) || 0), 0);
+  const receiptCategoryTotal = (category: ReceiptItem["category"]) => receipts.filter((receipt) => receipt.category === category).reduce((total, receipt) => total + (Number(receipt.amount) || 0), 0);
+  const paperworkComplete = paperwork.filter((item) => ["Collected", "Submitted", "Not needed"].includes(item.status)).length;
+  const acceptedSignoffs = (job.signoffs || []).filter((signoff) => signoff.accepted).length;
+  const receiptFiles = summarizeFiles(job).receipts;
+  const installedParts = (job.partsItems || []).filter((part) => part.status === "Installed").map((part) => part.name).filter(Boolean);
+  const expenseValue = (amount: number) => amount ? `$${amount.toFixed(2)}` : "Not recorded";
+  const groups: { title: string; fields: InvoiceSummaryField[] }[] = [
+    {
+      title: "Job Information",
+      fields: [
+        { label: "Customer", value: job.customerName || "Not recorded" },
+        { label: "Contractor / technician", value: job.assignedCrew || "Not recorded" },
+        { label: "Work order", value: job.factoryWorkOrderNumber || "Not recorded" },
+        { label: "Job date", value: job.dueDate ? formatJobDate(job.dueDate) : "Not recorded" },
+        { label: "Work completed", value: job.completionNotes?.trim() || "Not recorded", href: "#complete-job" },
+        { label: "Installed parts / add-ons", value: installedParts.length ? installedParts.join(", ") : "Not recorded", href: "#parts" },
+      ],
+    },
+    {
+      title: "Travel",
+      fields: [
+        { label: "Trip dates", value: tripStarts.length ? tripStarts.slice(0, 3).map((entry) => formatSessionDate(entry.createdAt)).join(" · ") : "Not recorded", href: "#time-log" },
+        { label: "From", value: "Not recorded" },
+        { label: "To", value: [job.address, job.city].filter(Boolean).join(", ") || "Not recorded" },
+        { label: "Logged mileage", value: loggedMiles ? `${loggedMiles.toFixed(1)} mi` : "Not recorded", href: "#time-log" },
+        { label: "Billing mileage", value: tracker?.miles?.trim() ? `${tracker.miles} mi` : "Not recorded", href: "#factory-costs" },
+        { label: "Drive time", value: tracker?.driveTimeHours?.trim() ? `${tracker.driveTimeHours}h tracked` : formatTravelDuration(entries) !== "0m" ? formatTravelDuration(entries) : "Not recorded", href: "#time-log" },
+      ],
+    },
+    {
+      title: "Labor",
+      fields: [
+        { label: "Work hours", value: formatEntryDuration(entries, "Work started", "Departed") !== "0m" ? formatEntryDuration(entries, "Work started", "Departed") : "Not recorded", href: "#time-log" },
+        { label: "Helper hours", value: tracker?.helperHours?.trim() ? `${tracker.helperHours}h tracked` : "Not recorded", href: "#factory-costs" },
+      ],
+    },
+    {
+      title: "Expenses",
+      fields: [
+        { label: "Meals", value: "Not recorded" },
+        { label: "Lodging", value: expenseValue(Number(tracker?.hotelTotal)), href: "#factory-costs" },
+        { label: "Parts purchased", value: expenseValue(receiptCategoryTotal("Parts")), href: "#receipts" },
+        { label: "Materials tracked", value: expenseValue(Number(tracker?.materialsTotal)), href: "#factory-costs" },
+        { label: "Miscellaneous", value: expenseValue(receiptCategoryTotal("Other")), href: "#receipts" },
+        { label: "Other expenses tracked", value: expenseValue(Number(tracker?.otherReceiptsTotal)), href: "#factory-costs" },
+        { label: "Receipt total", value: receiptTotal ? `$${receiptTotal.toFixed(2)}` : "Not recorded", href: "#receipts" },
+        { label: "Supporting receipts", value: receiptFiles ? `${receiptFiles} file${receiptFiles === 1 ? "" : "s"} attached` : "Not recorded", href: "#receipts" },
+      ],
+    },
+    {
+      title: "Closeout",
+      fields: [
+        { label: "Paperwork", value: paperwork.length ? `${paperworkComplete}/${paperwork.length} recorded` : "Not recorded", href: "#paperwork" },
+        { label: "Customer / signature", value: acceptedSignoffs ? `${acceptedSignoffs} accepted` : "Not recorded", href: "#signoffs" },
+        { label: "Completion notes", value: job.completionNotes?.trim() ? "Recorded" : "Not recorded", href: "#complete-job" },
+      ],
+    },
+  ];
+
+  return <section className="mb-4 rounded-2xl border border-black/10 bg-sand p-4">
+    <div className="mb-3"><p className="text-xs font-black uppercase tracking-widest text-forest">Manager summary</p><h3 className="mt-1 text-lg font-black">Contractor Invoice Data Summary</h3><p className="mt-1 text-sm text-black/50">Available job and field data only. This does not create an invoice.</p></div>
+    <div className="grid gap-3 lg:grid-cols-2">
+      {groups.map((group) => <div key={group.title} className="rounded-xl bg-white p-3">
+        <h4 className="text-sm font-black text-ink">{group.title}</h4>
+        <dl className="mt-2 space-y-1.5 text-sm">{group.fields.map((field) => <div key={field.label} className="grid grid-cols-[minmax(0,.8fr)_minmax(0,1.2fr)] gap-2"><dt className="font-semibold text-black/50">{field.label}</dt><dd className="break-words text-right font-bold text-ink">{field.href ? <a href={field.href} className="underline">{field.value}</a> : field.value}</dd></div>)}</dl>
+      </div>)}
+    </div>
+  </section>;
+}
+
 function BillingHandoffPanel({ job, saving, onSave }: { job: Job; saving: boolean; onSave: (patch: Partial<Job>) => Promise<Job | undefined> }) {
   const billingRequirements = closeoutRequirements(job, "billing");
-  const blockers = blockingRequirements(billingRequirements);
+  const closeoutBlockers = blockingRequirements(billingRequirements);
+  const readinessBlockers = billingBlockers(job);
+  const actionableBlockers = readinessBlockers.map(billingBlockerAction);
+  const blockerNames = [...new Set([...closeoutBlockers.map((blocker) => blocker.name), ...readinessBlockers.map((blocker) => blocker.label)])];
+  const blockers = blockerNames.map((name) => ({ name }));
   const complete = billingRequirements.filter((check) => check.status === "complete" || check.status === "not-required").length;
   const score = Math.round((complete / billingRequirements.length) * 100);
   const receiptTotal = (job.receipts || []).reduce((sum, receipt) => sum + (Number(receipt.amount) || 0), 0);
@@ -1612,13 +1714,19 @@ function BillingHandoffPanel({ job, saving, onSave }: { job: Job; saving: boolea
         <p className="text-sm text-black/50">One-tap office status for invoice work. This does not create an Invoice Simple invoice yet.</p>
       </div>
     </div>
+    <ContractorInvoiceDataSummary job={job} />
     <div className="mb-3 grid gap-3 sm:grid-cols-4">
       <MiniMetric label="Closeout score" value={`${score}%`} icon={<CheckCircleIcon />} />
       <MiniMetric label="Invoice status" value={job.invoiceStatus || "Not started"} icon={<BanknotesIcon />} />
       <MiniMetric label="Blockers" value={blockers.length} icon={<ClipboardDocumentListIcon />} />
       <MiniMetric label={job.source === "Factory" ? "Factory total" : "Receipts"} value={`$${(job.source === "Factory" ? factoryTotal : receiptTotal).toFixed(0)}`} icon={<ReceiptPercentIcon />} />
     </div>
-    {blockers.length > 0 && <p className="mb-3 rounded-xl bg-orange-50 p-3 text-sm font-bold text-orange-800">Before billing: {blockers.map((blocker) => blocker.name).join(", ")}.</p>}
+    {actionableBlockers.length > 0 && <div className="mb-3 rounded-xl bg-orange-50 p-3 text-sm font-bold text-orange-800">
+      <div className="flex items-center justify-between gap-3"><span>Not Ready for Billing</span><span>{actionableBlockers.length} blocker{actionableBlockers.length === 1 ? "" : "s"}</span></div>
+      <ul className="mt-2 space-y-1 font-semibold">
+        {actionableBlockers.map((blocker) => <li key={blocker.label}>{blocker.href ? <a href={blocker.href} className="underline">{blocker.label}</a> : blocker.label}</li>)}
+      </ul>
+    </div>}
     {receiptBackupMissing && <p className="mb-3 rounded-xl border border-orange-200 bg-orange-50 p-3 text-sm font-bold text-orange-900">Receipt backup missing for entered dollars. <a href="#receipts" className="underline">Open receipts</a></p>}
     <div className="grid gap-2 sm:grid-cols-3">
       <button type="button" disabled={saving || blockers.length > 0} onClick={() => handoff("Ready", "Billing handoff: marked Ready for Invoice.")} className="min-h-12 rounded-xl bg-forest px-4 py-3 font-black text-white disabled:opacity-50">Ready for Invoice</button>

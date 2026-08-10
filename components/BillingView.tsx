@@ -8,14 +8,21 @@ import { factoryCostGrandTotal, getFactoryCostTotals } from "@/lib/factory-costs
 import { isReceiptBackupMissing } from "@/lib/receipt-backup";
 import type { Job, JobActivity } from "@/lib/types";
 import { StatusBadge } from "./StatusBadge";
-import { billingBlockers, isReadyForBilling, readinessScore } from "@/lib/job-readiness";
+import { billingBoardState, billingBoardStates, billingBlockers, isReadyForBilling, readinessScore, type BillingBoardState } from "@/lib/job-readiness";
 
-const billingStatuses = ["Ready", "Needs review", "Needs more info", "Draft", "Sent to Billing", "Sent", "On hold", "Not started", "Paid"];
+type OfficeBillingAction = {
+  id: string;
+  job: Job;
+  title: string;
+  reason: string;
+  href: string;
+  priority: "High" | "Normal";
+};
 
 export function BillingView() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("Ready");
+  const [filter, setFilter] = useState<"All" | BillingBoardState>("Ready to Invoice");
   const [copiedJobId, setCopiedJobId] = useState("");
 
   useEffect(() => {
@@ -23,20 +30,24 @@ export function BillingView() {
   }, []);
 
   const billable = useMemo(() => jobs.filter((job) => ["Complete", "Billed", "Paid"].includes(job.status) || ["Ready", "Needs more info", "Draft", "Sent to Billing", "Sent", "On hold"].includes(job.invoiceStatus)), [jobs]);
-  const filtered = billable.filter((job) => filter === "All" || (filter === "Needs review" ? !isReadyForBilling(job) : job.invoiceStatus === filter || (filter === "Ready" && job.invoiceStatus === "Ready")));
-  const ready = billable.filter((job) => job.invoiceStatus === "Ready").length;
-  const needsReview = billable.filter((job) => !isReadyForBilling(job)).length;
-  const needsInfo = billable.filter((job) => job.invoiceStatus === "Needs more info").length;
-  const sent = billable.filter((job) => job.invoiceStatus === "Sent" || job.invoiceStatus === "Sent to Billing").length;
-  const paid = billable.filter((job) => job.status === "Paid" || job.invoiceStatus === "Paid").length;
+  const boardGroups = useMemo(() => Object.fromEntries(billingBoardStates.map((state) => [state, jobs.filter((job) => billingBoardState(job) === state)])) as Record<BillingBoardState, Job[]>, [jobs]);
+  const filtered = filter === "All" ? jobs : boardGroups[filter];
+  const notReady = boardGroups["Not Ready"].length;
+  const readyToInvoice = boardGroups["Ready to Invoice"].length;
+  const invoiced = boardGroups.Invoiced.length;
+  const paid = boardGroups["Paid / Complete"].length;
+  const officeActions = useMemo(() => jobs.flatMap((job) => {
+    const action = officeBillingActionFor(job);
+    return action ? [{ ...action, id: `${job.jobId}-office-billing-action`, job }] : [];
+  }).sort((a, b) => officeActionRank(a.priority) - officeActionRank(b.priority) || a.job.customerName.localeCompare(b.job.customerName)), [jobs]);
   const receiptTotal = billable.reduce((sum, job) => sum + (job.receipts || []).reduce((total, receipt) => total + (Number(receipt.amount) || 0), 0), 0);
   const factoryCostTotal = billable.reduce((sum, job) => sum + factoryCostGrandTotal(job), 0);
   const fileTotal = billable.reduce((sum, job) => sum + (job.workOrderFiles?.length || 0), 0);
   const lanes = [
-    { label: "Ready", value: ready, detail: "Can send to billing", filter: "Ready", icon: <CheckCircleIcon />, tone: ready ? "bg-emerald-100 text-emerald-900" : "bg-black/5 text-black/45" },
-    { label: "Review", value: needsReview, detail: "Packet blockers", filter: "Needs review", icon: <ExclamationTriangleIcon />, tone: needsReview ? "bg-orange-100 text-orange-900" : "bg-black/5 text-black/45" },
-    { label: "Needs info", value: needsInfo, detail: "Waiting on details", filter: "Needs more info", icon: <ClockIcon />, tone: needsInfo ? "bg-amber-100 text-amber-900" : "bg-black/5 text-black/45" },
-    { label: "Sent", value: sent, detail: "In invoice queue", filter: "Sent to Billing", icon: <BanknotesIcon />, tone: sent ? "bg-blue-100 text-blue-900" : "bg-black/5 text-black/45" },
+    { label: "Not Ready", value: notReady, detail: "Billing blockers open", icon: <ExclamationTriangleIcon />, tone: notReady ? "bg-orange-100 text-orange-900" : "bg-black/5 text-black/45" },
+    { label: "Ready to Invoice", value: readyToInvoice, detail: "Cleared by billing readiness", icon: <CheckCircleIcon />, tone: readyToInvoice ? "bg-emerald-100 text-emerald-900" : "bg-black/5 text-black/45" },
+    { label: "Invoiced", value: invoiced, detail: "Sent or in billing", icon: <BanknotesIcon />, tone: invoiced ? "bg-blue-100 text-blue-900" : "bg-black/5 text-black/45" },
+    { label: "Paid / Complete", value: paid, detail: "Payment recorded", icon: <ClockIcon />, tone: paid ? "bg-lime/60 text-ink" : "bg-black/5 text-black/45" },
   ];
 
   async function updateBilling(job: Job, invoiceStatus: string, message: string, extra: Partial<Job> = {}) {
@@ -99,9 +110,9 @@ export function BillingView() {
         </div>
       </div>
       <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-5">
-        <HeroMetric label="Billable jobs" value={billable.length} />
-        <HeroMetric label="Ready" value={ready} />
-        <HeroMetric label="Review" value={needsReview} />
+        <HeroMetric label="Jobs tracked" value={jobs.length} />
+        <HeroMetric label="Ready to invoice" value={readyToInvoice} />
+        <HeroMetric label="Not ready" value={notReady} />
         <HeroMetric label="Receipt total" value={`$${receiptTotal.toFixed(0)}`} />
         <HeroMetric label="Factory costs" value={`$${factoryCostTotal.toFixed(0)}`} />
       </div>
@@ -113,8 +124,11 @@ export function BillingView() {
       </div>
     </section>
 
-    <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      {lanes.map((lane) => <BillingLane key={lane.label} {...lane} onClick={() => setFilter(lane.filter)} />)}
+    <section className="space-y-3">
+      <div><p className="text-xs font-black uppercase tracking-widest text-forest">Billing status board</p><h2 className="mt-1 text-xl font-black">Billing dashboard summary</h2><p className="mt-1 text-sm font-semibold text-black/50">Each count is a current lifecycle group using the shared billing readiness check and existing invoice records.</p></div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {lanes.map((lane) => <BillingLane key={lane.label} {...lane} onClick={() => setFilter(lane.label as BillingBoardState)} />)}
+      </div>
     </section>
 
     <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -134,12 +148,23 @@ export function BillingView() {
       </div>
     </section>
 
+    <section className="card overflow-hidden">
+      <div className="border-b border-black/10 px-4 py-3">
+        <p className="text-xs font-black uppercase tracking-widest text-forest">Office daily action queue</p>
+        <h2 className="mt-1 text-lg font-black">Billing work that needs action</h2>
+      </div>
+      <div className="hidden grid-cols-[minmax(9rem,.8fr)_minmax(12rem,1fr)_minmax(15rem,1.5fr)_auto] gap-4 border-b border-black/10 bg-sand/60 px-4 py-3 text-xs font-black uppercase tracking-wide text-black/45 md:grid">
+        <span>Action</span><span>Customer / job</span><span>Reason</span><span>Open</span>
+      </div>
+      {officeActions.length ? <div className="divide-y divide-black/10">{officeActions.map((action) => <OfficeBillingActionRow key={action.id} action={action} />)}</div> : <div className="p-6 text-center text-sm font-semibold text-black/50">No office billing actions right now.</div>}
+    </section>
+
     <section className="card p-3 sm:p-4">
       <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center">
-        <p className="text-sm font-bold text-black/45">{loading ? "Loading billing jobs…" : `${filtered.length} jobs in this view`}</p>
-        <select value={filter} onChange={(event) => setFilter(event.target.value)} className="field !min-h-11 !py-2 text-sm font-bold">
+        <p className="text-sm font-bold text-black/45">{loading ? "Loading billing jobs…" : `${filtered.length} jobs in ${filter === "All" ? "all billing states" : filter}`}</p>
+        <select value={filter} onChange={(event) => setFilter(event.target.value as "All" | BillingBoardState)} className="field !min-h-11 !py-2 text-sm font-bold">
           <option>All</option>
-          {billingStatuses.map((status) => <option key={status}>{status}</option>)}
+          {billingBoardStates.map((state) => <option key={state}>{state}</option>)}
         </select>
       </div>
     </section>
@@ -185,15 +210,55 @@ export function BillingView() {
           <button type="button" onClick={() => copyBillingSummary(job)} className="min-h-11 rounded-xl border border-black/10 bg-white px-3 py-2 text-sm font-black text-ink">{copiedJobId === job.jobId ? "Copied" : "Copy Summary"}</button>
           <button type="button" disabled={blockers.length > 0} onClick={() => updateBilling(job, "Ready", "Billing queue: marked Ready for Invoice.")} className="min-h-11 rounded-xl bg-forest px-3 py-2 text-sm font-black text-white disabled:opacity-50">Ready</button>
           <button type="button" onClick={() => updateBilling(job, "Needs more info", "Billing queue: marked Needs more info.")} className="min-h-11 rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-sm font-black text-orange-900">Need Info</button>
-          <button type="button" disabled={job.invoiceStatus !== "Ready"} onClick={() => updateBilling(job, "Sent to Billing", "Billing queue: sent to billing.")} className="min-h-11 rounded-xl bg-ink px-3 py-2 text-sm font-black text-white disabled:opacity-50">Sent to Billing</button>
-          <button type="button" disabled={!["Sent to Billing", "Ready", "Draft"].includes(job.invoiceStatus)} onClick={() => updateBilling(job, "Sent", "Billing queue: invoice sent to customer.", { status: job.status === "Complete" ? "Billed" : job.status })} className="min-h-11 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-black text-blue-900 disabled:opacity-50">Invoice Sent</button>
+          <button type="button" disabled={blockers.length > 0 || job.invoiceStatus !== "Ready"} onClick={() => updateBilling(job, "Sent to Billing", "Billing queue: sent to billing.")} className="min-h-11 rounded-xl bg-ink px-3 py-2 text-sm font-black text-white disabled:opacity-50">Sent to Billing</button>
+          <button type="button" disabled={blockers.length > 0 || !["Sent to Billing", "Ready", "Draft"].includes(job.invoiceStatus)} onClick={() => updateBilling(job, "Sent", "Billing queue: invoice sent to customer.", { status: job.status === "Complete" ? "Billed" : job.status })} className="min-h-11 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-black text-blue-900 disabled:opacity-50">Invoice Sent</button>
           <button type="button" onClick={() => updateBilling(job, "On hold", "Billing queue: invoice placed on hold for follow-up.")} className="min-h-11 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-black text-amber-900">On Hold</button>
-          <button type="button" disabled={!["Sent", "Billed", "Paid"].includes(job.invoiceStatus) && job.status !== "Billed"} onClick={() => updateBilling(job, "Paid", "Billing queue: invoice marked paid.", { status: "Paid" })} className="min-h-11 rounded-xl bg-lime px-3 py-2 text-sm font-black text-ink disabled:opacity-50">Paid</button>
+          <button type="button" disabled={blockers.length > 0 || (!["Sent", "Billed", "Paid"].includes(job.invoiceStatus) && job.status !== "Billed")} onClick={() => updateBilling(job, "Paid", "Billing queue: invoice marked paid.", { status: "Paid" })} className="min-h-11 rounded-xl bg-lime px-3 py-2 text-sm font-black text-ink disabled:opacity-50">Paid</button>
         </div>
         </>;
         })()}
       </div>)}
     </div>
+  </div>;
+}
+
+function officeBillingActionFor(job: Job): Omit<OfficeBillingAction, "id" | "job"> | null {
+  const lifecycle = billingBoardState(job);
+  const hasBillingHandoff = ["Complete", "Billed"].includes(job.status) || ["Ready", "Needs more info", "Draft", "Sent to Billing", "Sent", "On hold"].includes(job.invoiceStatus);
+  if (!hasBillingHandoff) return null;
+
+  if (job.invoiceStatus === "Needs more info") {
+    return { title: "Complete billing handoff", reason: "Office requested more paperwork, notes, receipt detail, or closeout backup.", href: `/jobs/${job.jobId}#billing-handoff`, priority: "High" };
+  }
+  if (job.invoiceStatus === "On hold") {
+    return { title: "Review billing hold", reason: "This billing handoff is currently on hold.", href: `/jobs/${job.jobId}#billing-handoff`, priority: "High" };
+  }
+  if (isReceiptBackupMissing(job)) {
+    return { title: "Attach receipt backup", reason: "Entered receipt dollars need an uploaded receipt file.", href: `/jobs/${job.jobId}#receipts`, priority: "High" };
+  }
+  if (lifecycle === "Not Ready" && !isReadyForBilling(job)) {
+    const blockers = billingBlockers(job);
+    return { title: `Resolve billing blockers (${readinessScore(job)}% ready)`, reason: blockers.map((blocker) => blocker.label).join(", ") || "Review closeout before billing.", href: `/jobs/${job.jobId}#billing-handoff`, priority: "High" };
+  }
+  if (lifecycle === "Ready to Invoice") {
+    return { title: "Ready to invoice", reason: "Completion is ready for billing review.", href: `/jobs/${job.jobId}#billing-handoff`, priority: "Normal" };
+  }
+  if (lifecycle === "Invoiced" && job.invoiceStatus === "Sent to Billing") {
+    return { title: "Create invoice", reason: "The closeout packet is in the billing queue for invoice creation.", href: `/jobs/${job.jobId}#billing-handoff`, priority: "Normal" };
+  }
+  return null;
+}
+
+function officeActionRank(priority: OfficeBillingAction["priority"]) {
+  return priority === "High" ? 0 : 1;
+}
+
+function OfficeBillingActionRow({ action }: { action: OfficeBillingAction }) {
+  return <div className="grid gap-2 px-4 py-4 md:grid-cols-[minmax(9rem,.8fr)_minmax(12rem,1fr)_minmax(15rem,1.5fr)_auto] md:items-center md:gap-4">
+    <div className="flex items-center gap-2"><span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wide ${action.priority === "High" ? "bg-orange-100 text-orange-800" : "bg-lime/60 text-ink"}`}>{action.priority}</span><p className="font-black">{action.title}</p></div>
+    <p className="text-sm font-bold text-black/65"><span className="mr-1 text-xs font-black uppercase tracking-wide text-black/35 md:hidden">Job</span>{action.job.customerName} <span className="text-black/40">· {action.job.jobId}</span></p>
+    <p className="text-sm font-semibold text-black/55"><span className="mr-1 text-xs font-black uppercase tracking-wide text-black/35 md:hidden">Reason</span>{action.reason}</p>
+    <Link href={action.href} className="mt-1 min-h-11 rounded-xl bg-forest px-4 py-2 text-center text-sm font-black text-white md:mt-0">Open</Link>
   </div>;
 }
 
