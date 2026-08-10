@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ClockIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 import type { Job, TimeEntry } from "@/lib/types";
-import { closeoutChecks } from "@/lib/job-readiness";
+import { closeoutChecks, hasActiveCorrections } from "@/lib/job-readiness";
 import { StatusBadge } from "./StatusBadge";
 
 type EmployeeReview = {
@@ -105,7 +105,7 @@ function EmployeeCard({ employee }: { employee: EmployeeReview }) {
         <p className="truncate text-xl font-black">{employee.name}</p>
         <p className="mt-1 text-sm font-bold text-black/45">{employee.jobs.length} Job{employee.jobs.length === 1 ? "" : "s"}</p>
       </div>
-      {employee.activeJob && <StatusBadge status={employee.activeJob.status} />}
+      {employee.activeJob && <div className="flex flex-wrap justify-end gap-2"><StatusBadge status={employee.activeJob.status} />{hasActiveCorrections(employee.activeJob) && <NeedsCorrectionBadge />}</div>}
     </div>
     <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
       <CardMetric label="Travel" value={formatTime(employee.travelStarted?.createdAt)} />
@@ -134,6 +134,7 @@ function IssueRow({ issue }: { issue: DailyIssue }) {
       </Link>
       <div className="flex shrink-0 items-center gap-2">
         <StatusBadge status={issue.job.status} />
+        {hasActiveCorrections(issue.job) && <NeedsCorrectionBadge />}
         <Link href={`/jobs/${issue.job.jobId}`} className="rounded-xl bg-forest px-3 py-2 text-sm font-black text-white">Open job</Link>
       </div>
     </div>
@@ -156,6 +157,10 @@ function CardMetric({ label, value }: { label: string; value: string | number })
 
 function Empty({ text }: { text: string }) {
   return <p className="p-5 text-center text-sm font-semibold text-black/35">{text}</p>;
+}
+
+function NeedsCorrectionBadge() {
+  return <span className="inline-flex rounded-full bg-orange-100 px-2.5 py-1 text-xs font-extrabold text-orange-800">Needs Correction</span>;
 }
 
 function buildEmployeeReviews(jobs: Job[], today: string): EmployeeReview[] {

@@ -1,4 +1,4 @@
-import type { Job } from "./types";
+import type { Job, JobActivity } from "./types";
 
 export type ReadinessCheck = {
   label: string;
@@ -6,33 +6,136 @@ export type ReadinessCheck = {
   detail: string;
 };
 
+export type CorrectionCategory = "Photos" | "Paperwork" | "Checklist" | "Notes";
+
+export const correctionCategories: CorrectionCategory[] = ["Photos", "Paperwork", "Checklist", "Notes"];
+const correctionPrefix = "Manager correction requested:";
+
 export function openParts(job: Job) {
   return (job.partsItems || []).filter((part) => ["Needed", "Ordered", "Picked up"].includes(part.status));
 }
 
-export function closeoutChecks(job: Job): ReadinessCheck[] {
+function readinessEvidence(job: Job) {
   const paperworkReady = Boolean(job.paperworkPickedUp || (job.workOrderFiles || []).length || (job.paperworkItems || []).some((item) => ["Collected", "Submitted", "Not needed"].includes(item.status)));
   const completionSignoff = (job.signoffs || []).some((signoff) => signoff.accepted && ["Completion Sign-off", "Customer Approval"].includes(signoff.type));
   const sourceNotified = (job.activityLog || []).some((entry) => ["Customer", "Source"].includes(entry.type) || /notified|called|text|voicemail|contacted/i.test(entry.message));
   const invoiceReady = ["Ready", "Draft", "Sent to Billing", "Sent", "Paid"].includes(job.invoiceStatus);
+  const invoiceCreated = ["Draft", "Sent to Billing", "Sent", "Paid"].includes(job.invoiceStatus);
+  const jobComplete = ["Complete", "Billed", "Paid"].includes(job.status);
+  const fieldWorkComplete = ["Needs Inspection", "Complete", "Billed", "Paid"].includes(job.status);
+  const completionNotes = Boolean(job.completionNotes?.trim());
+  const afterPhotoCount = (job.afterPhotos || []).length;
+  const serialPhotoCount = (job.serialTagPhotos || []).length;
+  const beforePhotosTaken = (job.beforePhotos || []).length > 0;
   const parts = openParts(job);
-  return [
-    { label: "Job complete", ok: ["Complete", "Billed", "Paid"].includes(job.status), detail: job.status },
-    { label: "Completion notes", ok: Boolean(job.completionNotes?.trim()), detail: job.completionNotes?.trim() ? "Added" : "Missing" },
-    { label: "After photos", ok: (job.afterPhotos || []).length > 0, detail: `${(job.afterPhotos || []).length} uploaded` },
-    { label: "Serial/VIN photo", ok: (job.serialTagPhotos || []).length > 0, detail: `${(job.serialTagPhotos || []).length} uploaded` },
-    { label: "Paperwork", ok: paperworkReady, detail: paperworkReady ? "Collected or attached" : "Missing" },
-    { label: "Completion sign-off", ok: completionSignoff, detail: completionSignoff ? "Signed" : "Missing" },
-    { label: "Open parts", ok: parts.length === 0, detail: parts.length ? `${parts.length} still open` : "None open" },
-    { label: "Customer/source notified", ok: sourceNotified, detail: sourceNotified ? "Logged" : "Not logged" },
-    { label: "Invoice status", ok: invoiceReady, detail: job.invoiceStatus || "Not started" },
-  ];
+  return {
+    closeout: [
+      { label: "Job complete", ok: jobComplete, detail: job.status },
+      { label: "Completion notes", ok: completionNotes, detail: completionNotes ? "Added" : "Missing" },
+      { label: "After photos", ok: afterPhotoCount > 0, detail: `${afterPhotoCount} uploaded` },
+      { label: "Serial/VIN photo", ok: serialPhotoCount > 0, detail: `${serialPhotoCount} uploaded` },
+      { label: "Paperwork", ok: paperworkReady, detail: paperworkReady ? "Collected or attached" : "Missing" },
+      { label: "Completion sign-off", ok: completionSignoff, detail: completionSignoff ? "Signed" : "Missing" },
+      { label: "Open parts", ok: parts.length === 0, detail: parts.length ? `${parts.length} still open` : "None open" },
+      { label: "Customer/source notified", ok: sourceNotified, detail: sourceNotified ? "Logged" : "Not logged" },
+      { label: "Invoice status", ok: invoiceReady, detail: job.invoiceStatus || "Not started" },
+    ],
+    checklist: {
+      "Paperwork picked up": paperworkReady,
+      "Before photos taken": beforePhotosTaken,
+      "Serial/VIN tag photo taken": serialPhotoCount > 0,
+      "Work completed": fieldWorkComplete,
+      "After photos taken": afterPhotoCount > 0,
+      "Completion notes added": completionNotes,
+      "Customer/source notified": sourceNotified,
+      "Invoice created": invoiceCreated,
+    } as Record<string, boolean>,
+  };
+}
+
+export function closeoutChecks(job: Job): ReadinessCheck[] {
+  return readinessEvidence(job).closeout;
 }
 
 export function readinessScore(job: Job) {
   const checks = closeoutChecks(job);
   const ready = checks.filter((check) => check.ok).length;
   return Math.round((ready / checks.length) * 100);
+}
+
+export function checklistProgress(job: Job) {
+  const { checklist } = readinessEvidence(job);
+  const items = (job.checklist || []).map((item) => ({
+    ...item,
+    complete: item.complete || checklist[item.label] || false,
+  }));
+  const complete = items.filter((item) => item.complete).length;
+  return { items, complete, total: items.length, remaining: items.length - complete, percent: items.length ? Math.round((complete / items.length) * 100) : 0 };
+}
+
+function activeCorrectionRequest(job: Job) {
+  return (job.activityLog || []).find((entry) => entry.type === "Status" && !entry.resolvedAt && entry.message.startsWith(correctionPrefix));
+}
+
+export function activeCorrectionCategories(job: Job): CorrectionCategory[] {
+  const request = activeCorrectionRequest(job);
+  if (!request) return [];
+  return correctionCategories.filter((category) => request.message.includes(category));
+}
+
+export function hasActiveCorrections(job: Job) {
+  return activeCorrectionCategories(job).length > 0;
+}
+
+export function correctionCategoryComplete(job: Job, category: CorrectionCategory) {
+  const request = activeCorrectionRequest(job);
+  const requestedAt = request ? Date.parse(request.createdAt) : Number.NaN;
+  if (!Number.isFinite(requestedAt)) return false;
+  const uploadedAfterRequest = (file: { uploadedAt: string }) => {
+    const uploadedAt = Date.parse(file.uploadedAt);
+    return Number.isFinite(uploadedAt) && uploadedAt > requestedAt;
+  };
+  if (category === "Photos") return (job.workOrderFiles || []).some((file) => file.category === "After" && uploadedAfterRequest(file));
+  if (category === "Paperwork") return (job.workOrderFiles || []).some((file) => ["Work Order", "Paperwork", "Signed Document"].includes(file.category || "") && uploadedAfterRequest(file));
+  return false;
+}
+
+export function correctionSectionsComplete(job: Job) {
+  const categories = activeCorrectionCategories(job);
+  return categories.length > 0 && categories.every((category) => correctionCategoryComplete(job, category));
+}
+
+export function buildCorrectionActivity(categories: CorrectionCategory[], createdBy = "Manager"): JobActivity {
+  return {
+    id: `activity-${Date.now()}`,
+    type: "Status",
+    message: `${correctionPrefix} ${categories.join(", ")}`,
+    createdAt: new Date().toISOString(),
+    createdBy,
+    audience: "All",
+  };
+}
+
+export function correctionResolutionPatch(current: Job, next: Job): Partial<Job> {
+  if (!hasActiveCorrections(current) || !correctionSectionsComplete(next)) return {};
+  const now = new Date().toISOString();
+  const resolvedActivity: JobActivity = {
+    id: `activity-${Date.now()}-corrections-complete`,
+    type: "Status",
+    message: "Manager corrections completed. Ready for review.",
+    createdAt: now,
+    createdBy: "System",
+    audience: "All",
+  };
+  return {
+    status: "Needs Inspection",
+    activityLog: [
+      resolvedActivity,
+      ...(next.activityLog || []).map((entry) => entry.type === "Status" && !entry.resolvedAt && entry.message.startsWith(correctionPrefix)
+        ? { ...entry, resolvedAt: now, resolvedBy: "System" }
+        : entry),
+    ].slice(0, 50),
+  };
 }
 
 export function billingBlockers(job: Job) {

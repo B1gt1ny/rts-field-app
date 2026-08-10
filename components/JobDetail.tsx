@@ -8,7 +8,7 @@ import { PriorityBadge, StatusBadge } from "./StatusBadge";
 import { authFetch } from "@/lib/client-auth";
 import { getFactoryCostTotals, hasFactoryCostWork } from "@/lib/factory-costs";
 import { isReceiptBackupMissing } from "@/lib/receipt-backup";
-import { billingBlockers, closeoutChecks, dispatchBlockers, dispatchReadinessScore, readinessScore } from "@/lib/job-readiness";
+import { activeCorrectionCategories, billingBlockers, buildCorrectionActivity, checklistProgress, closeoutChecks, correctionCategories, correctionCategoryComplete, correctionResolutionPatch, dispatchBlockers, dispatchReadinessScore, hasActiveCorrections, readinessScore, type CorrectionCategory } from "@/lib/job-readiness";
 import { useAuthUser } from "./AuthGate";
 
 type CompanyCamState = {
@@ -46,17 +46,21 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
     projectId: initialJob.companyCamProjectId,
     projectUrl: initialJob.companyCamProjectUrl,
   });
-  const complete = job.checklist.filter((item) => item.complete).length;
-  const checklistPercent = job.checklist.length ? (complete / job.checklist.length) * 100 : 0;
+  const checklist = checklistProgress(job);
+  const complete = checklist.complete;
+  const checklistPercent = checklist.percent;
   const isEmployee = user?.role === "Employee";
   const canManageJob = !isEmployee;
   async function saveJobPatch(patch: Partial<Job>) {
     setSaving(true);
     setDetailMessage("");
     const next = { ...job, ...patch };
-    setJob(next);
+    const correctionPatch = correctionResolutionPatch(job, next);
+    const finalNext = { ...next, ...correctionPatch };
+    const patchToSave = { ...patch, ...correctionPatch };
+    setJob(finalNext);
     try {
-      const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
+      const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patchToSave) });
       const saved = await response.json();
       if (!response.ok) throw new Error(saved.error || "The job update could not be saved.");
       setJob((old) => ({ ...old, ...saved, checklist: saved.checklist?.length ? saved.checklist : old.checklist }));
@@ -152,7 +156,7 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
       <div>
         <p className="mb-1 text-sm font-extrabold uppercase tracking-widest text-forest">{job.jobId} · {job.source}</p>
         <h1 className="text-3xl font-black tracking-tight">{job.customerName}</h1>
-        <div className="mt-2 flex flex-wrap items-center gap-2"><StatusBadge status={job.status} /><PriorityBadge priority={job.priority} /></div>
+        <div className="mt-2 flex flex-wrap items-center gap-2"><StatusBadge status={job.status} />{hasActiveCorrections(job) && <NeedsCorrectionBadge />}<PriorityBadge priority={job.priority} /></div>
         <div className="mt-3 flex flex-wrap gap-2 text-xs font-black text-black/45">
           <span className="rounded-full bg-sand px-3 py-1">{formatJobDate(job.dueDate)}</span>
           <span className="rounded-full bg-sand px-3 py-1">{job.assignedCrew || "Unassigned"}</span>
@@ -166,6 +170,8 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
     </div>
     <JobWorkflowGuide job={job} canManageJob={canManageJob} />
     <WorkSessionPanel job={job} saving={saving} canStart={!canManageJob} onStart={startWorkSession} />
+    {canManageJob && <ManagerOperationalSummary job={job} />}
+    <CorrectionSummary job={job} />
     {detailMessage && <p role="alert" className="mb-5 rounded-xl border border-red-200 bg-red-50 p-4 font-bold text-red-700">{detailMessage}</p>}
     <div className="space-y-3">
       <WorkspaceSection id="overview" title="Overview" summary={`${job.jobId} · ${job.status} · ${job.assignedCrew || "Unassigned"}`} openSection={openSection} setOpenSection={setOpenSection}>
@@ -174,7 +180,7 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
         <ProfileSheetPanel job={job} />
         <ScopePanel job={job} />
       </WorkspaceSection>
-      <WorkspaceSection id="checklist" title="Checklist" summary={`${complete} of ${job.checklist.length} complete`} openSection={openSection} setOpenSection={setOpenSection}>
+      <WorkspaceSection id="checklist" title="Checklist" summary={`${complete} of ${checklist.total} complete`} openSection={openSection} setOpenSection={setOpenSection}>
         <ChecklistPanel job={job} saving={saving} complete={complete} percent={checklistPercent} onToggle={toggle} />
       </WorkspaceSection>
       <WorkspaceSection id="photos" title="Photos" summary={`${photoTotal(job)} saved`} openSection={openSection} setOpenSection={setOpenSection}>
@@ -193,6 +199,7 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
         <OperationsPanel job={job} setJob={setJob} mode="documents" />
       </WorkspaceSection>
       <WorkspaceSection id="notes" title="Notes" summary={`${job.activityLog?.length || 0} activity notes`} openSection={openSection} setOpenSection={setOpenSection}>
+        <AdditionalIssuePanel job={job} saving={saving} onSave={saveJobPatch} />
         <CommunicationHandoffPanel job={job} saving={saving} onSave={saveJobPatch} />
         <OperationsPanel job={job} setJob={setJob} mode="notes" />
         <OfflineDraftPanel job={job} saving={saving} onSave={saveJobPatch} />
@@ -205,6 +212,7 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
       <WorkspaceSection id="closeout" title="Closeout" summary={`${readinessScore(job)}% billing ready`} openSection={openSection} setOpenSection={setOpenSection}>
         <GuidedCloseoutPanel job={job} canManageJob={canManageJob} />
         {canManageJob && <CloseoutQualityPanel job={job} />}
+        {canManageJob && <ManagerCorrectionPanel job={job} saving={saving} onSave={saveJobPatch} />}
         <CompleteJobFlow job={job} saving={saving} canManageJob={canManageJob} onFinishWork={finishWorkSession} onSave={saveJobPatch} />
         <SignoffPanel job={job} saving={saving} onSave={saveJobPatch} />
         {canManageJob && <BillingHandoffPanel job={job} saving={saving} onSave={saveJobPatch} />}
@@ -222,11 +230,121 @@ function sectionForAnchor(anchor: string): WorkspaceSectionId | undefined {
   if (["photos", "companycam"].includes(anchor)) return "photos";
   if (["parts", "parts-needed"].includes(anchor)) return "parts";
   if (["documents", "paperwork", "receipts"].includes(anchor)) return "documents";
-  if (["notes", "operations", "communication-handoff"].includes(anchor)) return "notes";
+  if (["notes", "operations", "communication-handoff", "additional-issue"].includes(anchor)) return "notes";
   if (["time", "time-log", "factory-costs"].includes(anchor)) return "time";
   if (["closeout", "complete-job", "signoffs", "billing-handoff"].includes(anchor)) return "closeout";
   if (anchor === "history") return "history";
   return undefined;
+}
+
+function NeedsCorrectionBadge() {
+  return <span className="inline-flex rounded-full bg-orange-100 px-2.5 py-1 text-xs font-extrabold text-orange-800">Needs Correction</span>;
+}
+
+function ManagerOperationalSummary({ job }: { job: Job }) {
+  const entries = job.timeEntries || [];
+  const mileage = entries.reduce((total, entry) => total + (Number(entry.mileage) || 0), 0);
+  const helperHours = Number(job.factoryCost?.helperHours) || 0;
+  const receiptTotal = (job.receipts || []).reduce((total, receipt) => total + (Number(receipt.amount) || 0), 0);
+  const receiptFiles = summarizeFiles(job).receipts;
+  const metrics = [
+    { label: "Work time", value: formatEntryDuration(entries, "Work started", "Departed") },
+    { label: "Drive time", value: formatTravelDuration(entries) },
+    { label: "Mileage", value: `${mileage.toFixed(1)} mi` },
+    { label: "Helper time", value: helperHours ? `${formatHours(helperHours)} tracked` : "Not tracked" },
+    { label: "Receipts / expenses", value: `${(job.receipts || []).length} tracked · $${receiptTotal.toFixed(2)}${receiptFiles ? ` · ${receiptFiles} file${receiptFiles === 1 ? "" : "s"}` : ""}` },
+  ];
+
+  return <section className="card mb-5 p-4 sm:p-5">
+    <div className="mb-4"><p className="text-xs font-black uppercase tracking-widest text-forest">Manager review</p><h2 className="mt-1 text-lg font-black">Operational summary</h2><p className="mt-1 text-sm text-black/50">Read-only job totals from existing field logs, helper tracking, and receipts.</p></div>
+    <div className="grid gap-2 sm:grid-cols-5">{metrics.map((metric) => <div key={metric.label} className="rounded-xl bg-sand p-3"><p className="text-xs font-bold uppercase tracking-wide text-black/45">{metric.label}</p><p className="mt-1 font-black text-ink">{metric.value}</p></div>)}</div>
+  </section>;
+}
+
+function formatEntryDuration(entries: TimeEntry[], startType: TimeEntry["type"], endType: TimeEntry["type"]) {
+  const ordered = [...entries].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  let startedAt = "";
+  let totalMinutes = 0;
+  for (const entry of ordered) {
+    if (entry.type === startType) startedAt = entry.createdAt;
+    if (entry.type === endType && startedAt) {
+      totalMinutes += Math.max(0, Math.round((new Date(entry.createdAt).getTime() - new Date(startedAt).getTime()) / 60000));
+      startedAt = "";
+    }
+  }
+  if (startedAt) totalMinutes += Math.max(0, Math.round((Date.now() - new Date(startedAt).getTime()) / 60000));
+  return formatMinutes(totalMinutes);
+}
+
+function formatTravelDuration(entries: TimeEntry[]) {
+  const ordered = [...entries].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  let startedAt = "";
+  let totalMinutes = 0;
+  for (const entry of ordered) {
+    if (entry.notes === "Started Travel") startedAt = entry.createdAt;
+    if (entry.type === "Arrived" && startedAt) {
+      totalMinutes += Math.max(0, Math.round((new Date(entry.createdAt).getTime() - new Date(startedAt).getTime()) / 60000));
+      startedAt = "";
+    }
+  }
+  if (startedAt) totalMinutes += Math.max(0, Math.round((Date.now() - new Date(startedAt).getTime()) / 60000));
+  return formatMinutes(totalMinutes);
+}
+
+function formatMinutes(totalMinutes: number) {
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (!hours) return `${minutes}m`;
+  if (!minutes) return `${hours}h`;
+  return `${hours}h ${minutes}m`;
+}
+
+function formatHours(hours: number) {
+  const rounded = Math.round(hours * 100) / 100;
+  return `${rounded}h`;
+}
+
+function CorrectionSummary({ job }: { job: Job }) {
+  const categories = activeCorrectionCategories(job);
+  if (!categories.length) return null;
+  return <section className="card mb-5 p-4 sm:p-5">
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div><p className="text-xs font-black uppercase tracking-widest text-orange-700">Needs Correction</p><h2 className="mt-1 text-lg font-black">Correction summary</h2></div>
+      <div className="flex flex-wrap gap-2">{categories.map((category) => <a key={category} href={correctionHref(category)} className="rounded-full bg-orange-50 px-3 py-1 text-xs font-black text-orange-800">{category}</a>)}</div>
+    </div>
+  </section>;
+}
+
+function ManagerCorrectionPanel({ job, saving, onSave }: { job: Job; saving: boolean; onSave: (patch: Partial<Job>) => Promise<Job | undefined> }) {
+  const active = activeCorrectionCategories(job);
+  const [selected, setSelected] = useState<CorrectionCategory[]>(active);
+
+  useEffect(() => { setSelected(active); }, [active.join("|")]);
+
+  async function markCorrection() {
+    if (!selected.length) return;
+    await onSave({
+      status: "Needs Inspection",
+      activityLog: [buildCorrectionActivity(selected), ...(job.activityLog || [])].slice(0, 50),
+    });
+  }
+
+  return <section className="card p-4 sm:p-6">
+    <div className="mb-4 flex items-start justify-between gap-3"><div><h2 className="text-lg font-black">Manager corrections</h2><p className="mt-1 text-sm text-black/50">Mark the closeout sections that need the crew&apos;s attention.</p></div>{active.length > 0 && <NeedsCorrectionBadge />}</div>
+    <div className="grid gap-2 sm:grid-cols-4">{correctionCategories.map((category) => {
+      const checked = selected.includes(category);
+      return <label key={category} className={`flex min-h-12 items-center gap-3 rounded-xl border p-3 text-sm font-bold ${checked ? "border-orange-200 bg-orange-50 text-orange-900" : "border-black/10 bg-white text-ink"}`}><input type="checkbox" checked={checked} onChange={(event) => setSelected((old) => event.target.checked ? [...old, category] : old.filter((item) => item !== category))} className="size-5 accent-forest" />{category}</label>;
+    })}</div>
+    {active.length > 0 && <div className="mt-3 grid gap-2 sm:grid-cols-4">{active.map((category) => <a key={category} href={correctionHref(category)} className={`rounded-xl p-3 text-sm font-bold ${correctionCategoryComplete(job, category) ? "bg-forest/5 text-forest" : "bg-orange-50 text-orange-800"}`}><span className="block text-[11px] font-black uppercase tracking-wide">{correctionCategoryComplete(job, category) ? "Ready" : "Open"}</span>{category}</a>)}</div>}
+    <button type="button" disabled={saving || !selected.length} onClick={markCorrection} className="mt-4 min-h-12 w-full rounded-xl bg-orange-100 px-4 py-3 font-black text-orange-900 disabled:opacity-50">{saving ? "Saving..." : "Mark Needs Correction"}</button>
+  </section>;
+}
+
+function correctionHref(category: CorrectionCategory) {
+  if (category === "Photos") return "#photos";
+  if (category === "Paperwork") return "#paperwork";
+  if (category === "Checklist") return "#checklist";
+  return "#complete-job";
 }
 
 function WorkspaceSection({ id, title, summary, openSection, setOpenSection, children }: { id: WorkspaceSectionId; title: string; summary: string; openSection: WorkspaceSectionId; setOpenSection: (section: WorkspaceSectionId) => void; children: React.ReactNode }) {
@@ -300,10 +418,11 @@ function ScopePanel({ job }: { job: Job }) {
 }
 
 function ChecklistPanel({ job, saving, complete, percent, onToggle }: { job: Job; saving: boolean; complete: number; percent: number; onToggle: (id: string) => void }) {
+  const checklist = checklistProgress(job);
   return <section id="checklist-panel" className="card p-4 sm:p-6">
-    <div className="mb-4 flex items-start justify-between"><div><h2 className="text-lg font-black">Job checklist</h2><p className="text-sm text-black/45">{complete} of {job.checklist.length} completed</p></div>{saving && <span className="text-xs font-bold text-black/35">Saving…</span>}</div>
+    <div className="mb-4 flex items-start justify-between"><div><h2 className="text-lg font-black">Job checklist</h2><p className="text-sm text-black/45">Job completion: {percent}% · {complete} of {checklist.total} completed · {checklist.remaining} remaining</p></div>{saving && <span className="text-xs font-bold text-black/35">Saving…</span>}</div>
     <div className="mb-5 h-2 overflow-hidden rounded-full bg-black/5"><div className="h-full rounded-full bg-forest transition-all" style={{ width: `${percent}%` }} /></div>
-    <div className="grid gap-2 sm:grid-cols-2">{job.checklist.map((item) => <button key={item.id} onClick={() => onToggle(item.id)} className={`flex min-h-12 w-full items-center gap-3 rounded-xl border p-3 text-left text-sm font-bold transition ${item.complete ? "border-forest/10 bg-forest/5 text-black/50" : "border-black/10 bg-white"}`}><span className={`grid size-6 shrink-0 place-items-center rounded-md border ${item.complete ? "border-forest bg-forest text-white" : "border-black/20"}`}>{item.complete && <CheckIcon className="size-4 stroke-[3]" />}</span><span className={item.complete ? "line-through" : ""}>{item.label}</span></button>)}</div>
+    <div className="grid gap-2 sm:grid-cols-2">{checklist.items.map((item) => <button key={item.id} onClick={() => onToggle(item.id)} className={`flex min-h-12 w-full items-center gap-3 rounded-xl border p-3 text-left text-sm font-bold transition ${item.complete ? "border-forest/10 bg-forest/5 text-black/50" : "border-black/10 bg-white"}`}><span className={`grid size-6 shrink-0 place-items-center rounded-md border ${item.complete ? "border-forest bg-forest text-white" : "border-black/20"}`}>{item.complete && <CheckIcon className="size-4 stroke-[3]" />}</span><span className={item.complete ? "line-through" : ""}>{item.label}</span></button>)}</div>
     <div className="mt-5 border-t border-black/5 pt-4 text-sm"><div className="flex justify-between"><span className="text-black/45">Invoice</span><span className="font-extrabold">{job.invoiceStatus}</span></div><p className="mt-3 text-xs text-black/40">Invoice Simple integration can be connected here later.</p></div>
   </section>;
 }
@@ -318,7 +437,7 @@ function JobCommandHub({ job, companyCam }: { job: Job; companyCam: CompanyCamSt
   const closeoutScore = readinessScore(job);
   const dispatchMissing = dispatchBlockers(job);
   const topMissing = dispatchMissing.slice(0, 3);
-  const checklistComplete = job.checklist.filter((item) => item.complete).length;
+  const checklist = checklistProgress(job);
   const calendarStatus = job.googleCalendarEventUrl ? "Linked" : job.dueDate ? "Date set" : "No date";
   const companyCamStatus = companyCam.projectUrl ? "Linked" : companyCam.configured ? "Ready" : "Needs token";
 
@@ -336,7 +455,7 @@ function JobCommandHub({ job, companyCam }: { job: Job; companyCam: CompanyCamSt
     <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
       <CommandMetric label="Dispatch ready" value={`${dispatchScore}%`} detail={dispatchMissing.length ? `${dispatchMissing.length} item${dispatchMissing.length === 1 ? "" : "s"} missing` : "Ready to send"} tone={dispatchMissing.length ? "orange" : "green"} />
       <CommandMetric label="Closeout ready" value={`${closeoutScore}%`} detail={billingBlockers(job).length ? "Billing blockers open" : "Billing packet clean"} tone={billingBlockers(job).length ? "orange" : "green"} />
-      <CommandMetric label="Checklist" value={`${checklistComplete}/${job.checklist.length}`} detail="Field checklist progress" tone={checklistComplete === job.checklist.length ? "green" : "blue"} />
+      <CommandMetric label="Checklist" value={`${checklist.complete}/${checklist.total}`} detail="Field checklist progress" tone={checklist.complete === checklist.total ? "green" : "blue"} />
       <CommandMetric label="Calendar / Cam" value={calendarStatus} detail={`CompanyCam: ${companyCamStatus}`} tone={job.googleCalendarEventUrl && companyCam.projectUrl ? "green" : "blue"} />
     </div>
     {topMissing.length > 0 && <div className="px-4 pb-4">
@@ -516,7 +635,8 @@ function getMoreJobActions(job: Job, canManageJob: boolean): JobAction[] {
 }
 
 function getJobProgressSteps(job: Job): Array<{ label: string; href: string; state: ProgressState }> {
-  const checklistDone = (label: string) => job.checklist.some((item) => item.label === label && item.complete);
+  const checklist = checklistProgress(job).items;
+  const checklistDone = (label: string) => checklist.some((item) => item.label === label && item.complete);
   const started = ["In Progress", "Waiting on Parts", "Needs Inspection", "Complete", "Billed", "Paid"].includes(job.status) || (job.timeEntries || []).some((entry) => ["Arrived", "Work started"].includes(entry.type));
   const beforeDone = (job.beforePhotos || []).length > 0 || checklistDone("Before photos taken");
   const workDone = checklistDone("Work completed") || ["Needs Inspection", "Complete", "Billed", "Paid"].includes(job.status);
@@ -767,6 +887,59 @@ function CommunicationHandoffPanel({ job, saving, onSave }: { job: Job; saving: 
 function Info({ icon, label, children }: { icon: React.ReactNode; label: string; children: React.ReactNode }) { return <div className="flex gap-3"><span className="mt-0.5 text-forest [&>svg]:size-5">{icon}</span><div><p className="mb-0.5 text-xs font-bold uppercase tracking-wide text-black/35">{label}</p><div className="text-sm font-semibold">{children}</div></div></div>; }
 function PhotoCount({ label, count }: { label: string; count: number }) { return <div className="rounded-xl bg-sand p-3 text-center"><p className="text-2xl font-black">{count}</p><p className="text-xs font-bold text-black/45">{label}</p></div>; }
 
+function AdditionalIssuePanel({ job, saving, onSave }: { job: Job; saving: boolean; onSave: (patch: Partial<Job>) => Promise<Job | undefined> }) {
+  const [description, setDescription] = useState("");
+  const [returnVisit, setReturnVisit] = useState(false);
+  const [customerNote, setCustomerNote] = useState("");
+  const [message, setMessage] = useState("");
+
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const issue = description.trim();
+    if (!issue) return;
+    const entry: JobActivity = {
+      id: `activity-${Date.now()}`,
+      type: "Status",
+      message: [
+        "Additional issue reported — manager review needed.",
+        `Issue: ${issue}`,
+        `Return visit needed: ${returnVisit ? "Yes" : "No"}`,
+        customerNote.trim() ? `Customer informed / approval note: ${customerNote.trim()}` : "Customer informed / approval note: Not recorded",
+      ].join("\n"),
+      createdAt: new Date().toISOString(),
+      createdBy: "Field",
+      audience: "Manager",
+      notify: true,
+      followUpDueDate: new Date().toLocaleDateString("en-CA"),
+    };
+    const saved = await onSave({ activityLog: [entry, ...(job.activityLog || [])].slice(0, 50) });
+    if (!saved) return;
+    setDescription("");
+    setReturnVisit(false);
+    setCustomerNote("");
+    setMessage("Additional issue saved for manager review. Add photos or parts below if needed.");
+  }
+
+  return <section id="additional-issue" className="card scroll-mt-24 p-4 sm:p-6">
+    <div className="flex items-start gap-3">
+      <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-orange-100 text-orange-800"><WrenchScrewdriverIcon className="size-5" /></span>
+      <div><p className="text-xs font-black uppercase tracking-widest text-orange-800">Field documentation</p><h2 className="text-lg font-black">Additional Issue</h2><p className="text-sm text-black/50">Document work found outside the original work order for manager review. This does not approve billing.</p></div>
+    </div>
+    <form onSubmit={submit} className="mt-4 grid gap-3">
+      <label className="block"><span className="label">What did you find?</span><textarea required className="field min-h-24 resize-y" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Describe the issue clearly for the manager." /></label>
+      <label className="flex min-h-12 items-center gap-3 rounded-xl border border-black/10 bg-sand p-3 text-sm font-bold"><input type="checkbox" checked={returnVisit} onChange={(event) => setReturnVisit(event.target.checked)} className="size-5 accent-forest" /> Return visit needed</label>
+      <label className="block"><span className="label">Customer informed / approval note (optional)</span><input className="field" value={customerNote} onChange={(event) => setCustomerNote(event.target.value)} placeholder="What the customer was told; no billing approval is recorded here." /></label>
+      <button disabled={saving || !description.trim()} className="min-h-12 rounded-xl bg-orange-700 px-4 py-3 font-black text-white disabled:opacity-50">{saving ? "Saving…" : "Save Additional Issue"}</button>
+    </form>
+    <div className="mt-3 grid grid-cols-2 gap-2">
+      <a href="#photos" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-black/10 bg-white px-3 py-2 text-sm font-black text-ink"><CameraIcon className="size-5" /> Add issue photos</a>
+      <a href="#parts-needed" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-black/10 bg-white px-3 py-2 text-sm font-black text-ink"><WrenchScrewdriverIcon className="size-5" /> Add needed part</a>
+    </div>
+    <p className="mt-2 text-xs font-semibold text-black/45">Use the existing Damage or Parts photo category so photos stay on this job.</p>
+    {message && <p role="status" className="mt-3 rounded-xl bg-forest/5 p-3 text-sm font-bold text-forest">{message}</p>}
+  </section>;
+}
+
 type PhotoBucket = "beforePhotos" | "damagePhotos" | "serialTagPhotos" | "afterPhotos";
 type NativePhotoCategory = Extract<FileCategory, "Before" | "Progress" | "After" | "Damage" | "Serial / Tags" | "Parts" | "Paperwork" | "Receipt">;
 type PhotoGalleryItem = {
@@ -891,6 +1064,20 @@ function PhotoUploadPanel({ job, saving, onSave }: { job: Job; saving: boolean; 
       </div>
     </div>
     <div className="rounded-2xl border border-black/10 bg-sand p-3 sm:p-4">
+      <div className="mb-3 grid gap-2 sm:grid-cols-3">
+        <button type="button" disabled={saving || uploading} onClick={() => setSelectedCategory("Before")} className={`min-h-16 rounded-xl p-3 text-left disabled:opacity-50 ${selectedCategory === "Before" ? "bg-forest text-white" : "bg-white text-ink"}`}>
+          <p className="text-xs font-black uppercase tracking-wide opacity-70">1. Before</p>
+          <p className="mt-1 text-sm font-black">Start photos + serial/VIN</p>
+        </button>
+        <button type="button" disabled={saving || uploading} onClick={() => setSelectedCategory("Progress")} className={`min-h-16 rounded-xl p-3 text-left disabled:opacity-50 ${selectedCategory === "Progress" ? "bg-forest text-white" : "bg-white text-ink"}`}>
+          <p className="text-xs font-black uppercase tracking-wide opacity-70">2. During</p>
+          <p className="mt-1 text-sm font-black">Progress; use Damage if needed</p>
+        </button>
+        <button type="button" disabled={saving || uploading} onClick={() => setSelectedCategory("After")} className={`min-h-16 rounded-xl p-3 text-left disabled:opacity-50 ${selectedCategory === "After" ? "bg-forest text-white" : "bg-white text-ink"}`}>
+          <p className="text-xs font-black uppercase tracking-wide opacity-70">3. Completed</p>
+          <p className="mt-1 text-sm font-black">Finished work, clean area, no debris</p>
+        </button>
+      </div>
       <div className="grid gap-3 lg:grid-cols-[1fr_1fr]">
         <label className="block"><span className="label">Category</span><select className="field" value={selectedCategory} disabled={saving || uploading} onChange={(event) => setSelectedCategory(event.target.value as NativePhotoCategory)}>{photoCategories.map((item) => <option key={item.category} value={item.category}>{item.label}</option>)}</select></label>
         <label className="block"><span className="label">Optional caption</span><input className="field" value={caption} disabled={saving || uploading} onChange={(event) => setCaption(event.target.value)} placeholder="Short note for this upload batch" /></label>
@@ -1041,7 +1228,7 @@ function closeoutRequirements(job: Job, stage: CloseoutStage = "current", option
   const closeoutDue = isCloseoutDue(job, stage);
   const billingDue = stage === "billing";
   const started = hasStarted(job) || closeoutDue;
-  const checklistItems = job.checklist || [];
+  const checklistItems = checklistProgress(job).items;
   const requiredChecklist = checklistItems.filter((item) => !/invoice created/i.test(item.label));
   const checklistComplete = requiredChecklist.every((item) => item.complete);
   const beforeRequired = requiredChecklist.some((item) => /before photos/i.test(item.label));
@@ -1782,9 +1969,12 @@ function OperationsPanel({ job, setJob, mode }: { job: Job; setJob: React.Dispat
     setSaving(true);
     setError("");
     const next = { ...job, ...patch };
-    setJob(next);
+    const correctionPatch = correctionResolutionPatch(job, next);
+    const finalNext = { ...next, ...correctionPatch };
+    const patchToSave = { ...patch, ...correctionPatch };
+    setJob(finalNext);
     try {
-      const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
+      const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patchToSave) });
       const saved = await response.json();
       if (!response.ok) throw new Error(saved.error || "The job update could not be saved.");
       setJob((old) => ({ ...old, ...saved, checklist: saved.checklist?.length ? saved.checklist : old.checklist }));
@@ -2233,12 +2423,12 @@ function buildSourceText(job: Job) {
 
 function buildManagerHandoffText(job: Job) {
   const openFollowUps = (job.activityLog || []).filter((entry) => entry.notify && !entry.resolvedAt).length;
-  const checklistDone = job.checklist.filter((item) => item.complete).length;
+  const checklist = checklistProgress(job);
   return [
     `Manager handoff — ${job.jobId} ${job.customerName}`,
     `Status/Priority: ${job.status} / ${job.priority}`,
     `Schedule: ${job.dueDate || "Not scheduled"} · Crew: ${job.assignedCrew || "Unassigned"}`,
-    `Checklist: ${checklistDone}/${job.checklist.length} · Open follow-ups: ${openFollowUps}`,
+    `Checklist: ${checklist.complete}/${checklist.total} · Open follow-ups: ${openFollowUps}`,
     `Calendar: ${job.googleCalendarEventUrl ? "Linked" : "Not linked"} · CompanyCam: ${job.companyCamProjectUrl ? "Linked" : "Not linked"}`,
     `Invoice: ${job.invoiceStatus || "Not started"}`,
     "",

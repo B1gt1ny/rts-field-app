@@ -1,4 +1,5 @@
 export const statuses = ["New", "Scheduled", "In Progress", "Waiting on Parts", "Needs Inspection", "Complete", "Billed", "Paid"] as const;
+export const jobTypeOptions = ["Trim out", "Service", "Warranty", "Setup", "Skirting", "Repair"] as const;
 export const priorities = ["Low", "Normal", "High", "Urgent"] as const;
 export const sources = ["Dealer", "Factory", "Individual"] as const;
 export const checklistLabels = [

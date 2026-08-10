@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowTopRightOnSquareIcon, BellAlertIcon, BuildingOffice2Icon, CalendarDaysIcon, CameraIcon, ChatBubbleLeftRightIcon, ClipboardDocumentIcon, Cog6ToothIcon, DevicePhoneMobileIcon, DocumentTextIcon, ReceiptPercentIcon, ShoppingBagIcon, SparklesIcon, TableCellsIcon } from "@heroicons/react/24/outline";
-import { defaultFactoryCost, type BusinessSettings, type Employee, type FactoryCostTracker, type MerchRequest, type MerchRequestStatus } from "@/lib/types";
+import { defaultFactoryCost, jobTypeOptions, statuses, type BusinessSettings, type Employee, type FactoryCostTracker, type MerchRequest, type MerchRequestStatus } from "@/lib/types";
 import { authFetch } from "@/lib/client-auth";
 import type { UserRole } from "@/lib/auth";
 
@@ -55,8 +55,8 @@ const defaultCompany: BusinessSettings = {
   employeeCanAddSignoffs: true,
   employeeCanViewPackets: true,
   showCompletedJobsInFieldApp: false,
-  jobTypeOptions: ["Trim out", "Service", "Warranty", "Setup", "Skirting", "Repair"],
-  statusOptions: ["New", "Scheduled", "In Progress", "Waiting on Parts", "Needs Inspection", "Complete", "Billed", "Paid"],
+  jobTypeOptions: [...jobTypeOptions],
+  statusOptions: [...statuses],
   priorityOptions: ["Low", "Normal", "High", "Urgent"],
   checklistOptions: [
     "Paperwork picked up", "Scope reviewed", "Materials checked", "Before photos taken",
@@ -165,6 +165,7 @@ export function SettingsPanel() {
   const integrationNextSteps = useMemo(() => buildIntegrationNextSteps(integrations, setupStatus), [integrations, setupStatus]);
   const employeeUsers = users.filter((user) => user.role === "Employee");
   const linkedEmployeeUsers = employeeUsers.filter((user) => Boolean(user.employeeId));
+  const employeesWithoutLogins = employees.filter((employee) => !employeeUsers.some((user) => user.employeeId === employee.id));
   const rolloutChecklist = [
     { title: "Employees added", done: employees.length > 0, detail: `${employees.length} active employee${employees.length === 1 ? "" : "s"}` },
     { title: "Employee logins created", done: employeeUsers.length > 0, detail: `${employeeUsers.length} employee login${employeeUsers.length === 1 ? "" : "s"}` },
@@ -463,15 +464,20 @@ export function SettingsPanel() {
     <section className="card p-4 sm:p-6">
       <div className="mb-5 flex items-start gap-3">
         <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-forest text-white"><Cog6ToothIcon className="size-5" /></span>
-        <div><h2 className="text-lg font-black">User access & roles</h2><p className="text-sm text-black/45">Admin creates app logins and assigns Admin, Manager, or Employee access.</p></div>
+        <div><h2 className="text-lg font-black">User access & roles</h2><p className="text-sm text-black/45">Admin creates app logins and assigns Admin, Manager, or Employee access. Employee accounts are linked to their crew record here.</p></div>
+      </div>
+      <div className={`mb-4 rounded-xl p-3 text-sm font-semibold ${employeesWithoutLogins.length ? "bg-orange-50 text-orange-900" : "bg-forest/10 text-forest"}`}>
+        <p className="font-black">{employeesWithoutLogins.length ? `${employeesWithoutLogins.length} employee${employeesWithoutLogins.length === 1 ? "" : "s"} need${employeesWithoutLogins.length === 1 ? "s" : ""} a login` : "All active employees have a linked login"}</p>
+        {employeesWithoutLogins.length ? <p className="mt-1 text-xs">{employeesWithoutLogins.map((employee) => employee.name).join(", ")}</p> : null}
       </div>
       <form onSubmit={createUser} className="grid gap-3 lg:grid-cols-[1fr_1fr_.7fr_.9fr_auto]">
         <Input label="Email" name="email" placeholder="employee@email.com" />
-        <Input label="Temp password" name="password" placeholder="At least 8 characters" />
+        <Input label="Temporary password" name="password" placeholder="At least 8 characters" />
         <Select label="Role" name="role" options={["Employee", "Manager", "Admin"]} />
         <Select label="Linked employee" name="employeeId" options={["", ...employees.map((employee) => employee.id)]} optionLabels={Object.fromEntries([["", "Not linked"], ...employees.map((employee) => [employee.id, employee.name])])} />
         <button className="btn-primary self-end">Create Login</button>
       </form>
+      <p className="mt-3 text-xs font-semibold text-black/45">Passwords are sent only to Supabase Auth for creation, are never saved in employee records, and are not shown again after this form submits. Have the employee change it from My login after first access.</p>
       <div className="mt-5 space-y-2">
         {users.length ? users.map((user) => <div key={user.id} className="flex flex-col gap-3 rounded-xl bg-sand p-3 sm:flex-row sm:items-center sm:justify-between">
           <div><p className="font-black">{user.email}</p><p className="text-xs font-semibold text-black/45">{user.employeeName ? `Linked to ${user.employeeName}` : "No employee linked"} · {user.lastSignInAt ? `Last sign in: ${new Date(user.lastSignInAt).toLocaleDateString()}` : "No sign-in yet"}</p></div>

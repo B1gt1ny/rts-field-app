@@ -7,6 +7,7 @@ import { defaultFactoryCost, type BusinessSettings, type Employee, type FactoryC
 import { authFetch } from "@/lib/client-auth";
 import { getFactoryCostTotals, hasFactoryCostWork } from "@/lib/factory-costs";
 import { hasReceiptDollars, hasUploadedReceiptBackup } from "@/lib/receipt-backup";
+import { checklistProgress } from "@/lib/job-readiness";
 import { useAuthUser } from "./AuthGate";
 import { StatusBadge } from "./StatusBadge";
 
@@ -128,9 +129,8 @@ export function FieldAppView() {
     || sortedAssignedJobs.find((job) => job.dueDate === today)
     || sortedAssignedJobs.find((job) => job.dueDate > today)
     || sortedAssignedJobs[0];
-  const todayRemainingJobs = sortedAssignedJobs.filter((job) => job.dueDate === today && job.jobId !== currentJob?.jobId);
   const fieldBlockers = getFieldBlockers(sortedAssignedJobs, reviewOptions, today).slice(0, 5);
-  const upcomingGroups = groupUpcomingAssignments(sortedAssignedJobs.filter((job) => job.jobId !== currentJob?.jobId), today, 7);
+  const sevenDaySchedule = groupSevenDayAssignments(sortedAssignedJobs, today);
   const recentFieldActivity = employee ? getRecentFieldActivity(assignedJobs, employee.name, today).slice(0, 5) : [];
   const crewFilterCounts: Record<CrewFilter, number> = {
     today: todayJobs.length,
@@ -432,11 +432,9 @@ export function FieldAppView() {
 
     {!loading && employee && <CurrentJobPanel job={currentJob} saving={savingJobId === currentJob?.jobId} permissions={fieldPermissions} onStart={(job) => startJob(job)} onStartTravel={(job) => startTravel(job)} onArrive={(job) => arriveAtJob(job)} />}
 
-    {!loading && employee && <TodayAssignments jobs={todayRemainingJobs} />}
+    {!loading && employee && <EmployeeSevenDaySchedule groups={sevenDaySchedule} />}
 
     {!loading && employee && fieldBlockers.length > 0 && <FieldBlockers blockers={fieldBlockers} />}
-
-    {!loading && employee && upcomingGroups.length > 0 && <UpcomingAssignments groups={upcomingGroups} />}
 
     {!loading && employee && recentFieldActivity.length > 0 && <RecentFieldActivity items={recentFieldActivity} />}
 
@@ -486,6 +484,9 @@ function CurrentJobPanel({ job, saving, permissions, onStart, onStartTravel, onA
       <p className="mt-3 rounded-xl bg-white p-3 text-sm font-bold text-black/65">{nextActionReason(job)}</p>
     </div>
     <div className="space-y-3 p-4">
+      <CurrentJobInfo job={job} />
+      {job.phone && <p className="rounded-xl bg-blue-50 p-3 text-sm font-black text-blue-900">Contact customer with ETA before arrival</p>}
+      <FieldWorkflowGuide />
       {action.kind === "arrive"
         ? <button type="button" disabled={saving} onClick={() => onArrive(job)} className="block min-h-12 w-full rounded-xl bg-forest px-4 py-3 text-center font-black text-white disabled:opacity-50">{saving ? "Saving..." : action.label}</button>
         : action.kind === "travel"
@@ -500,12 +501,47 @@ function CurrentJobPanel({ job, saving, permissions, onStart, onStartTravel, onA
   </section>;
 }
 
+function CurrentJobInfo({ job }: { job: Job }) {
+  return <div className="rounded-2xl border border-black/10 bg-white p-3">
+    <div className="grid gap-2 text-sm">
+      <InfoLine label="Customer / job" value={job.customerName || job.jobId} />
+      <InfoLine label="Address" value={[job.address, job.city].filter(Boolean).join(", ")} />
+      <InfoLine label="Phone" value={job.phone} />
+      <InfoLine label="Scheduled" value={formatDue(job.dueDate)} />
+      {job.assignedCrew && <InfoLine label="Crew" value={job.assignedCrew} />}
+      {job.jobType && <InfoLine label="Job type" value={job.jobType} />}
+      {job.scopeNotes && <div>
+        <p className="text-[11px] font-black uppercase tracking-wide text-black/35">Work order / description</p>
+        <p className="mt-1 line-clamp-3 whitespace-pre-wrap font-semibold text-black/70">{job.scopeNotes}</p>
+      </div>}
+    </div>
+  </div>;
+}
+
+function InfoLine({ label, value }: { label: string; value?: string }) {
+  if (!value) return null;
+  return <div className="grid grid-cols-[7rem_1fr] gap-2">
+    <p className="text-[11px] font-black uppercase tracking-wide text-black/35">{label}</p>
+    <p className="font-semibold text-black/70">{value}</p>
+  </div>;
+}
+
+function FieldWorkflowGuide() {
+  const steps = ["Before Photos", "Perform Work", "Progress Photos", "Completed Photos", "Paperwork", "Ready for Review"];
+  return <div className="flex flex-wrap items-center gap-1 rounded-xl bg-sand p-2 text-[11px] font-black text-black/55">
+    {steps.map((step, index) => <span key={step} className="inline-flex items-center gap-1">
+      <span className="rounded-full bg-white px-2 py-1">{step}</span>
+      {index < steps.length - 1 && <span aria-hidden="true">→</span>}
+    </span>)}
+  </div>;
+}
+
 function QuickCurrentJobActions({ job, canUpload }: { job: Job; canUpload: boolean }) {
   const actions = [
     job.phone ? { label: "Call Customer", href: `tel:${job.phone}`, icon: <PhoneIcon className="size-5" /> } : null,
     job.address || job.city ? { label: "Open Maps", href: `https://maps.google.com/?q=${encodeURIComponent(`${job.address}, ${job.city}`)}`, icon: <MapPinIcon className="size-5" />, external: true } : null,
-    canUpload ? { label: "Add Photo", href: `/jobs/${job.jobId}#photos`, icon: <CameraIcon className="size-5" /> } : null,
-    { label: "Open Checklist", href: `/jobs/${job.jobId}#checklist`, icon: <ClipboardDocumentCheckIcon className="size-5" /> },
+    { label: "Additional Issue", href: `/jobs/${job.jobId}#additional-issue`, icon: <ExclamationTriangleIcon className="size-5" /> },
+    canUpload ? { label: "Add Photo", href: `/jobs/${job.jobId}#photos`, icon: <CameraIcon className="size-5" /> } : { label: "Job Workspace", href: `/jobs/${job.jobId}`, icon: <ClipboardDocumentCheckIcon className="size-5" /> },
   ].filter(Boolean).slice(0, 4) as Array<{ label: string; href: string; icon: React.ReactNode; external?: boolean }>;
   return <div className="grid grid-cols-2 gap-2">
     {actions.map((action) => action.external
@@ -514,28 +550,34 @@ function QuickCurrentJobActions({ job, canUpload }: { job: Job; canUpload: boole
   </div>;
 }
 
-function TodayAssignments({ jobs }: { jobs: Job[] }) {
+function EmployeeSevenDaySchedule({ groups }: { groups: Array<{ date: string; jobs: Job[] }> }) {
   return <section className="card overflow-hidden">
     <div className="border-b border-black/5 p-4">
-      <h2 className="text-lg font-black">Today&apos;s assignments</h2>
-      <p className="text-sm font-semibold text-black/45">{jobs.length ? "Remaining assigned work due today." : "No other assigned jobs due today."}</p>
+      <h2 className="text-lg font-black">My 7-day schedule</h2>
+      <p className="text-sm font-semibold text-black/45">Assigned scheduled work for today and the next 6 days.</p>
     </div>
-    {jobs.length ? <div className="divide-y divide-black/5">
-      {jobs.map((job, index) => <AssignmentRow key={job.jobId} job={job} order={index + 1} />)}
-    </div> : <p className="p-4 text-sm font-semibold text-black/40">Handle the current job above, then check upcoming assignments.</p>}
+    {groups.length ? <div className="divide-y divide-black/5">
+      {groups.map((group) => <div key={group.date} className="p-3">
+        <p className={`mb-2 text-xs font-black uppercase tracking-wide ${group.date === new Date().toLocaleDateString("en-CA") ? "text-forest" : "text-black/45"}`}>{formatScheduleDate(group.date)}</p>
+        <div className="space-y-2">
+          {group.jobs.map((job) => <ScheduleAssignmentRow key={job.jobId} job={job} />)}
+        </div>
+      </div>)}
+    </div> : <p className="p-4 text-sm font-semibold text-black/40">No assigned scheduled work in the next 7 days.</p>}
   </section>;
 }
 
-function AssignmentRow({ job, order }: { job: Job; order: number }) {
-  const session = getWorkSession(job);
-  return <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3 p-3">
-    <span className="grid size-8 place-items-center rounded-lg bg-sand text-sm font-black text-black/50">{order}</span>
-    <div className="min-w-0">
-      <p className="truncate text-sm font-black">{job.jobId} · {job.customerName}</p>
-      <p className="truncate text-xs font-bold text-black/45">{job.city || "No city"} · {session.started ? "Started" : "Not Started"} · {nextActionReason(job)}</p>
+function ScheduleAssignmentRow({ job }: { job: Job }) {
+  return <Link href={`/jobs/${job.jobId}`} className="block rounded-xl bg-sand p-3 active:bg-black/10">
+    <div className="flex items-start justify-between gap-3">
+      <div className="min-w-0">
+        <p className="truncate text-sm font-black">{job.customerName || job.jobId}</p>
+        <p className="mt-0.5 truncate text-xs font-bold text-black/50">{job.jobId}{job.jobType ? ` · ${job.jobType}` : ""}</p>
+      </div>
+      <span className="shrink-0 rounded-full bg-white px-2 py-1 text-[11px] font-black text-black/55">All day</span>
     </div>
-    <Link href={`/jobs/${job.jobId}`} className="rounded-lg bg-forest px-3 py-2 text-xs font-black text-white">{session.started ? "Continue" : "Start"}</Link>
-  </div>;
+    <p className="mt-2 truncate text-xs font-bold text-black/45">{[job.city, shortAddress(job.address)].filter(Boolean).join(" · ") || "Address not set"}</p>
+  </Link>;
 }
 
 function FieldBlockers({ blockers }: { blockers: FieldBlocker[] }) {
@@ -549,26 +591,6 @@ function FieldBlockers({ blockers }: { blockers: FieldBlocker[] }) {
         <p className="text-sm font-black text-orange-900">{blocker.label}</p>
         <p className="mt-1 text-xs font-bold text-black/50">{blocker.job.jobId} · {blocker.job.customerName} · {blocker.detail}</p>
       </Link>)}
-    </div>
-  </section>;
-}
-
-function UpcomingAssignments({ groups }: { groups: Array<{ label: string; jobs: Job[] }> }) {
-  return <section className="card overflow-hidden">
-    <div className="border-b border-black/5 p-4">
-      <h2 className="text-lg font-black">Upcoming assignments</h2>
-      <p className="text-sm font-semibold text-black/45">Next 7 days, limited to the first 7 jobs.</p>
-    </div>
-    <div className="divide-y divide-black/5">
-      {groups.map((group) => <div key={group.label} className="p-3">
-        <p className="mb-2 text-xs font-black uppercase tracking-wide text-forest">{group.label}</p>
-        <div className="space-y-2">
-          {group.jobs.map((job) => <Link key={job.jobId} href={`/jobs/${job.jobId}`} className="block rounded-xl bg-sand p-3">
-            <p className="truncate text-sm font-black">{job.jobId} · {job.customerName}</p>
-            <p className="mt-1 truncate text-xs font-bold text-black/45">{job.city || "No city"} · {job.status}</p>
-          </Link>)}
-        </div>
-      </div>)}
     </div>
   </section>;
 }
@@ -903,7 +925,7 @@ function FieldJobBasics({ job }: { job: Job }) {
 }
 
 function QuickChecklist({ job, saving, onChecklist }: { job: Job; saving: boolean; onChecklist: (itemId: string) => void }) {
-  const checklist = job.checklist || [];
+  const checklist = checklistProgress(job).items;
   const incomplete = checklist.filter((item) => !item.complete).slice(0, 3);
   const recentlyDone = checklist.filter((item) => item.complete).slice(-1);
   if (!checklist.length) return null;
@@ -924,12 +946,13 @@ function QuickChecklist({ job, saving, onChecklist }: { job: Job; saving: boolea
 
 function FieldCloseoutStatus({ review, instructions }: { review: ReturnType<typeof fieldReviewStatus>; instructions: string }) {
   const nextSteps = review.items.filter((item) => !item.ok).slice(0, 3);
+  const remaining = review.items.filter((item) => !item.ok).length;
   const hasRequirements = review.items.length > 0;
   return <div className="mt-3 rounded-2xl border border-black/10 bg-sand p-3">
     <div className="mb-2 flex items-center justify-between gap-3">
       <div>
         <p className="text-sm font-black">Before you send for review</p>
-        <p className="text-xs font-semibold text-black/45">{hasRequirements ? review.readyForManager ? "Everything needed is ready." : `${nextSteps.length} next step${nextSteps.length === 1 ? "" : "s"} to handle first.` : "No required closeout checks are enabled."}</p>
+        <p className="text-xs font-semibold text-black/45">{hasRequirements ? review.readyForManager ? "Everything needed is ready." : `${remaining} remaining before Ready for Review.` : "No required closeout checks are enabled."}</p>
       </div>
       <span className={`rounded-full px-3 py-1 text-xs font-black ${review.readyForManager ? "bg-forest text-white" : "bg-orange-100 text-orange-900"}`}>{review.score}%</span>
     </div>
@@ -968,6 +991,7 @@ function FieldButtons({ job, saving, permissions, customerTextTemplate, fieldSup
     {permissions.employeeCanUploadFiles && <Link href={`/jobs/${job.jobId}#paperwork`} className="min-h-12 rounded-xl bg-purple-50 px-3 py-3 text-center text-xs font-black text-purple-900"><DocumentTextIcon className="mx-auto mb-1 size-5" />Paperwork</Link>}
     {permissions.employeeCanUploadFiles && <Link href={`/jobs/${job.jobId}#photos`} className="min-h-12 rounded-xl bg-lime px-3 py-3 text-center text-xs font-black text-ink"><CameraIcon className="mx-auto mb-1 size-5" />Photos</Link>}
     {permissions.employeeCanUploadFiles && <Link href={`/jobs/${job.jobId}#receipts`} className="min-h-12 rounded-xl bg-blue-50 px-3 py-3 text-center text-xs font-black text-blue-900"><ReceiptPercentIcon className="mx-auto mb-1 size-5" />Receipts</Link>}
+    <Link href={`/jobs/${job.jobId}#additional-issue`} className="min-h-12 rounded-xl bg-orange-50 px-3 py-3 text-center text-xs font-black text-orange-900"><ExclamationTriangleIcon className="mx-auto mb-1 size-5" />Additional Issue</Link>
     {permissions.employeeCanRequestParts && <Link href={`/jobs/${job.jobId}#parts-needed`} className="min-h-12 rounded-xl bg-orange-50 px-3 py-3 text-center text-xs font-black text-orange-900"><WrenchScrewdriverIcon className="mx-auto mb-1 size-5" />Parts</Link>}
     <Link href={`/jobs/${job.jobId}#operations`} className="min-h-12 rounded-xl bg-sand px-3 py-3 text-center text-xs font-black text-ink"><ClipboardDocumentCheckIcon className="mx-auto mb-1 size-5" />Notes</Link>
     <Link href={`/jobs/${job.jobId}`} className="min-h-12 rounded-xl border border-black/10 bg-white px-3 py-3 text-center text-xs font-black text-ink"><CheckCircleIcon className="mx-auto mb-1 size-5" />Checklist</Link>
@@ -980,11 +1004,9 @@ function FieldButtons({ job, saving, permissions, customerTextTemplate, fieldSup
 }
 
 function ProgressBar({ job }: { job: Job }) {
-  const total = job.checklist?.length || 0;
-  const complete = job.checklist?.filter((item) => item.complete).length || 0;
-  const percent = total ? Math.round((complete / total) * 100) : 0;
+  const { total, complete, remaining, percent } = checklistProgress(job);
   return <div className="mt-3">
-    <div className="mb-1 flex items-center justify-between text-xs font-black text-black/45"><span>Checklist</span><span>{complete}/{total} · {percent}%</span></div>
+    <div className="mb-1 flex items-center justify-between text-xs font-black text-black/45"><span>Job completion: {percent}%</span><span>{complete}/{total} · {remaining} remaining</span></div>
     <div className="h-2 overflow-hidden rounded-full bg-black/5"><div className="h-full rounded-full bg-forest transition-all" style={{ width: `${percent}%` }} /></div>
   </div>;
 }
@@ -1104,18 +1126,16 @@ function getFieldBlockers(jobs: Job[], options: FieldReviewOptions, today: strin
   return blockers;
 }
 
-function groupUpcomingAssignments(jobs: Job[], today: string, days: number) {
-  const end = addDays(today, days);
+function groupSevenDayAssignments(jobs: Job[], today: string) {
+  const end = addDays(today, 6);
   const upcoming = jobs
-    .filter((job) => job.dueDate && job.dueDate > today && job.dueDate <= end)
-    .sort((a, b) => fieldWorkSort(a, b, today))
-    .slice(0, 7);
+    .filter((job) => job.dueDate && job.dueDate >= today && job.dueDate <= end)
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate) || fieldWorkSort(a, b, today));
   const groups = new Map<string, Job[]>();
   for (const job of upcoming) {
-    const label = formatDue(job.dueDate);
-    groups.set(label, [...(groups.get(label) || []), job]);
+    groups.set(job.dueDate, [...(groups.get(job.dueDate) || []), job]);
   }
-  return Array.from(groups, ([label, groupJobs]) => ({ label, jobs: groupJobs }));
+  return Array.from(groups, ([date, groupJobs]) => ({ date, jobs: groupJobs }));
 }
 
 function getRecentFieldActivity(jobs: Job[], employeeName: string, today: string) {
@@ -1194,6 +1214,16 @@ function getTravelState(job: Job) {
 
 function formatDue(dueDate: string) {
   return dueDate ? new Date(`${dueDate}T12:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Not scheduled";
+}
+
+function formatScheduleDate(dueDate: string) {
+  const today = new Date().toLocaleDateString("en-CA");
+  if (dueDate === today) return `Today · ${formatDue(dueDate)}`;
+  return new Date(`${dueDate}T12:00:00`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+}
+
+function shortAddress(address: string) {
+  return address.split(",")[0]?.trim() || "";
 }
 
 function formatShortDateTime(value: string) {

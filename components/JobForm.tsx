@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { emptyJob, priorities, sources, statuses, type BusinessSettings, type Employee, type Job } from "@/lib/types";
+import { emptyJob, jobTypeOptions, priorities, sources, statuses, type BusinessSettings, type Employee, type Job } from "@/lib/types";
 import { authFetch } from "@/lib/client-auth";
 
 const defaultOptions: { jobTypeOptions: string[]; statusOptions: string[]; priorityOptions: string[]; checklistOptions: string[] } = {
-  jobTypeOptions: ["Trim out", "Service", "Warranty", "Setup", "Skirting", "Repair"],
+  jobTypeOptions: [...jobTypeOptions],
   statusOptions: [...statuses],
   priorityOptions: [...priorities],
   checklistOptions: [],

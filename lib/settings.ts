@@ -1,7 +1,7 @@
 import { promises as fs } from "fs";
 import path from "path";
 import { createClient } from "@supabase/supabase-js";
-import { checklistLabels, defaultFactoryCost, priorities, statuses, type BusinessSettings, type MerchRequest, type MerchRequestStatus } from "./types";
+import { checklistLabels, defaultFactoryCost, jobTypeOptions, priorities, statuses, type BusinessSettings, type MerchRequest, type MerchRequestStatus } from "./types";
 
 const settingsFile = path.join(process.cwd(), "data", "settings.json");
 const merchFile = path.join(process.cwd(), "data", "merch-requests.json");
@@ -64,7 +64,7 @@ function normalizeSettings(input: Partial<BusinessSettings>): BusinessSettings {
     employeeCanAddSignoffs: input.employeeCanAddSignoffs ?? true,
     employeeCanViewPackets: input.employeeCanViewPackets ?? true,
     showCompletedJobsInFieldApp: input.showCompletedJobsInFieldApp ?? false,
-    jobTypeOptions: cleanList(input.jobTypeOptions, ["Trim out", "Service", "Warranty", "Setup", "Skirting", "Repair"]),
+    jobTypeOptions: cleanList(input.jobTypeOptions, [...jobTypeOptions]),
     statusOptions: cleanList(input.statusOptions, [...statuses]),
     priorityOptions: cleanList(input.priorityOptions, [...priorities]),
     checklistOptions: cleanList(input.checklistOptions, [...checklistLabels]),
