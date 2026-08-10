@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ExclamationTriangleIcon, UserGroupIcon } from "@heroicons/react/24/outline";
+import { ExclamationTriangleIcon, MapPinIcon, PhoneIcon, UserGroupIcon } from "@heroicons/react/24/outline";
 import { buildJobTasks, type JobTask } from "@/lib/job-tasks";
 import type { Employee, Job } from "@/lib/types";
 import { PriorityBadge, StatusBadge } from "./StatusBadge";
@@ -17,6 +17,13 @@ type HandoffRow = {
   suggestedEmployee?: Employee;
 };
 
+type DispatchWarning = {
+  id: string;
+  title: string;
+  detail: string;
+  href: string;
+};
+
 export function DispatchHandoffView({ jobs, employees }: { jobs: Job[]; employees: Employee[] }) {
   const today = new Date().toLocaleDateString("en-CA");
   const activeJobs = jobs.filter((job) => activeStatuses.includes(job.status));
@@ -26,6 +33,7 @@ export function DispatchHandoffView({ jobs, employees }: { jobs: Job[]; employee
     return { employee, assigned, todayJobs: assigned.filter((job) => job.dueDate === today) };
   }).sort((a, b) => a.todayJobs.length - b.todayJobs.length || a.assigned.length - b.assigned.length || a.employee.name.localeCompare(b.employee.name));
   const rows = buildDispatchRows(jobs, activeEmployees, loads, today).slice(0, 14);
+  const warnings = buildDispatchWarnings(activeJobs, employees, loads, today);
   const unassigned = activeJobs.filter((job) => isUnassigned(job)).length;
   const unscheduled = activeJobs.filter((job) => !job.dueDate).length;
   const high = rows.filter((row) => row.priority === "High").length;
@@ -45,6 +53,16 @@ export function DispatchHandoffView({ jobs, employees }: { jobs: Job[]; employee
         <HeroMetric label="High priority" value={high} />
         <HeroMetric label="Unassigned" value={unassigned} />
         <HeroMetric label="Unscheduled" value={unscheduled} />
+      </div>
+    </section>
+
+    <section className="card overflow-hidden">
+      <div className="flex items-start gap-3 bg-orange-50 p-4 text-orange-950">
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-orange-100"><ExclamationTriangleIcon className="size-5" /></span>
+        <div><h2 className="text-lg font-black">Today dispatch warnings</h2><p className="text-sm font-semibold text-orange-900/70">Confirmed assignment and workload gaps only.</p></div>
+      </div>
+      <div className="divide-y divide-black/5">
+        {warnings.length ? warnings.map((warning) => <Link key={warning.id} href={warning.href} className="block p-4 hover:bg-black/[.02]"><h3 className="font-black">{warning.title}</h3><p className="mt-1 text-sm font-semibold text-black/50">{warning.detail}</p></Link>) : <p className="p-5 text-center text-sm font-semibold text-black/35">No confirmed dispatch warnings for today.</p>}
       </div>
     </section>
 
@@ -70,10 +88,12 @@ export function DispatchHandoffView({ jobs, employees }: { jobs: Job[]; employee
               <span className="rounded-full bg-sand px-3 py-1 text-xs font-black text-black/55">{row.reason}</span>
               <span className="rounded-full bg-lime px-3 py-1 text-xs font-black text-ink">Suggest: {row.suggestedEmployee?.name || "Add employee"}</span>
             </div>
-            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-6">
               <Link href={`/jobs/${row.job.jobId}/edit`} className="min-h-11 rounded-xl bg-forest px-3 py-2 text-center text-sm font-black text-white">Assign / edit</Link>
               <Link href={row.href} className="min-h-11 rounded-xl border border-black/10 bg-white px-3 py-2 text-center text-sm font-black text-ink">Open issue</Link>
-              <Link href={`/jobs/${row.job.jobId}`} className="min-h-11 rounded-xl bg-sand px-3 py-2 text-center text-sm font-black text-ink">Job profile</Link>
+              <Link href={`/jobs/${row.job.jobId}`} className="min-h-11 rounded-xl bg-sand px-3 py-2 text-center text-sm font-black text-ink">Open job</Link>
+              {row.job.phone && <a href={`tel:${row.job.phone}`} className="inline-flex min-h-11 items-center justify-center gap-1 rounded-xl bg-white px-3 py-2 text-center text-sm font-black text-ink"><PhoneIcon className="size-4" />Call</a>}
+              {(row.job.address || row.job.city) && <a href={`https://maps.google.com/?q=${encodeURIComponent(`${row.job.address}, ${row.job.city}`)}`} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center justify-center gap-1 rounded-xl bg-ink px-3 py-2 text-center text-sm font-black text-white"><MapPinIcon className="size-4" />Map</a>}
               <Link href="/field" className="min-h-11 rounded-xl bg-ink px-3 py-2 text-center text-sm font-black text-white">Field view</Link>
             </div>
           </div>) : <p className="p-8 text-center text-sm font-semibold text-black/35">No dispatch handoffs right now.</p>}
@@ -98,6 +118,25 @@ export function DispatchHandoffView({ jobs, employees }: { jobs: Job[]; employee
       </div>
     </section>
   </div>;
+}
+
+function buildDispatchWarnings(activeJobs: Job[], employees: Employee[], loads: Array<{ employee: Employee; assigned: Job[]; todayJobs: Job[] }>, today: string): DispatchWarning[] {
+  const warnings: DispatchWarning[] = [];
+  for (const job of activeJobs.filter((item) => item.dueDate === today && isUnassigned(item))) {
+    warnings.push({ id: `${job.jobId}-unassigned-today`, title: `${job.customerName} needs an assignment`, detail: "Scheduled today with no employee or crew.", href: `/jobs/${job.jobId}` });
+  }
+  for (const load of loads.filter((item) => item.todayJobs.length === 0)) {
+    warnings.push({ id: `${load.employee.id}-no-work-today`, title: `${load.employee.name} has no jobs today`, detail: "This active employee has no scheduled assignment today.", href: "/crew" });
+  }
+  for (const load of loads.filter((item) => item.todayJobs.length > 1)) {
+    warnings.push({ id: `${load.employee.id}-multiple-jobs-today`, title: `${load.employee.name} has ${load.todayJobs.length} jobs today`, detail: "Review the schedule and travel plan before dispatch.", href: "/crew" });
+  }
+  const inactiveEmployees = employees.filter((employee) => !employee.active);
+  for (const job of activeJobs.filter((item) => item.dueDate === today)) {
+    const inactiveAssigned = inactiveEmployees.filter((employee) => job.assignedEmployeeIds?.includes(employee.id) || (!job.assignedEmployeeIds?.length && !job.fullCrew && job.assignedCrew === employee.name));
+    if (inactiveAssigned.length) warnings.push({ id: `${job.jobId}-inactive-assignment`, title: `${job.customerName} has an inactive assignment`, detail: `${inactiveAssigned.map((employee) => employee.name).join(", ")} is inactive but assigned today.`, href: `/jobs/${job.jobId}` });
+  }
+  return warnings;
 }
 
 function buildDispatchRows(jobs: Job[], employees: Employee[], loads: Array<{ employee: Employee; assigned: Job[]; todayJobs: Job[] }>, today: string): HandoffRow[] {

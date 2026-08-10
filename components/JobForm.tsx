@@ -116,6 +116,7 @@ export function JobForm({ initialJob }: { initialJob?: Job }) {
       {job.source === "Factory" && <Input label="Factory work order #" value={job.factoryWorkOrderNumber} onChange={(v) => set("factoryWorkOrderNumber", v)} required />}
       <Select label="Job type" value={job.jobType} options={uniqueOptions(options.jobTypeOptions, job.jobType)} onChange={(v) => set("jobType", v)} />
       <Input label="Due date" type="date" value={job.dueDate} onChange={(v) => set("dueDate", v)} required />
+      <Input label="Scheduled time" type="time" value={job.scheduledTime || ""} onChange={(v) => set("scheduledTime", v)} />
       <Select label="Priority" value={job.priority} options={uniqueOptions(options.priorityOptions, job.priority)} onChange={(v) => set("priority", v as Job["priority"])} />
       <Select label="Status" value={job.status} options={uniqueOptions(options.statusOptions, job.status)} onChange={(v) => set("status", v as Job["status"])} />
       <EmployeePicker employees={employees} selectedIds={job.assignedEmployeeIds || []} fullCrew={Boolean(job.fullCrew)} legacyAssignment={initialJob && !initialJob.assignedEmployeeIds?.length ? initialJob.assignedCrew : ""} onChange={(ids, fullCrew) => updateJob((old) => ({ ...old, assignedEmployeeIds: ids, fullCrew }))} />

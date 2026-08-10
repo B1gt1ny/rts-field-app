@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ClockIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 import type { Job, TimeEntry } from "@/lib/types";
 import { closeoutChecks, hasActiveCorrections } from "@/lib/job-readiness";
+import { closedJobStatuses, entriesForDate, isTodayJob, isTravelStarted, sameEmployee } from "@/lib/field-activity";
 import { StatusBadge } from "./StatusBadge";
 
 type EmployeeReview = {
@@ -37,8 +38,6 @@ type TodaySummary = {
   travelSessions: number;
   workSessions: number;
 };
-
-const closedStatuses = ["Complete", "Billed", "Paid"];
 
 export function CommandCenterView({ jobs }: { jobs: Job[] }) {
   const today = new Date().toLocaleDateString("en-CA");
@@ -187,8 +186,8 @@ function buildEmployeeReviews(jobs: Job[], today: string): EmployeeReview[] {
       const review = employees.get(name);
       if (!review) continue;
       review.jobs.push(job);
-      review.activeJob ||= !closedStatuses.includes(job.status) ? job : undefined;
-      review.openJobs += closedStatuses.includes(job.status) ? 0 : 1;
+      review.activeJob ||= !closedJobStatuses.includes(job.status) ? job : undefined;
+      review.openJobs += closedJobStatuses.includes(job.status) ? 0 : 1;
       review.reviewNeeded += job.status === "Needs Inspection" ? 1 : 0;
       review.missingCloseout += needsCloseout(job, today) ? 1 : 0;
 
@@ -231,7 +230,7 @@ function buildDailyIssues(employees: EmployeeReview[], today: string): DailyIssu
 
     if (travelStarted && !arrived) issues.push({ title: "Travel started but never arrived", detail: `${employee.name} has travel logged without an arrival.`, href: `/jobs/${job.jobId}#time-log`, rank: 0 });
     if (arrived && !workStarted) issues.push({ title: "Arrived but never started work", detail: `${employee.name} arrived today without a work start.`, href: `/jobs/${job.jobId}#time-log`, rank: 1 });
-    if (workStarted && !finished && !closedStatuses.includes(job.status)) issues.push({ title: "Started work but never finished", detail: `${employee.name} has an open work session.`, href: `/jobs/${job.jobId}#time-log`, rank: 2 });
+    if (workStarted && !finished && !closedJobStatuses.includes(job.status)) issues.push({ title: "Started work but never finished", detail: `${employee.name} has an open work session.`, href: `/jobs/${job.jobId}#time-log`, rank: 2 });
     if ((travelStarted || arrived || workStarted || finished) && !entries.some((entry) => mileageValue(entry) > 0)) issues.push({ title: "No mileage entered", detail: "Today has field activity with no mileage recorded.", href: `/jobs/${job.jobId}#time-log`, rank: 3 });
     if (needsCloseout(job, today) && markOnce(seenJobLevelIssues, `${job.jobId}-closeout`)) issues.push({ title: "Closeout incomplete", detail: closeoutDetail(job), href: closeoutHref(job), rank: 4 });
     if (job.status === "Needs Inspection" && markOnce(seenJobLevelIssues, `${job.jobId}-review`)) issues.push({ title: "Waiting on manager review", detail: "Job is ready for manager review today.", href: `/jobs/${job.jobId}#complete-job`, rank: 5 });
@@ -245,29 +244,9 @@ function buildDailyIssues(employees: EmployeeReview[], today: string): DailyIssu
   })).sort((a, b) => a.rank - b.rank || a.employee.localeCompare(b.employee) || a.job.jobId.localeCompare(b.job.jobId));
 }
 
-function isTodayJob(job: Job, today: string) {
-  return job.dueDate === today || entriesForDate(job, today).length > 0 || hasTodayActivity(job, today);
-}
-
-function hasTodayActivity(job: Job, today: string) {
-  return (job.activityLog || []).some((entry) => entry.createdAt?.slice(0, 10) === today);
-}
-
-function entriesForDate(job: Job, today: string) {
-  return (job.timeEntries || []).filter((entry) => entry.createdAt?.slice(0, 10) === today);
-}
-
 function assignedEmployeeNames(job: Job) {
   if (!job.assignedCrew || job.assignedCrew === "Unassigned") return [];
   return job.assignedCrew.split(/,|&|\band\b/i).map((name) => name.trim()).filter(Boolean);
-}
-
-function isTravelStarted(entry: TimeEntry) {
-  return entry.notes === "Started Travel";
-}
-
-function sameEmployee(a: string, b: string) {
-  return a.trim().toLowerCase() === b.trim().toLowerCase();
 }
 
 function mileageValue(entry: TimeEntry) {
@@ -275,7 +254,7 @@ function mileageValue(entry: TimeEntry) {
 }
 
 function needsCloseout(job: Job, today: string) {
-  const closeoutDue = job.status === "Needs Inspection" || entriesForDate(job, today).some((entry) => entry.type === "Departed") || closedStatuses.includes(job.status);
+  const closeoutDue = job.status === "Needs Inspection" || entriesForDate(job, today).some((entry) => entry.type === "Departed") || closedJobStatuses.includes(job.status);
   return closeoutDue && closeoutChecks(job).some((check) => !check.ok && ["Completion notes", "After photos", "Paperwork", "Completion sign-off", "Open parts"].includes(check.label));
 }
 

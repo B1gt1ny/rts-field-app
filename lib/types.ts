@@ -177,6 +177,7 @@ export interface Job {
   assignedEmployeeIds?: string[];
   fullCrew?: boolean;
   dueDate: string;
+  scheduledTime?: string;
   scopeNotes: string;
   partsNeeded: string;
   paperworkPickedUp: boolean;
@@ -230,7 +231,7 @@ export function defaultFactoryCost(): FactoryCostTracker {
 export const emptyJob: Job = {
   jobId: "", source: "Dealer", dealerName: "", factoryWorkOrderNumber: "", customerName: "",
   phone: "", address: "", city: "", homeSize: "Single-wide", jobType: "Setup",
-  priority: "Normal", status: "New", assignedCrew: "Unassigned", assignedEmployeeIds: [], fullCrew: false, dueDate: "", scopeNotes: "",
+  priority: "Normal", status: "New", assignedCrew: "Unassigned", assignedEmployeeIds: [], fullCrew: false, dueDate: "", scheduledTime: "", scopeNotes: "",
   partsNeeded: "", paperworkPickedUp: false, paperworkPickedUpBy: "", paperworkPickupDate: "",
   beforePhotos: [], damagePhotos: [], serialTagPhotos: [], afterPhotos: [], completionNotes: "",
   invoiceStatus: "Not started", checklist: makeChecklist(),

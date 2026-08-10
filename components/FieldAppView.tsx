@@ -8,6 +8,7 @@ import { authFetch } from "@/lib/client-auth";
 import { getFactoryCostTotals, hasFactoryCostWork } from "@/lib/factory-costs";
 import { hasReceiptDollars, hasUploadedReceiptBackup } from "@/lib/receipt-backup";
 import { checklistProgress } from "@/lib/job-readiness";
+import { isTodayJob, todayFieldStatus } from "@/lib/field-activity";
 import { useAuthUser } from "./AuthGate";
 import { StatusBadge } from "./StatusBadge";
 
@@ -115,7 +116,7 @@ export function FieldAppView() {
       return assigned && (showCompletedJobsInFieldApp || activeStatuses.includes(job.status));
     });
   }, [employee, jobs, showCompletedJobsInFieldApp]);
-  const todayJobs = assignedJobs.filter((job) => job.dueDate === today);
+  const todayJobs = assignedJobs.filter((job) => isTodayJob(job, today));
   const activeJobs = assignedJobs.filter((job) => activeStatuses.includes(job.status));
   const reviewOptions: FieldReviewOptions = { requireFactoryCostsForReview, requireReceiptBackupForReview, requireBeforePhotosForReview, requireSerialTagPhotoForReview, requireDamagePhotosForReview, requireAfterPhotosForReview, requireCompletionNotesForReview, requireWorkCompleteForReview, requirePartsClosedForReview };
   const waitingJobs = assignedJobs.filter((job) => job.status === "Waiting on Parts");
@@ -430,7 +431,7 @@ export function FieldAppView() {
       <Link href="/employees" className="btn-primary mt-4">Open Employees</Link>
     </section> : null}
 
-    {!loading && employee && <CurrentJobPanel job={currentJob} saving={savingJobId === currentJob?.jobId} permissions={fieldPermissions} onStart={(job) => startJob(job)} onStartTravel={(job) => startTravel(job)} onArrive={(job) => arriveAtJob(job)} />}
+    {!loading && employee && <CurrentJobPanel job={currentJob} employeeName={employee.name} today={today} saving={savingJobId === currentJob?.jobId} permissions={fieldPermissions} onStart={(job) => startJob(job)} onStartTravel={(job) => startTravel(job)} onArrive={(job) => arriveAtJob(job)} />}
 
     {!loading && employee && <EmployeeSevenDaySchedule groups={sevenDaySchedule} />}
 
@@ -460,14 +461,14 @@ export function FieldAppView() {
   </div>;
 }
 
-function CurrentJobPanel({ job, saving, permissions, onStart, onStartTravel, onArrive }: { job?: Job; saving: boolean; permissions: FieldPermissions; onStart: (job: Job) => void; onStartTravel: (job: Job) => void; onArrive: (job: Job) => void }) {
+function CurrentJobPanel({ job, employeeName, today, saving, permissions, onStart, onStartTravel, onArrive }: { job?: Job; employeeName: string; today: string; saving: boolean; permissions: FieldPermissions; onStart: (job: Job) => void; onStartTravel: (job: Job) => void; onArrive: (job: Job) => void }) {
   if (!job) return <section className="card p-5 text-center">
     <p className="text-lg font-black">No assigned work right now.</p>
     <p className="mt-1 text-sm font-semibold text-black/45">Assigned jobs will show here when dispatch puts them on your crew list.</p>
   </section>;
   const action = primaryFieldAction(job);
   const session = getWorkSession(job);
-  const travel = getTravelState(job);
+  const fieldStatus = todayFieldStatus(job, employeeName, today);
   return <section className="card overflow-hidden">
     <div className="bg-sand p-4">
       <p className="text-xs font-black uppercase tracking-widest text-forest">Current / next job</p>
@@ -480,7 +481,7 @@ function CurrentJobPanel({ job, saving, permissions, onStart, onStartTravel, onA
         <StatusBadge status={job.status} />
       </div>
       {job.assignedCrew && <p className="mt-2 text-xs font-black uppercase tracking-wide text-black/40">Crew: {job.assignedCrew}</p>}
-      <p className="mt-2 text-xs font-black uppercase tracking-wide text-black/40">{travel.active ? "Traveling" : session.started ? "Started" : travel.arrived ? "Arrived" : "Not Started"}</p>
+      <p className="mt-2 text-xs font-black uppercase tracking-wide text-black/40">{fieldStatus}</p>
       <p className="mt-3 rounded-xl bg-white p-3 text-sm font-bold text-black/65">{nextActionReason(job)}</p>
     </div>
     <div className="space-y-3 p-4">
@@ -574,7 +575,7 @@ function ScheduleAssignmentRow({ job }: { job: Job }) {
         <p className="truncate text-sm font-black">{job.customerName || job.jobId}</p>
         <p className="mt-0.5 truncate text-xs font-bold text-black/50">{job.jobId}{job.jobType ? ` · ${job.jobType}` : ""}</p>
       </div>
-      <span className="shrink-0 rounded-full bg-white px-2 py-1 text-[11px] font-black text-black/55">All day</span>
+      <span className="shrink-0 rounded-full bg-white px-2 py-1 text-[11px] font-black text-black/55">{formatScheduledTime(job.scheduledTime)}</span>
     </div>
     <p className="mt-2 truncate text-xs font-bold text-black/45">{[job.city, shortAddress(job.address)].filter(Boolean).join(" · ") || "Address not set"}</p>
   </Link>;
@@ -1220,6 +1221,10 @@ function formatScheduleDate(dueDate: string) {
   const today = new Date().toLocaleDateString("en-CA");
   if (dueDate === today) return `Today · ${formatDue(dueDate)}`;
   return new Date(`${dueDate}T12:00:00`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+}
+
+function formatScheduledTime(scheduledTime?: string) {
+  return scheduledTime ? new Date(`1970-01-01T${scheduledTime}`).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "All day";
 }
 
 function shortAddress(address: string) {
