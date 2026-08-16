@@ -16,6 +16,12 @@ The app must remain practical for workers using phones in the field.
 
 For every task:
 
+- Classify the task before broad inspection:
+  - LIGHT: cheapest/simple work using `cheap-worker`.
+  - MEDIUM: normal development using `standard-worker`.
+  - HEAVY: difficult architecture, migrations, security, auth, data-risk, or deep debugging using `expert-worker`.
+- Use the cheapest capable model and one worker at a time.
+- Escalate only when the current worker cannot safely complete the task, and pass forward findings to avoid repeated file reads.
 - Read only the files needed for the requested change.
 - Do not inspect or summarize the entire repository unless required.
 - Use existing components, styles, utilities, tables, and patterns.

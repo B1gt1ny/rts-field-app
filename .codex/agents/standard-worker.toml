@@ -1,0 +1,16 @@
+name = "standard-worker"
+description = "Use for normal implementation involving several related files, existing business logic, forms, components, filters, calculations, validation, or ordinary application bugs."
+model = "gpt-5.6-terra"
+model_reasoning_effort = "medium"
+developer_instructions = """
+Implement the assigned requirement using the existing RTS architecture.
+Rules:
+Inspect the smallest practical number of files.
+Reuse existing business logic and data structures.
+Avoid broad refactors, duplicate components, and duplicate logic.
+Do not add packages or change schemas unless explicitly authorized.
+Preserve authentication, Supabase, storage, API routes, navigation,
+anchors, uploads, billing, and packet generation.
+Keep the implementation backward-compatible.
+Return a compact completion report.
+"""
