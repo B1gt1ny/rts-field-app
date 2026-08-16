@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { requireRole } from "@/lib/auth";
-import { aiWorkOrderImportFields, type AIWorkOrderImport, type WorkOrderFile } from "@/lib/types";
+import { aiWorkOrderImportFields, type WorkOrderFile } from "@/lib/types";
+import { validateWorkOrderProposal } from "@/lib/work-order-extraction";
 
 export const dynamic = "force-dynamic";
 
@@ -41,32 +42,13 @@ export async function POST(request: Request) {
   try {
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.OPENAI_API_KEY}` }, signal: AbortSignal.timeout(30_000),
-      body: JSON.stringify({ model: process.env.OPENAI_WORK_ORDER_MODEL || "gpt-4.1-mini", input: [{ role: "user", content: [{ type: "input_text", text: "Extract only the requested job fields from this work-order document. Return JSON only. Omit unclear values; never guess. Do not include status, priority, assignments, readiness, billing, costs, photos, activity, or any other fields." }, document] }], text: { format: { type: "json_schema", name: "work_order_import", strict: true, schema: { type: "object", additionalProperties: false, properties: Object.fromEntries(allowedFields.map((field) => [field, field === "returnVisitRequired" ? { type: "boolean" } : { type: "string" }])), required: [] } } } }),
+      body: JSON.stringify({ model: process.env.OPENAI_WORK_ORDER_MODEL || "gpt-4.1-mini", input: [{ role: "user", content: [{ type: "input_text", text: "Extract only the requested job fields from this work-order document. Return JSON only. Leave missing or uncertain values out; never guess.\n\nCustomer: customerName is the person or business receiving service. Do not use a manufacturer, dealer, or vendor unless it is clearly the service customer.\nAddress: address and city are the service/job location. Do not use a billing, dealer, manufacturer, or office address unless it is clearly the service location.\nWork order and serial: factoryWorkOrderNumber is the work order, service order, or ticket reference. serialUnitNumber is the equipment, unit, home serial, or unit identifier. Do not swap them. Preserve the exact practical formatting of work-order numbers, serial/unit numbers, phone numbers, and reference numbers; do not clean identifiers in a way that changes their meaning.\nDates: dueDate is a service, scheduled, or due date only when explicitly shown. Do not use invoice, document, print, or unrelated dates. scheduledTime is an explicit service appointment or start time only.\nWork: scopeNotes faithfully summarizes the requested work. Do not invent repairs or turn unrelated notes into scope. partsNeeded includes only parts explicitly requested or needed, not installed or historical parts. returnVisitRequired is true only when another visit or follow-up is explicitly required; do not infer it from past visits or historical notes.\n\nDo not include status, priority, assignments, readiness, billing, costs, photos, activity, or any other fields." }, document] }], text: { format: { type: "json_schema", name: "work_order_import", strict: true, schema: { type: "object", additionalProperties: false, properties: Object.fromEntries(allowedFields.map((field) => [field, field === "returnVisitRequired" ? { type: "boolean" } : { type: "string" }])), required: [] } } } }),
     });
     if (!response.ok) return NextResponse.json({ error: extractionUnavailable }, { status: 502 });
     const result = await response.json() as { output_text?: string };
-    const proposal = validProposal(result.output_text);
+    const proposal = validateWorkOrderProposal(result.output_text);
     if (proposal === "invalid") return NextResponse.json({ error: extractionUnavailable }, { status: 502 });
     if (!proposal) return NextResponse.json({ error: "No usable job information was found in this document. Try again or enter the job manually." }, { status: 422 });
     return NextResponse.json({ proposal });
   } catch { return NextResponse.json({ error: extractionUnavailable }, { status: 502 }); }
-}
-
-function validProposal(output: string | undefined): AIWorkOrderImport | null | "invalid" {
-  let parsed: unknown;
-  try { parsed = JSON.parse(output || "{}"); } catch { return "invalid"; }
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return "invalid";
-  const entries = Object.entries(parsed as Record<string, unknown>);
-  if (entries.some(([field]) => !allowedFields.includes(field as typeof allowedFields[number]))) return "invalid";
-  const proposalEntries: [string, string | boolean][] = [];
-  for (const [field, value] of entries) {
-    if (value === undefined || value === null || value === "") continue;
-    if (field === "returnVisitRequired") {
-      if (typeof value === "boolean") proposalEntries.push([field, value]);
-      continue;
-    }
-    if (typeof value === "string" && value.trim()) proposalEntries.push([field, value.trim()]);
-  }
-  const proposal = Object.fromEntries(proposalEntries) as AIWorkOrderImport;
-  return Object.keys(proposal).length ? proposal : null;
 }
