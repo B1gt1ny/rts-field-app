@@ -97,7 +97,7 @@ export type ReceiptItem = {
   id: string;
   vendor: string;
   amount: string;
-  category: "Materials" | "Parts" | "Fuel" | "Tools" | "Other";
+  category?: "Meal" | "Lodging" | "Parts / Materials" | "Misc" | "Materials" | "Parts" | "Fuel" | "Tools" | "Other";
   date: string;
   reimbursable: boolean;
   notes?: string;
@@ -118,6 +118,7 @@ export type TimeEntry = {
   employeeName: string;
   createdAt: string;
   mileage?: string;
+  origin?: string;
   notes?: string;
 };
 export type SignoffItem = {
@@ -129,6 +130,14 @@ export type SignoffItem = {
   accepted: boolean;
   notes?: string;
   typedSignature: string;
+};
+export type CustomerSurvey = {
+  completed: boolean;
+  serviceRating?: "1" | "2" | "3" | "4" | "5";
+  comments?: string;
+  customerSatisfied?: boolean;
+  wouldRecommend?: boolean;
+  completedDate?: string;
 };
 export type FactoryCostTracker = {
   mileageRate: string;
@@ -165,6 +174,8 @@ export interface Job {
   source: JobSource;
   dealerName: string;
   factoryWorkOrderNumber: string;
+  serialUnitNumber?: string;
+  returnVisitRequired?: boolean;
   customerName: string;
   phone: string;
   address: string;
@@ -189,6 +200,10 @@ export interface Job {
   afterPhotos: string[];
   completionNotes: string;
   invoiceStatus: string;
+  invoiceDate?: string;
+  invoiceAmount?: number;
+  paidDate?: string;
+  paymentDueDate?: string;
   checklist: ChecklistItem[];
   activityLog?: JobActivity[];
   paperworkItems?: PaperworkItem[];
@@ -196,6 +211,7 @@ export interface Job {
   partsItems?: PartItem[];
   timeEntries?: TimeEntry[];
   signoffs?: SignoffItem[];
+  customerSurvey?: CustomerSurvey;
   factoryCost?: FactoryCostTracker;
   workOrderFiles?: WorkOrderFile[];
   syncToCalendar?: boolean;
@@ -229,7 +245,7 @@ export function defaultFactoryCost(): FactoryCostTracker {
 }
 
 export const emptyJob: Job = {
-  jobId: "", source: "Dealer", dealerName: "", factoryWorkOrderNumber: "", customerName: "",
+  jobId: "", source: "Dealer", dealerName: "", factoryWorkOrderNumber: "", serialUnitNumber: "", returnVisitRequired: false, customerName: "",
   phone: "", address: "", city: "", homeSize: "Single-wide", jobType: "Setup",
   priority: "Normal", status: "New", assignedCrew: "Unassigned", assignedEmployeeIds: [], fullCrew: false, dueDate: "", scheduledTime: "", scopeNotes: "",
   partsNeeded: "", paperworkPickedUp: false, paperworkPickedUpBy: "", paperworkPickupDate: "",

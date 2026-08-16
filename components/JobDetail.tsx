@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ArrowPathIcon, ArrowTopRightOnSquareIcon, BanknotesIcon, CalendarDaysIcon, CameraIcon, ChatBubbleLeftRightIcon, CheckCircleIcon, CheckIcon, ClipboardDocumentListIcon, ClockIcon, MapPinIcon, PencilSquareIcon, PhoneIcon, PrinterIcon, ReceiptPercentIcon, ShareIcon, UserGroupIcon, WrenchScrewdriverIcon } from "@heroicons/react/24/outline";
-import { defaultFactoryCost, makeChecklist, type BusinessSettings, type FactoryCostTracker, type FileCategory, type Job, type JobActivity, type PaperworkItem, type PartItem, type ReceiptItem, type SignoffItem, type TimeEntry, type WorkOrderFile } from "@/lib/types";
+import { defaultFactoryCost, makeChecklist, type BusinessSettings, type CustomerSurvey, type FactoryCostTracker, type FileCategory, type Job, type JobActivity, type PaperworkItem, type PartItem, type ReceiptItem, type SignoffItem, type TimeEntry, type WorkOrderFile } from "@/lib/types";
 import { PriorityBadge, StatusBadge } from "./StatusBadge";
 import { authFetch } from "@/lib/client-auth";
 import { getFactoryCostTotals, hasFactoryCostWork } from "@/lib/factory-costs";
@@ -215,6 +215,7 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
         {canManageJob && <ManagerCorrectionPanel job={job} saving={saving} onSave={saveJobPatch} />}
         <CompleteJobFlow job={job} saving={saving} canManageJob={canManageJob} onFinishWork={finishWorkSession} onSave={saveJobPatch} />
         <SignoffPanel job={job} saving={saving} onSave={saveJobPatch} />
+        <CustomerSurveyPanel job={job} saving={saving} onSave={saveJobPatch} />
         {canManageJob && <BillingHandoffPanel job={job} saving={saving} onSave={saveJobPatch} />}
       </WorkspaceSection>
       <WorkspaceSection id="history" title="History" summary={`${job.activityLog?.length || 0} records`} openSection={openSection} setOpenSection={setOpenSection}>
@@ -232,7 +233,7 @@ function sectionForAnchor(anchor: string): WorkspaceSectionId | undefined {
   if (["documents", "paperwork", "receipts"].includes(anchor)) return "documents";
   if (["notes", "operations", "communication-handoff", "additional-issue"].includes(anchor)) return "notes";
   if (["time", "time-log", "factory-costs"].includes(anchor)) return "time";
-  if (["closeout", "complete-job", "signoffs", "billing-handoff"].includes(anchor)) return "closeout";
+  if (["closeout", "complete-job", "signoffs", "customer-survey", "billing-handoff"].includes(anchor)) return "closeout";
   if (anchor === "history") return "history";
   return undefined;
 }
@@ -402,6 +403,8 @@ function OverviewPanel({ job, companyCam }: { job: Job; companyCam: CompanyCamSt
       <Info icon={<MapPinIcon />} label="Address">{job.address}<br />{job.city}</Info>
       <Info icon={<PhoneIcon />} label="Phone">{job.phone || "Not provided"}</Info>
       <Info icon={<ClipboardDocumentListIcon />} label="Dealer / Factory">{job.dealerName || job.factoryWorkOrderNumber || job.source}</Info>
+      {job.serialUnitNumber && <Info icon={<WrenchScrewdriverIcon />} label="Serial / unit number">{job.serialUnitNumber}</Info>}
+      {job.returnVisitRequired && <Info icon={<ArrowPathIcon />} label="Return visit required">Yes</Info>}
       <Info icon={<UserGroupIcon />} label="Assigned employees">{job.assignedCrew || "Unassigned"}</Info>
       <Info icon={<CalendarDaysIcon />} label="Due date">{formatJobDate(job.dueDate)}</Info>
       <Info icon={<CameraIcon />} label="CompanyCam">{companyCam.projectUrl ? "Linked" : companyCam.configured ? "Ready" : "Not connected"}</Info>
@@ -1571,81 +1574,89 @@ function billingBlockerAction(blocker: { label: string; detail: string }) {
   }
 }
 
-type InvoiceSummaryField = { label: string; value: string; href?: string };
+type InvoiceSummaryStatus = "Recorded" | "Not recorded" | "Not applicable";
+type InvoiceSummaryField = { label: string; value: InvoiceSummaryStatus; href?: string };
 
 function ContractorInvoiceDataSummary({ job }: { job: Job }) {
   const entries = job.timeEntries || [];
   const receipts = job.receipts || [];
   const paperwork = job.paperworkItems || defaultPaperwork(job);
   const tracker = job.factoryCost;
-  const loggedMiles = entries.reduce((total, entry) => total + (Number(entry.mileage) || 0), 0);
   const tripStarts = entries.filter((entry) => entry.notes === "Started Travel");
-  const receiptTotal = receipts.reduce((total, receipt) => total + (Number(receipt.amount) || 0), 0);
-  const receiptCategoryTotal = (category: ReceiptItem["category"]) => receipts.filter((receipt) => receipt.category === category).reduce((total, receipt) => total + (Number(receipt.amount) || 0), 0);
+  const tripOrigins = tripStarts.map((entry) => entry.origin?.trim()).filter((origin): origin is string => Boolean(origin));
   const paperworkComplete = paperwork.filter((item) => ["Collected", "Submitted", "Not needed"].includes(item.status)).length;
   const acceptedSignoffs = (job.signoffs || []).filter((signoff) => signoff.accepted).length;
   const receiptFiles = summarizeFiles(job).receipts;
   const installedParts = (job.partsItems || []).filter((part) => part.status === "Installed").map((part) => part.name).filter(Boolean);
-  const expenseValue = (amount: number) => amount ? `$${amount.toFixed(2)}` : "Not recorded";
+  const recorded = (value: unknown): InvoiceSummaryStatus => value ? "Recorded" : "Not recorded";
+  const receiptCategoryRecorded = (categories: NonNullable<ReceiptItem["category"]>[]) => receipts.some((receipt) => receipt.category && categories.includes(receipt.category));
   const groups: { title: string; fields: InvoiceSummaryField[] }[] = [
     {
-      title: "Job Information",
+      title: "Job",
       fields: [
-        { label: "Customer", value: job.customerName || "Not recorded" },
-        { label: "Contractor / technician", value: job.assignedCrew || "Not recorded" },
-        { label: "Work order", value: job.factoryWorkOrderNumber || "Not recorded" },
-        { label: "Job date", value: job.dueDate ? formatJobDate(job.dueDate) : "Not recorded" },
-        { label: "Work completed", value: job.completionNotes?.trim() || "Not recorded", href: "#complete-job" },
-        { label: "Installed parts / add-ons", value: installedParts.length ? installedParts.join(", ") : "Not recorded", href: "#parts" },
+        { label: "Customer", value: recorded(job.customerName) },
+        { label: "Contractor / technician", value: recorded(job.assignedCrew) },
+        { label: "Work order", value: recorded(job.factoryWorkOrderNumber) },
+        { label: "Serial / unit number", value: recorded(job.serialUnitNumber?.trim()) },
+        { label: "Return visit required", value: job.returnVisitRequired === undefined ? "Not recorded" : job.returnVisitRequired ? "Recorded" : "Not applicable" },
+        { label: "Job date", value: recorded(job.dueDate) },
+        { label: "Work completed", value: recorded(job.completionNotes?.trim()), href: "#complete-job" },
+        { label: "Installed parts / add-ons", value: recorded(installedParts.length), href: "#parts" },
       ],
     },
     {
       title: "Travel",
       fields: [
-        { label: "Trip dates", value: tripStarts.length ? tripStarts.slice(0, 3).map((entry) => formatSessionDate(entry.createdAt)).join(" · ") : "Not recorded", href: "#time-log" },
-        { label: "From", value: "Not recorded" },
-        { label: "To", value: [job.address, job.city].filter(Boolean).join(", ") || "Not recorded" },
-        { label: "Logged mileage", value: loggedMiles ? `${loggedMiles.toFixed(1)} mi` : "Not recorded", href: "#time-log" },
-        { label: "Billing mileage", value: tracker?.miles?.trim() ? `${tracker.miles} mi` : "Not recorded", href: "#factory-costs" },
-        { label: "Drive time", value: tracker?.driveTimeHours?.trim() ? `${tracker.driveTimeHours}h tracked` : formatTravelDuration(entries) !== "0m" ? formatTravelDuration(entries) : "Not recorded", href: "#time-log" },
+        { label: "Trip date", value: recorded(tripStarts.length), href: "#time-log" },
+        { label: "Origin", value: recorded(tripOrigins.length), href: "#time-log" },
+        { label: "Destination", value: recorded([job.address, job.city].filter(Boolean).join(", ")), href: "#time-log" },
+        { label: "Mileage", value: recorded(entries.some((entry) => entry.mileage?.trim())), href: "#time-log" },
+        { label: "Billing mileage", value: recorded(tracker?.miles?.trim()), href: "#factory-costs" },
+        { label: "Drive time", value: recorded(tracker?.driveTimeHours?.trim() || formatTravelDuration(entries) !== "0m"), href: "#time-log" },
       ],
     },
     {
       title: "Labor",
       fields: [
-        { label: "Work hours", value: formatEntryDuration(entries, "Work started", "Departed") !== "0m" ? formatEntryDuration(entries, "Work started", "Departed") : "Not recorded", href: "#time-log" },
-        { label: "Helper hours", value: tracker?.helperHours?.trim() ? `${tracker.helperHours}h tracked` : "Not recorded", href: "#factory-costs" },
+        { label: "Work hours", value: recorded(formatEntryDuration(entries, "Work started", "Departed") !== "0m"), href: "#time-log" },
+        { label: "Helper hours", value: recorded(tracker?.helperHours?.trim()), href: "#factory-costs" },
       ],
     },
     {
       title: "Expenses",
       fields: [
-        { label: "Meals", value: "Not recorded" },
-        { label: "Lodging", value: expenseValue(Number(tracker?.hotelTotal)), href: "#factory-costs" },
-        { label: "Parts purchased", value: expenseValue(receiptCategoryTotal("Parts")), href: "#receipts" },
-        { label: "Materials tracked", value: expenseValue(Number(tracker?.materialsTotal)), href: "#factory-costs" },
-        { label: "Miscellaneous", value: expenseValue(receiptCategoryTotal("Other")), href: "#receipts" },
-        { label: "Other expenses tracked", value: expenseValue(Number(tracker?.otherReceiptsTotal)), href: "#factory-costs" },
-        { label: "Receipt total", value: receiptTotal ? `$${receiptTotal.toFixed(2)}` : "Not recorded", href: "#receipts" },
-        { label: "Supporting receipts", value: receiptFiles ? `${receiptFiles} file${receiptFiles === 1 ? "" : "s"} attached` : "Not recorded", href: "#receipts" },
+        { label: "Meals", value: recorded(receiptCategoryRecorded(["Meal"])), href: "#receipts" },
+        { label: "Lodging", value: recorded(receiptCategoryRecorded(["Lodging"])), href: "#receipts" },
+        { label: "Parts / Materials", value: recorded(receiptCategoryRecorded(["Parts / Materials", "Parts", "Materials"])), href: "#receipts" },
+        { label: "Materials tracked", value: recorded(tracker?.materialsTotal?.trim()), href: "#factory-costs" },
+        { label: "Misc", value: recorded(receiptCategoryRecorded(["Misc", "Other", "Fuel", "Tools"])), href: "#receipts" },
+        { label: "Other expenses tracked", value: recorded(tracker?.otherReceiptsTotal?.trim()), href: "#factory-costs" },
+        { label: "Receipt total", value: recorded(receipts.some((receipt) => receipt.amount?.trim())), href: "#receipts" },
+        { label: "Receipt/document backup", value: recorded(receiptFiles), href: "#receipts" },
       ],
     },
     {
       title: "Closeout",
       fields: [
-        { label: "Paperwork", value: paperwork.length ? `${paperworkComplete}/${paperwork.length} recorded` : "Not recorded", href: "#paperwork" },
-        { label: "Customer / signature", value: acceptedSignoffs ? `${acceptedSignoffs} accepted` : "Not recorded", href: "#signoffs" },
-        { label: "Completion notes", value: job.completionNotes?.trim() ? "Recorded" : "Not recorded", href: "#complete-job" },
+        { label: "Paperwork", value: recorded(paperworkComplete), href: "#paperwork" },
+        { label: "Signature", value: recorded(acceptedSignoffs), href: "#signoffs" },
+        { label: "Customer survey", value: recorded(job.customerSurvey?.completed), href: "#customer-survey" },
+        { label: "Service rating", value: recorded(job.customerSurvey?.serviceRating), href: "#customer-survey" },
+        { label: "Customer satisfied", value: job.customerSurvey?.customerSatisfied === undefined ? "Not recorded" : "Recorded", href: "#customer-survey" },
+        { label: "Survey comments", value: recorded(job.customerSurvey?.comments?.trim()), href: "#customer-survey" },
+        { label: "Notes", value: job.completionNotes?.trim() ? "Recorded" : "Not recorded", href: "#complete-job" },
       ],
     },
   ];
+  const recordedCount = groups.flatMap((group) => group.fields).filter((field) => field.value === "Recorded").length;
+  const fieldCount = groups.flatMap((group) => group.fields).length;
 
   return <section className="mb-4 rounded-2xl border border-black/10 bg-sand p-4">
-    <div className="mb-3"><p className="text-xs font-black uppercase tracking-widest text-forest">Manager summary</p><h3 className="mt-1 text-lg font-black">Contractor Invoice Data Summary</h3><p className="mt-1 text-sm text-black/50">Available job and field data only. This does not create an invoice.</p></div>
-    <div className="grid gap-3 lg:grid-cols-2">
+    <div className="mb-3 flex items-start justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-widest text-forest">Manager summary</p><h3 className="mt-1 text-lg font-black">Contractor Invoice Data Summary</h3><p className="mt-1 text-sm text-black/50">Available job and field data only. This does not create an invoice.</p></div><p className="shrink-0 rounded-full bg-white px-3 py-2 text-xs font-black text-forest">Contractor paperwork {recordedCount} of {fieldCount} recorded</p></div>
+    <div className="grid gap-2 lg:grid-cols-2">
       {groups.map((group) => <div key={group.title} className="rounded-xl bg-white p-3">
         <h4 className="text-sm font-black text-ink">{group.title}</h4>
-        <dl className="mt-2 space-y-1.5 text-sm">{group.fields.map((field) => <div key={field.label} className="grid grid-cols-[minmax(0,.8fr)_minmax(0,1.2fr)] gap-2"><dt className="font-semibold text-black/50">{field.label}</dt><dd className="break-words text-right font-bold text-ink">{field.href ? <a href={field.href} className="underline">{field.value}</a> : field.value}</dd></div>)}</dl>
+        <dl className="mt-2 space-y-1 text-sm">{group.fields.map((field) => <div key={field.label} className="grid grid-cols-[minmax(0,1fr)_auto] gap-2"><dt className="font-semibold text-black/50">{field.label}</dt><dd className={`text-right text-xs font-black ${field.value === "Recorded" ? "text-forest" : "text-black/45"}`}>{field.href ? <a href={field.href} className="underline">{field.value}</a> : field.value}</dd></div>)}</dl>
       </div>)}
     </div>
   </section>;
@@ -1681,6 +1692,18 @@ function BillingHandoffPanel({ job, saving, onSave }: { job: Job; saving: boolea
     });
   }
 
+  async function saveBillingMetadata(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    const invoiceAmount = String(data.get("invoiceAmount") || "").trim();
+    await onSave({
+      invoiceDate: String(data.get("invoiceDate") || "").trim() || undefined,
+      invoiceAmount: invoiceAmount ? Number(invoiceAmount) : undefined,
+      paymentDueDate: String(data.get("paymentDueDate") || "").trim() || undefined,
+      paidDate: String(data.get("paidDate") || "").trim() || undefined,
+    });
+  }
+
   async function copyBillingSummary() {
     const summary = [
       `Billing handoff - ${job.jobId}`,
@@ -1692,6 +1715,10 @@ function BillingHandoffPanel({ job, saving, onSave }: { job: Job; saving: boolea
       `Job type: ${job.jobType || "N/A"}`,
       `Status: ${job.status}`,
       `Invoice status: ${job.invoiceStatus || "Not started"}`,
+      `Invoice date: ${job.invoiceDate || "Not recorded"}`,
+      `Invoice amount: ${job.invoiceAmount === undefined ? "Not recorded" : `$${job.invoiceAmount.toFixed(2)}`}`,
+      `Payment due date: ${job.paymentDueDate || "Not recorded"}`,
+      `Paid date: ${job.paidDate || "Not recorded"}`,
       `Closeout score: ${score}%`,
       `Receipts: ${job.receipts?.length || 0} totaling $${receiptTotal.toFixed(2)}`,
       job.source === "Factory" ? `Factory cost total: $${factoryTotal.toFixed(2)}` : "",
@@ -1721,6 +1748,19 @@ function BillingHandoffPanel({ job, saving, onSave }: { job: Job; saving: boolea
       <MiniMetric label="Blockers" value={blockers.length} icon={<ClipboardDocumentListIcon />} />
       <MiniMetric label={job.source === "Factory" ? "Factory total" : "Receipts"} value={`$${(job.source === "Factory" ? factoryTotal : receiptTotal).toFixed(0)}`} icon={<ReceiptPercentIcon />} />
     </div>
+    <div className="mb-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      <MiniMetric label="Invoice date" value={job.invoiceDate ? formatJobDate(job.invoiceDate) : "Not recorded"} icon={<CalendarDaysIcon />} />
+      <MiniMetric label="Invoice amount" value={job.invoiceAmount === undefined ? "Not recorded" : `$${job.invoiceAmount.toFixed(2)}`} icon={<BanknotesIcon />} />
+      <MiniMetric label="Payment due date" value={job.paymentDueDate ? formatJobDate(job.paymentDueDate) : "Not recorded"} icon={<CalendarDaysIcon />} />
+      <MiniMetric label="Paid date" value={job.paidDate ? formatJobDate(job.paidDate) : "Not recorded"} icon={<CheckCircleIcon />} />
+    </div>
+    <form onSubmit={saveBillingMetadata} className="mb-3 grid gap-3 rounded-2xl border border-black/10 bg-sand p-3 sm:grid-cols-2">
+      <label><span className="label">Invoice date</span><input name="invoiceDate" type="date" className="field" defaultValue={job.invoiceDate || ""} /></label>
+      <label><span className="label">Invoice amount</span><input name="invoiceAmount" type="number" min="0" step="0.01" inputMode="decimal" className="field" defaultValue={job.invoiceAmount ?? ""} placeholder="Not recorded" /></label>
+      <label><span className="label">Payment due date</span><input name="paymentDueDate" type="date" className="field" defaultValue={job.paymentDueDate || ""} /></label>
+      <label><span className="label">Paid date</span><input name="paidDate" type="date" className="field" defaultValue={job.paidDate || ""} /></label>
+      <button disabled={saving} className="min-h-12 rounded-xl bg-white px-4 py-3 font-black text-ink disabled:opacity-50 sm:col-span-2">{saving ? "Saving…" : "Save billing details"}</button>
+    </form>
     {actionableBlockers.length > 0 && <div className="mb-3 rounded-xl bg-orange-50 p-3 text-sm font-bold text-orange-800">
       <div className="flex items-center justify-between gap-3"><span>Not Ready for Billing</span><span>{actionableBlockers.length} blocker{actionableBlockers.length === 1 ? "" : "s"}</span></div>
       <ul className="mt-2 space-y-1 font-semibold">
@@ -1879,6 +1919,39 @@ function SignoffPanel({ job, saving, onSave }: { job: Job; saving: boolean; onSa
         <p className="mt-2 rounded-lg bg-white p-2 text-xs font-bold text-black/45">Typed signature: {signoff.typedSignature}</p>
       </div>) : <p className="rounded-xl bg-sand p-3 text-sm font-semibold text-black/45">No sign-offs saved yet.</p>}
     </div>
+  </section>;
+}
+
+function CustomerSurveyPanel({ job, saving, onSave }: { job: Job; saving: boolean; onSave: (patch: Partial<Job>) => Promise<Job | undefined> }) {
+  const [survey, setSurvey] = useState<CustomerSurvey>(job.customerSurvey || { completed: false });
+  const set = <K extends keyof CustomerSurvey>(key: K, value: CustomerSurvey[K]) => setSurvey((current) => ({ ...current, [key]: value }));
+
+  async function saveSurvey(event: React.FormEvent) {
+    event.preventDefault();
+    const customerSurvey: CustomerSurvey = {
+      ...survey,
+      comments: survey.comments?.trim() || undefined,
+      completedDate: survey.completed ? survey.completedDate || new Date().toISOString() : undefined,
+    };
+    await onSave({
+      customerSurvey,
+      activityLog: addJobActivity(job, customerSurvey.completed ? "Customer survey recorded as complete." : "Customer survey updated.", "Customer"),
+    });
+  }
+
+  return <section id="customer-survey" className="card p-4 sm:p-6 scroll-mt-24">
+    <div className="mb-4 flex items-start gap-3">
+      <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-800"><ChatBubbleLeftRightIcon className="size-5" /></span>
+      <div><h2 className="text-lg font-black">Customer Survey</h2><p className="text-sm text-black/50">Record the customer’s service feedback. An existing customer sign-off can be reused; no additional signature is needed.</p></div>
+    </div>
+    <form onSubmit={saveSurvey} className="grid gap-3 rounded-2xl border border-black/10 bg-white p-3 sm:grid-cols-2">
+      <label className="flex min-h-12 items-center gap-3 rounded-xl border border-black/10 bg-sand p-3 text-sm font-bold sm:col-span-2"><input type="checkbox" checked={survey.completed} onChange={(event) => set("completed", event.target.checked)} className="size-5 accent-forest" /> Survey completed</label>
+      <label><span className="label">Service rating</span><select className="field" value={survey.serviceRating || ""} onChange={(event) => set("serviceRating", event.target.value as CustomerSurvey["serviceRating"] || undefined)}><option value="">Not recorded</option>{["1", "2", "3", "4", "5"].map((rating) => <option key={rating} value={rating}>{rating} / 5</option>)}</select></label>
+      <label><span className="label">Customer satisfied</span><select className="field" value={survey.customerSatisfied === undefined ? "" : survey.customerSatisfied ? "yes" : "no"} onChange={(event) => set("customerSatisfied", event.target.value === "" ? undefined : event.target.value === "yes")}><option value="">Not recorded</option><option value="yes">Yes</option><option value="no">No</option></select></label>
+      <label><span className="label">Would recommend</span><select className="field" value={survey.wouldRecommend === undefined ? "" : survey.wouldRecommend ? "yes" : "no"} onChange={(event) => set("wouldRecommend", event.target.value === "" ? undefined : event.target.value === "yes")}><option value="">Not recorded</option><option value="yes">Yes</option><option value="no">No</option></select></label>
+      <label className="sm:col-span-2"><span className="label">Comments</span><textarea className="field min-h-24 resize-y" value={survey.comments || ""} onChange={(event) => set("comments", event.target.value)} placeholder="Customer feedback or follow-up notes" /></label>
+      <button disabled={saving} className="min-h-12 rounded-xl bg-forest px-4 py-3 font-black text-white disabled:opacity-50 sm:col-span-2">{saving ? "Saving…" : "Save Customer Survey"}</button>
+    </form>
   </section>;
 }
 
@@ -2131,7 +2204,7 @@ function OperationsPanel({ job, setJob, mode }: { job: Job; setJob: React.Dispat
       id: `receipt-${Date.now()}`,
       vendor: vendor || "Receipt",
       amount,
-      category: String(formData.get("category") || "Materials") as ReceiptItem["category"],
+      category: String(formData.get("category") || "Misc") as NonNullable<ReceiptItem["category"]>,
       date: String(formData.get("date") || new Date().toLocaleDateString("en-CA")),
       reimbursable: formData.get("reimbursable") === "on",
       notes: String(formData.get("notes") || "").trim(),
@@ -2198,7 +2271,7 @@ function OperationsPanel({ job, setJob, mode }: { job: Job; setJob: React.Dispat
               <input name="amount" className="field !min-h-11 !py-2 text-sm" inputMode="decimal" placeholder="Amount" />
               <input name="date" type="date" className="field !min-h-11 !py-2 text-sm" defaultValue={new Date().toLocaleDateString("en-CA")} />
             </div>
-            <select name="category" className="field !min-h-11 !py-2 text-sm">{["Materials", "Parts", "Fuel", "Tools", "Other"].map((category) => <option key={category}>{category}</option>)}</select>
+            <select name="category" className="field !min-h-11 !py-2 text-sm">{["Meal", "Lodging", "Parts / Materials", "Misc"].map((category) => <option key={category}>{category}</option>)}</select>
             <label className="flex min-h-10 items-center gap-2 text-sm font-bold"><input name="reimbursable" type="checkbox" className="size-4 accent-forest" /> Reimbursable</label>
             <input name="notes" className="field !min-h-11 !py-2 text-sm" placeholder="Notes" />
             <label className="flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed border-black/15 bg-sand px-3 py-3 text-center text-sm font-black text-ink">
@@ -2209,7 +2282,7 @@ function OperationsPanel({ job, setJob, mode }: { job: Job; setJob: React.Dispat
           </form>
           <div className="mt-3 space-y-2">{receipts.slice(0, 5).map((receipt) => <div key={receipt.id} className="rounded-xl bg-sand p-3 text-sm">
             <div className="flex justify-between gap-3"><span className="font-extrabold">{receipt.vendor}</span><span className="font-black">${receipt.amount || "0"}</span></div>
-            <p className="text-xs font-semibold text-black/45">{receipt.category} · {receipt.date}{receipt.reimbursable ? " · Reimbursable" : ""}</p>
+            <p className="text-xs font-semibold text-black/45">{receipt.category || "Uncategorized"} · {receipt.date}{receipt.reimbursable ? " · Reimbursable" : ""}</p>
             {receipt.notes && <p className="mt-1 text-xs text-black/55">{receipt.notes}</p>}
             {receipt.file && <a href={receipt.file.storageUrl || receipt.file.dataUrl} target="_blank" className="mt-2 inline-flex min-h-10 items-center justify-center rounded-lg bg-white px-3 py-2 text-xs font-black text-forest">Open receipt file</a>}
           </div>)}</div>
@@ -2359,6 +2432,7 @@ function OfflineDraftPanel({ job, saving, onSave }: { job: Job; saving: boolean;
 function TimeLogPanel({ job, saving, onSave }: { job: Job; saving: boolean; onSave: (patch: Partial<Job>) => Promise<Job | undefined> }) {
   const user = useAuthUser();
   const [mileage, setMileage] = useState("");
+  const [origin, setOrigin] = useState("");
   const [notes, setNotes] = useState("");
   const [mileageError, setMileageError] = useState("");
   const entries = job.timeEntries || [];
@@ -2370,14 +2444,16 @@ function TimeLogPanel({ job, saving, onSave }: { job: Job; saving: boolean; onSa
   const travel = getTravelState(job);
   const lastUpdated = entries[0]?.createdAt;
 
-  async function addTimeEntry(type: TimeEntry["type"], options: { mileage?: string; notes?: string } = {}) {
+  async function addTimeEntry(type: TimeEntry["type"], options: { mileage?: string; origin?: string; notes?: string } = {}) {
     const trimmedMileage = options.mileage?.trim() || "";
+    const trimmedOrigin = options.origin?.trim() || "";
     const entry: TimeEntry = {
       id: `time-${Date.now()}`,
       type,
       employeeName,
       createdAt: new Date().toISOString(),
       mileage: trimmedMileage || undefined,
+      origin: trimmedOrigin || undefined,
       notes: options.notes?.trim(),
     };
     const statusPatch: Partial<Job> = type === "Work started" && ["New", "Scheduled"].includes(job.status) ? { status: "In Progress" } : {};
@@ -2404,7 +2480,8 @@ function TimeLogPanel({ job, saving, onSave }: { job: Job; saving: boolean; onSa
 
   async function startTravel() {
     if (travel.active) return;
-    await addTimeEntry("Note", { notes: "Started Travel" });
+    await addTimeEntry("Note", { origin, notes: "Started Travel" });
+    setOrigin("");
   }
 
   async function arriveAtJob() {
@@ -2447,6 +2524,7 @@ function TimeLogPanel({ job, saving, onSave }: { job: Job; saving: boolean; onSa
         <MiniMetric label="Arrival" value={travel.active ? "In travel" : travel.arrived ? formatSessionDate(travel.arrived.createdAt) : "Not recorded"} icon={<MapPinIcon />} />
         <MiniMetric label="Drive time" value={travelDuration(travel)} icon={<ClockIcon />} />
       </div>
+      {!travel.started && !session.started && <label className="mt-3 block text-sm font-bold text-black/55">Origin<input className="field mt-1 !min-h-11 !py-2 text-sm" value={origin} onChange={(event) => setOrigin(event.target.value)} placeholder="Starting location (optional)" /></label>}
     </div>
     <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
       {(["Arrived", "Work started", "Paused", "Departed"] as TimeEntry["type"][]).map((type) => <button key={type} type="button" disabled={saving} onClick={() => addTimeEntry(type)} className="min-h-12 rounded-xl bg-forest px-3 py-3 text-sm font-black text-white disabled:opacity-50">{type}</button>)}

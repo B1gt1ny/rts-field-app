@@ -19,6 +19,13 @@ type OfficeBillingAction = {
   priority: "High" | "Normal";
 };
 
+type PaymentFollowUp = {
+  job: Job;
+  label: string;
+  pastDue: boolean;
+  invoiceTimestamp: number;
+};
+
 export function BillingView() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,6 +47,11 @@ export function BillingView() {
     const action = officeBillingActionFor(job);
     return action ? [{ ...action, id: `${job.jobId}-office-billing-action`, job }] : [];
   }).sort((a, b) => officeActionRank(a.priority) - officeActionRank(b.priority) || a.job.customerName.localeCompare(b.job.customerName)), [jobs]);
+  const paymentFollowUps = useMemo(() => jobs.flatMap((job) => {
+    if (billingBoardState(job) !== "Invoiced" || job.status === "Paid" || job.invoiceStatus === "Paid" || job.paidDate) return [];
+    const followUp = paymentFollowUpFor(job);
+    return followUp ? [followUp] : [];
+  }).sort((a, b) => Number(b.pastDue) - Number(a.pastDue) || a.invoiceTimestamp - b.invoiceTimestamp || a.job.customerName.localeCompare(b.job.customerName)), [jobs]);
   const receiptTotal = billable.reduce((sum, job) => sum + (job.receipts || []).reduce((total, receipt) => total + (Number(receipt.amount) || 0), 0), 0);
   const factoryCostTotal = billable.reduce((sum, job) => sum + factoryCostGrandTotal(job), 0);
   const fileTotal = billable.reduce((sum, job) => sum + (job.workOrderFiles?.length || 0), 0);
@@ -85,6 +97,10 @@ export function BillingView() {
       `Job type: ${job.jobType || "N/A"}`,
       `Status: ${job.status}`,
       `Invoice status: ${job.invoiceStatus || "Not started"}`,
+      `Invoice date: ${job.invoiceDate || "Not recorded"}`,
+      `Invoice amount: ${job.invoiceAmount === undefined ? "Not recorded" : `$${job.invoiceAmount.toFixed(2)}`}`,
+      `Payment due date: ${job.paymentDueDate || "Not recorded"}`,
+      `Paid date: ${job.paidDate || "Not recorded"}`,
       `Closeout score: ${readinessScore(job)}%`,
       `Receipts: ${job.receipts?.length || 0} totaling $${receiptSum.toFixed(2)}`,
       job.source === "Factory" ? `Factory cost total: $${factoryCosts.grandTotal.toFixed(2)}` : "",
@@ -159,6 +175,15 @@ export function BillingView() {
       {officeActions.length ? <div className="divide-y divide-black/10">{officeActions.map((action) => <OfficeBillingActionRow key={action.id} action={action} />)}</div> : <div className="p-6 text-center text-sm font-semibold text-black/50">No office billing actions right now.</div>}
     </section>
 
+    <section className="card overflow-hidden">
+      <div className="border-b border-black/10 px-4 py-3">
+        <p className="text-xs font-black uppercase tracking-widest text-forest">Payment follow-up</p>
+        <h2 className="mt-1 text-lg font-black">Invoiced jobs to review</h2>
+        <p className="mt-1 text-sm font-semibold text-black/50">Past-due invoices appear first. Jobs without a due date show invoice age instead.</p>
+      </div>
+      {paymentFollowUps.length ? <div className="divide-y divide-black/10">{paymentFollowUps.map((followUp) => <PaymentFollowUpRow key={followUp.job.jobId} followUp={followUp} />)}</div> : <div className="p-6 text-center text-sm font-semibold text-black/50">No payment follow-up needed right now.</div>}
+    </section>
+
     <section className="card p-3 sm:p-4">
       <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center">
         <p className="text-sm font-bold text-black/45">{loading ? "Loading billing jobs…" : `${filtered.length} jobs in ${filter === "All" ? "all billing states" : filter}`}</p>
@@ -197,6 +222,10 @@ export function BillingView() {
           <InfoPill label="Files" value={job.workOrderFiles?.length || 0} />
           <InfoPill label="Sign-offs" value={job.signoffs?.length || 0} />
           <InfoPill label="Notes" value={job.completionNotes ? "Added" : "Missing"} />
+          <InfoPill label="Invoice date" value={job.invoiceDate || "Not recorded"} />
+          <InfoPill label="Invoice amount" value={job.invoiceAmount === undefined ? "Not recorded" : `$${job.invoiceAmount.toFixed(2)}`} />
+          <InfoPill label="Payment due" value={job.paymentDueDate || "Not recorded"} />
+          <InfoPill label="Paid date" value={job.paidDate || "Not recorded"} />
         </div>
         {job.source === "Factory" && <FactoryCostBreakdown totals={factoryCosts} />}
         {receiptBackupMissing && <div className="mt-3 rounded-xl border border-orange-200 bg-orange-50 p-3 text-sm font-bold text-orange-900">
@@ -259,6 +288,52 @@ function OfficeBillingActionRow({ action }: { action: OfficeBillingAction }) {
     <p className="text-sm font-bold text-black/65"><span className="mr-1 text-xs font-black uppercase tracking-wide text-black/35 md:hidden">Job</span>{action.job.customerName} <span className="text-black/40">· {action.job.jobId}</span></p>
     <p className="text-sm font-semibold text-black/55"><span className="mr-1 text-xs font-black uppercase tracking-wide text-black/35 md:hidden">Reason</span>{action.reason}</p>
     <Link href={action.href} className="mt-1 min-h-11 rounded-xl bg-forest px-4 py-2 text-center text-sm font-black text-white md:mt-0">Open</Link>
+  </div>;
+}
+
+function paymentFollowUpFor(job: Job): PaymentFollowUp | null {
+  const invoiceTimestamp = dateTimestamp(job.invoiceDate);
+  if (job.paymentDueDate) {
+    const dueTimestamp = dateTimestamp(job.paymentDueDate);
+    return {
+      job,
+      label: dueTimestamp !== undefined && dueTimestamp < startOfToday() ? "Past Due" : "Due Soon",
+      pastDue: dueTimestamp !== undefined && dueTimestamp < startOfToday(),
+      invoiceTimestamp: invoiceTimestamp ?? Number.MAX_SAFE_INTEGER,
+    };
+  }
+  if (invoiceTimestamp === undefined) return { job, label: "Invoice date not recorded", pastDue: false, invoiceTimestamp: Number.MAX_SAFE_INTEGER };
+  const ageDays = Math.max(0, Math.floor((startOfToday() - invoiceTimestamp) / 86_400_000));
+  const label = ageDays <= 7 ? "Invoice Age 0–7 days" : ageDays <= 14 ? "Invoice Age 8–14 days" : ageDays <= 30 ? "Invoice Age 15–30 days" : "Invoice Age 30+ days";
+  return { job, label, pastDue: false, invoiceTimestamp };
+}
+
+function dateTimestamp(value?: string) {
+  if (!value) return undefined;
+  const timestamp = new Date(`${value.slice(0, 10)}T00:00:00`).getTime();
+  return Number.isNaN(timestamp) ? undefined : timestamp;
+}
+
+function startOfToday() {
+  const today = new Date();
+  return new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+}
+
+function PaymentFollowUpRow({ followUp }: { followUp: PaymentFollowUp }) {
+  const { job } = followUp;
+  return <div className="grid gap-3 px-4 py-4 sm:grid-cols-[minmax(14rem,1fr)_auto] sm:items-center">
+    <div>
+      <p className="font-black">{job.customerName} <span className="text-black/40">· {job.jobId}</span></p>
+      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-sm font-semibold text-black/55">
+        {job.invoiceAmount !== undefined && <span>Invoice amount: ${job.invoiceAmount.toFixed(2)}</span>}
+        {job.invoiceDate && <span>Invoice date: {job.invoiceDate}</span>}
+        {job.paymentDueDate && <span>Payment due: {job.paymentDueDate}</span>}
+      </div>
+    </div>
+    <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+      <span className={`rounded-full px-3 py-1 text-xs font-black ${followUp.pastDue ? "bg-orange-100 text-orange-800" : "bg-sand text-black/65"}`}>{followUp.label}</span>
+      <Link href={`/jobs/${job.jobId}`} className="min-h-11 rounded-xl bg-forest px-4 py-2 text-center text-sm font-black text-white">Open Job</Link>
+    </div>
   </div>;
 }
 

@@ -129,6 +129,11 @@ export function JobForm({ initialJob }: { initialJob?: Job }) {
       <Input label="City" value={job.city} onChange={(v) => set("city", v)} required />
     </FormSection>
     <FormSection title="Work details" description="Give the assigned employees everything they need">
+      <Input label="Serial / unit number" value={job.serialUnitNumber || ""} onChange={(v) => set("serialUnitNumber", v)} />
+      <label className="flex min-h-12 items-center gap-3 rounded-xl border border-black/10 bg-white px-4 py-3">
+        <input type="checkbox" className="size-5 accent-forest" checked={Boolean(job.returnVisitRequired)} onChange={(e) => set("returnVisitRequired", e.target.checked)} />
+        <span className="font-bold">Return visit required</span>
+      </label>
       <Textarea label="Scope notes" value={job.scopeNotes} onChange={(v) => set("scopeNotes", v)} wide />
       <Textarea label="Parts needed" value={job.partsNeeded} onChange={(v) => set("partsNeeded", v)} wide />
       <Textarea label="Completion notes" value={job.completionNotes} onChange={(v) => set("completionNotes", v)} wide />
