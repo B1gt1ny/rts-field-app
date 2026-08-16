@@ -1,10 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { BanknotesIcon, BellAlertIcon, CalendarDaysIcon, ExclamationTriangleIcon, MagnifyingGlassIcon, WrenchScrewdriverIcon } from "@heroicons/react/24/outline";
 import { JobCard } from "./JobCard";
 import { priorities, sources, statuses, type Employee, type Job, type JobSource, type JobStatus } from "@/lib/types";
 import { authFetch } from "@/lib/client-auth";
+import { intakeCompleteness } from "@/lib/job-readiness";
+import { closedJobStatuses } from "@/lib/field-activity";
 
 type Preset = { status?: JobStatus | JobStatus[]; source?: JobSource; today?: boolean };
 type QuickFilter = "" | "overdue" | "unscheduled" | "parts" | "follow-up" | "billing" | "priority";
@@ -48,6 +51,11 @@ export function JobsView({ title, description, preset = {} }: { title: string; d
     billing: jobs.filter((job) => matchesQuickFilter(job, "billing", today)).length,
     priority: jobs.filter((job) => matchesQuickFilter(job, "priority", today)).length,
   }), [jobs, today]);
+  const intakeNeedsAttention = useMemo(() => jobs.flatMap((job) => {
+    if (closedJobStatuses.includes(job.status)) return [];
+    const missing = intakeCompleteness(job).core.filter((check) => !check.ok);
+    return missing.length ? [{ job, missing }] : [];
+  }).sort((a, b) => b.missing.length - a.missing.length), [jobs]);
 
   function clearFilters() {
     setSearch("");
@@ -74,6 +82,28 @@ export function JobsView({ title, description, preset = {} }: { title: string; d
         <QuickFilterButton label="Follow-up" value="follow-up" count={counts.followUp} active={quickFilter === "follow-up"} onClick={setQuickFilter} icon={<BellAlertIcon />} />
         <QuickFilterButton label="Billing" value="billing" count={counts.billing} active={quickFilter === "billing"} onClick={setQuickFilter} icon={<BanknotesIcon />} />
         <QuickFilterButton label="High priority" value="priority" count={counts.priority} active={quickFilter === "priority"} onClick={setQuickFilter} icon={<ExclamationTriangleIcon />} />
+      </div>
+    </section>
+    <section className="card mb-5 overflow-hidden">
+      <div className="flex items-center justify-between gap-3 bg-orange-50 p-4">
+        <div>
+          <h2 className="text-lg font-black">Intake Needs Attention</h2>
+          <p className="text-sm font-semibold text-orange-900/65">Active jobs missing core information before scheduling and dispatch.</p>
+        </div>
+        <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-orange-900">{intakeNeedsAttention.length}</span>
+      </div>
+      <div className="divide-y divide-black/5">
+        {intakeNeedsAttention.length ? intakeNeedsAttention.map(({ job, missing }) => <div key={job.jobId} className="p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <p className="truncate font-black">{job.customerName?.trim() || "Customer not recorded"} <span className="text-black/40">— {job.jobId}</span></p>
+              <p className="mt-1 text-sm font-semibold text-black/50">{job.jobType?.trim() || "Work type not recorded"}</p>
+              <p className="mt-2 text-sm font-black text-orange-900">{missing.length} missing</p>
+              <p className="mt-1 text-sm font-semibold text-black/55">{missing.map((check) => check.label).join(" · ")}</p>
+            </div>
+            <Link href={`/jobs/${job.jobId}/edit`} className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-xl bg-forest px-4 py-2 text-sm font-black text-white">Edit job</Link>
+          </div>
+        </div>) : <div className="p-5 text-center text-sm font-semibold text-black/45">All active jobs have core intake information.</div>}
       </div>
     </section>
     <section className="card mb-5 p-3 sm:p-4">

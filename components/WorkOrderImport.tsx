@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowUpTrayIcon, ClipboardDocumentListIcon, DocumentTextIcon, SparklesIcon } from "@heroicons/react/24/outline";
-import { emptyJob, makeChecklist, type Job, type JobActivity, type PaperworkItem, type WorkOrderFile } from "@/lib/types";
+import { type AIWorkOrderImport, type Job, type WorkOrderFile } from "@/lib/types";
 import { authFetch } from "@/lib/client-auth";
 
 type ImportDraft = Pick<Job, "source" | "dealerName" | "factoryWorkOrderNumber" | "customerName" | "phone" | "address" | "city" | "homeSize" | "jobType" | "priority" | "status" | "dueDate" | "scopeNotes" | "partsNeeded">;
@@ -30,16 +30,16 @@ export function WorkOrderImport() {
   const [file, setFile] = useState<WorkOrderFile | null>(null);
   const [workOrderText, setWorkOrderText] = useState("");
   const [draft, setDraft] = useState<ImportDraft>(defaultDraft);
-  const [saving, setSaving] = useState(false);
+  const [extracting, setExtracting] = useState(false);
   const [error, setError] = useState("");
   const [draftLoaded, setDraftLoaded] = useState(false);
   const [draftDirty, setDraftDirty] = useState(false);
-  const [savedDraft, setSavedDraft] = useState<{ draft: ImportDraft; workOrderText: string; file: WorkOrderFile | null; savedAt: string } | null>(null);
+  const [savedDraft, setSavedDraft] = useState<{ draft: ImportDraft; file: WorkOrderFile | null; savedAt: string } | null>(null);
   const [draftStatus, setDraftStatus] = useState("");
   const [copied, setCopied] = useState(false);
   const [extractionReady, setExtractionReady] = useState(false);
   const importDraftKey = "company-command-import-draft";
-  const canCreate = draft.customerName.trim() && draft.address.trim() && draft.city.trim();
+  const supportedFileTypes = new Set(["application/pdf", "image/jpeg", "image/png", "image/webp"]);
 
   const parsedPreview = useMemo(() => parseWorkOrderText(workOrderText), [workOrderText]);
   const review = useMemo(() => reviewDraft(draft, Boolean(file || workOrderText.trim())), [draft, file, workOrderText]);
@@ -69,14 +69,14 @@ export function WorkOrderImport() {
     if (!draftLoaded || !draftDirty) return;
     const timer = window.setTimeout(() => {
       try {
-        window.localStorage.setItem(importDraftKey, JSON.stringify({ draft, workOrderText, file, savedAt: new Date().toISOString() }));
+        window.localStorage.setItem(importDraftKey, JSON.stringify({ draft, file, savedAt: new Date().toISOString() }));
         setDraftStatus("Import draft saved on this phone.");
       } catch {
         setDraftStatus("Import draft could not be saved on this phone.");
       }
     }, 400);
     return () => window.clearTimeout(timer);
-  }, [draft, draftDirty, draftLoaded, file, workOrderText]);
+  }, [draft, draftDirty, draftLoaded, file]);
 
   function updateDraft(updater: (old: ImportDraft) => ImportDraft) {
     setDraftDirty(true);
@@ -91,7 +91,6 @@ export function WorkOrderImport() {
   function restoreDraft() {
     if (!savedDraft) return;
     setDraft(savedDraft.draft);
-    setWorkOrderText(savedDraft.workOrderText || "");
     setFile(savedDraft.file || null);
     setSavedDraft(null);
     setDraftDirty(true);
@@ -108,15 +107,11 @@ export function WorkOrderImport() {
   async function onFileSelected(selected: File | undefined) {
     if (!selected) return;
     setError("");
-    let text = "";
-    if (selected.type.startsWith("text/") || selected.name.toLowerCase().endsWith(".csv")) {
-      text = await selected.text();
-      updateWorkOrderText(text);
-      updateDraft((old) => ({ ...old, ...parseWorkOrderText(text) }));
-    }
+    if (!supportedFileTypes.has(selected.type)) { setError("Upload a PDF, JPG, PNG, or WEBP work-order file."); return; }
     const uploaded = await uploadFile(selected, "draft", "Work Order");
+    if (!uploaded.storagePath) { setError("Private storage is required to extract this work order. Enter the job manually or try the upload again after storage is available."); return; }
     setDraftDirty(true);
-    setFile({ ...uploaded, extractedText: text, category: "Work Order" });
+    setFile({ ...uploaded, category: "Work Order" });
   }
 
   function applyParsed() {
@@ -139,71 +134,48 @@ export function WorkOrderImport() {
     window.setTimeout(() => setCopied(false), 2200);
   }
 
-  async function createJob(event: React.FormEvent) {
-    event.preventDefault();
-    if (!canCreate) {
-      setError("Customer name, address, and city are required before creating the profile.");
-      return;
-    }
-    setSaving(true);
-    setError("");
-    const activity: JobActivity[] = [{
-      id: `activity-${Date.now()}`,
-      type: "Paperwork",
-      message: file ? `Work order imported from ${file.fileName}.` : "Work order imported from typed/pasted text.",
-      createdAt: new Date().toISOString(),
-      createdBy: "Manager",
-    }];
-    const paperworkItems: PaperworkItem[] = [
-      { id: "work-order", label: "Original work order", status: file || workOrderText.trim() ? "Collected" : "Needed", notes: file?.fileName || "Pasted work order text" },
-      { id: "completion-signoff", label: "Completion sign-off", status: "Needed" },
-      { id: "invoice-backup", label: "Invoice backup", status: "Needed" },
-    ];
-    const payload: Partial<Job> = {
-      ...emptyJob,
-      ...draft,
-      homeSize: draft.homeSize || "Unknown",
-      jobType: draft.jobType || "Work order",
-      checklist: makeChecklist(),
-      paperworkPickedUp: Boolean(file || workOrderText.trim()),
-      paperworkPickedUpBy: file || workOrderText.trim() ? "Manager" : "",
-      paperworkPickupDate: file || workOrderText.trim() ? new Date().toLocaleDateString("en-CA") : "",
-      scopeNotes: draft.scopeNotes || workOrderText.trim(),
-      paperworkItems,
-      activityLog: activity,
-      workOrderFiles: file ? [{ ...file, extractedText: workOrderText.trim() || file.extractedText }] : [],
-    };
-    try {
-      const response = await authFetch("/api/jobs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-      const saved = await response.json();
-      if (!response.ok) throw new Error(saved.error || "The customer profile could not be created.");
-      window.localStorage.removeItem(importDraftKey);
-      setDraftDirty(false);
-      router.push(`/jobs/${saved.jobId}`);
-    } catch (caught) {
-      setError(`${caught instanceof Error ? caught.message : "The customer profile could not be created."} Your import draft is still saved on this phone.`);
-    } finally {
-      setSaving(false);
-    }
+  function continueToJobForm(proposal: AIWorkOrderImport) {
+    window.sessionStorage.setItem("company-command-work-order-import", JSON.stringify({ proposal, file }));
+    window.localStorage.removeItem(importDraftKey);
+    setDraftDirty(false);
+    router.push("/jobs/new");
   }
 
-  return <form onSubmit={createJob} className="mx-auto max-w-5xl space-y-5">
+  async function extractWorkOrder() {
+    if (!file) { setError("Upload a work-order PDF or image before extracting."); return; }
+    setExtracting(true); setError("");
+    try {
+      const response = await authFetch("/api/work-order-extract", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ file }) });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "The work order could not be extracted.");
+      continueToJobForm(result.proposal as AIWorkOrderImport);
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "The work order could not be extracted."); }
+    finally { setExtracting(false); }
+  }
+
+  function continueManually(event: React.FormEvent) {
+    event.preventDefault();
+    continueToJobForm(toAIWorkOrderImport(draft));
+  }
+
+  return <form onSubmit={continueManually} className="mx-auto max-w-5xl space-y-5">
     <section className="card p-4 sm:p-6">
       <div className="mb-4 flex items-start gap-3">
         <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-lime text-ink"><ArrowUpTrayIcon className="size-6" /></span>
         <div>
           <p className="text-sm font-extrabold uppercase tracking-widest text-forest">Work order import</p>
           <h1 className="text-3xl font-black">Create customer profile from paperwork</h1>
-          <p className="mt-1 text-sm text-black/50">Upload a work order photo/file, review the detected info, then save it as an editable job profile.</p>
+          <p className="mt-1 text-sm text-black/50">Upload a work-order PDF or image, review the proposed values, then apply them to the Job Form.</p>
         </div>
       </div>
       <label className="flex min-h-32 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-black/15 bg-sand p-4 text-center">
         <DocumentTextIcon className="mb-2 size-8 text-forest" />
         <span className="font-black">{file ? file.fileName : "Tap to upload work order"}</span>
-        <span className="mt-1 text-xs font-semibold text-black/45">Photo, PDF, text file, or receipt image. Text files can be parsed automatically now.</span>
-        <input type="file" className="hidden" accept="image/*,.pdf,.txt,.csv,text/*" onChange={(event) => onFileSelected(event.target.files?.[0])} />
+        <span className="mt-1 text-xs font-semibold text-black/45">PDF, JPG, PNG, or WEBP. Files stay private until you choose Extract.</span>
+        <input type="file" className="hidden" accept="application/pdf,image/jpeg,image/png,image/webp" onChange={(event) => onFileSelected(event.target.files?.[0])} />
       </label>
       {file && <div className="mt-3 rounded-xl bg-white p-3 text-sm font-semibold text-black/55">Saved with profile: {file.fileName} · {(file.fileSize / 1024).toFixed(1)} KB</div>}
+      <button type="button" onClick={extractWorkOrder} disabled={!file || extracting || !extractionReady} className="btn-primary mt-3 w-full disabled:opacity-50">{extracting ? "Extracting…" : "Extract to preview"}</button>
       <div className="mt-4">
         <div className="flex items-center justify-between gap-3">
           <label className="label">Work order text</label>
@@ -289,7 +261,7 @@ export function WorkOrderImport() {
 
     {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 font-bold text-red-700">{error}</p>}
     <div className="sticky bottom-20 z-10 rounded-2xl border border-black/10 bg-white/95 p-3 shadow-xl backdrop-blur lg:bottom-4">
-      <button disabled={saving || !canCreate} className="btn-primary w-full">{saving ? "Creating…" : "Create Customer Profile"}</button>
+      <button className="btn-primary w-full">Continue to Job Form</button>
     </div>
   </form>;
 }
@@ -352,6 +324,21 @@ function parseDate(value: string) {
 
 function clean(input: Partial<ImportDraft>) {
   return Object.fromEntries(Object.entries(input).filter(([, value]) => Boolean(value))) as Partial<ImportDraft>;
+}
+
+function toAIWorkOrderImport(draft: ImportDraft): AIWorkOrderImport {
+  return {
+    customerName: draft.customerName,
+    phone: draft.phone,
+    address: draft.address,
+    city: draft.city,
+    jobType: draft.jobType,
+    scopeNotes: draft.scopeNotes,
+    factoryWorkOrderNumber: draft.factoryWorkOrderNumber,
+    dueDate: draft.dueDate,
+    partsNeeded: draft.partsNeeded,
+    homeSize: draft.homeSize,
+  };
 }
 
 function DetectedFieldsPanel({ parsed, onApply }: { parsed: Partial<ImportDraft>; onApply: () => void }) {

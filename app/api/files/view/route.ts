@@ -33,10 +33,11 @@ export async function GET(request: Request) {
 
 async function canOpenPath(user: AppUser | null, path: string) {
   const jobSegment = path.split("/")[0] || "";
-  if (!jobSegment) return false;
   const jobs = await getJobs();
   const job = jobs.find((item) => cleanSegment(item.jobId) === jobSegment);
-  return Boolean(job && canEmployeeAccessJob(user, job));
+  if (job) return canEmployeeAccessJob(user, job);
+  const attachedJob = jobs.find((item) => item.workOrderFiles?.some((file) => file.storagePath === path));
+  return Boolean(attachedJob && canEmployeeAccessJob(user, attachedJob));
 }
 
 function cleanSegment(value: string) {

@@ -8,7 +8,7 @@ import { PriorityBadge, StatusBadge } from "./StatusBadge";
 import { authFetch } from "@/lib/client-auth";
 import { getFactoryCostTotals, hasFactoryCostWork } from "@/lib/factory-costs";
 import { isReceiptBackupMissing } from "@/lib/receipt-backup";
-import { activeCorrectionCategories, billingBlockers, buildCorrectionActivity, checklistProgress, closeoutChecks, correctionCategories, correctionCategoryComplete, correctionResolutionPatch, dispatchBlockers, dispatchReadinessScore, hasActiveCorrections, readinessScore, type CorrectionCategory } from "@/lib/job-readiness";
+import { activeCorrectionCategories, billingBlockers, buildCorrectionActivity, checklistProgress, closeoutChecks, correctionCategories, correctionCategoryComplete, correctionResolutionPatch, dispatchBlockers, dispatchReadinessScore, hasActiveCorrections, intakeCompleteness, readinessScore, type CorrectionCategory } from "@/lib/job-readiness";
 import { useAuthUser } from "./AuthGate";
 
 type CompanyCamState = {
@@ -176,6 +176,7 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
     <div className="space-y-3">
       <WorkspaceSection id="overview" title="Overview" summary={`${job.jobId} · ${job.status} · ${job.assignedCrew || "Unassigned"}`} openSection={openSection} setOpenSection={setOpenSection}>
         <OverviewPanel job={job} companyCam={companyCam} />
+        {canManageJob && <IntakeCompletenessPanel job={job} />}
         <CalendarPanel job={job} setJob={setJob} />
         <ProfileSheetPanel job={job} />
         <ScopePanel job={job} />
@@ -412,6 +413,28 @@ function OverviewPanel({ job, companyCam }: { job: Job; companyCam: CompanyCamSt
     <div className="mt-4 grid gap-2 sm:grid-cols-2">
       <a href={mapsUrl} target="_blank" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-forest px-4 py-3 font-black text-white"><MapPinIcon className="size-5" />Open Maps</a>
       <a href={`tel:${job.phone}`} className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border-2 border-black/10 bg-white px-4 py-3 font-black ${job.phone ? "text-ink" : "pointer-events-none text-black/25"}`}><PhoneIcon className="size-5" />Call Customer</a>
+    </div>
+  </section>;
+}
+
+function IntakeCompletenessPanel({ job }: { job: Job }) {
+  const intake = intakeCompleteness(job);
+  const missing = intake.core.filter((check) => !check.ok);
+  const scheduling = intake.scheduling.filter((check) => !check.ok);
+  const optionalRecorded = intake.optional.filter((check) => check.ok).length;
+  return <section className={`mb-4 rounded-2xl border p-4 ${intake.complete ? "border-forest/20 bg-forest/5" : "border-orange-200 bg-orange-50"}`}>
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div>
+        <p className={`text-xs font-black uppercase tracking-widest ${intake.complete ? "text-forest" : "text-orange-800"}`}>Office intake check</p>
+        <h2 className="mt-1 text-lg font-black">{intake.complete ? "Intake Complete" : "Intake Needs Information"}</h2>
+        <p className="mt-1 text-sm text-black/55">{missing.length ? `${missing.length} core item${missing.length === 1 ? "" : "s"} missing` : "Core customer and work details are recorded."}</p>
+      </div>
+      <Link href={`/jobs/${job.jobId}/edit`} className="inline-flex min-h-11 items-center justify-center rounded-xl border border-black/10 bg-white px-4 py-2 text-sm font-black text-ink">Edit intake</Link>
+    </div>
+    {missing.length > 0 && <ul className="mt-3 grid gap-2 sm:grid-cols-2">{missing.map((check) => <li key={check.label} className="rounded-xl bg-white px-3 py-2 text-sm font-bold text-orange-950">{check.label}</li>)}</ul>}
+    <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold text-black/55">
+      <span className="rounded-full bg-white px-3 py-1">Scheduling: {scheduling.length ? scheduling.map((check) => check.label).join(", ") : "date and crew assigned"}</span>
+      <span className="rounded-full bg-white px-3 py-1">Optional details: {optionalRecorded} of {intake.optional.length} recorded</span>
     </div>
   </section>;
 }

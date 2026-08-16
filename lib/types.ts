@@ -223,6 +223,9 @@ export interface Job {
   integrationsLastSyncedAt?: string;
 }
 
+export const aiWorkOrderImportFields = ["customerName", "phone", "address", "city", "jobType", "scopeNotes", "factoryWorkOrderNumber", "serialUnitNumber", "dueDate", "scheduledTime", "returnVisitRequired", "partsNeeded", "homeSize"] as const;
+export type AIWorkOrderImport = Pick<Job, typeof aiWorkOrderImportFields[number]>;
+
 export const makeChecklist = (completed = 0): ChecklistItem[] => checklistLabels.map((label, index) => ({
   id: `item-${index + 1}`, label, complete: index < completed,
 }));

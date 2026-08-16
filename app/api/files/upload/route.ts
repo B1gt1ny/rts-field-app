@@ -29,7 +29,10 @@ export async function POST(request: Request) {
   const id = `file-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const fileName = file.name || "upload";
   const extension = fileName.includes(".") ? fileName.split(".").pop() : "bin";
-  const storagePath = `${jobId}/${cleanSegment(category)}/${id}.${extension}`;
+  const draftOwner = access.user?.id ? cleanSegment(access.user.id) : "local-admin";
+  const storagePath = jobId === "draft" && category === "Work Order"
+    ? `draft/${draftOwner}/work-order/${id}.${extension}`
+    : `${jobId}/${cleanSegment(category)}/${id}.${extension}`;
 
   const db = database();
   if (!db) return NextResponse.json(await fallbackFile(file, buffer, id, category, caption, uploadedBy));

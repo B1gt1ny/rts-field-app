@@ -7,6 +7,13 @@ export type ReadinessCheck = {
   detail: string;
 };
 
+export type IntakeCompleteness = {
+  complete: boolean;
+  core: ReadinessCheck[];
+  scheduling: ReadinessCheck[];
+  optional: ReadinessCheck[];
+};
+
 export type CorrectionCategory = "Photos" | "Paperwork" | "Checklist" | "Notes";
 export const billingBoardStates = ["Not Ready", "Ready to Invoice", "Invoiced", "Paid / Complete"] as const;
 export type BillingBoardState = typeof billingBoardStates[number];
@@ -231,4 +238,24 @@ export function dispatchBlockers(job: Job) {
 
 export function isReadyForDispatch(job: Job) {
   return dispatchBlockers(job).length === 0;
+}
+
+export function intakeCompleteness(job: Job): IntakeCompleteness {
+  const assigned = Boolean(job.fullCrew || job.assignedEmployeeIds?.length || (job.assignedCrew && job.assignedCrew !== "Unassigned"));
+  const core = [
+    { label: "Customer", ok: Boolean(job.customerName?.trim()), detail: job.customerName?.trim() ? "Recorded" : "Missing" },
+    { label: "Customer phone", ok: Boolean(job.phone?.trim()), detail: job.phone?.trim() ? "Recorded" : "Missing" },
+    { label: "Service address", ok: Boolean(job.address?.trim() && job.city?.trim()), detail: job.address?.trim() && job.city?.trim() ? "Recorded" : "Missing" },
+    { label: "Work type", ok: Boolean(job.jobType?.trim()), detail: job.jobType?.trim() ? "Recorded" : "Missing" },
+    { label: "Work description", ok: Boolean(job.scopeNotes?.trim()), detail: job.scopeNotes?.trim() ? "Recorded" : "Missing" },
+  ];
+  const scheduling = [
+    { label: "Scheduled date", ok: Boolean(job.dueDate), detail: job.dueDate || "Not assigned" },
+    { label: "Employee assignment", ok: assigned, detail: assigned ? "Assigned" : "Not assigned" },
+  ];
+  const optional = [
+    { label: "Work order / reference", ok: Boolean(job.factoryWorkOrderNumber?.trim()), detail: job.factoryWorkOrderNumber?.trim() ? "Recorded" : "Not recorded" },
+    { label: "Serial / unit number", ok: Boolean(job.serialUnitNumber?.trim()), detail: job.serialUnitNumber?.trim() ? "Recorded" : "Not recorded" },
+  ];
+  return { complete: core.every((check) => check.ok), core, scheduling, optional };
 }

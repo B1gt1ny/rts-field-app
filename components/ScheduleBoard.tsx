@@ -5,16 +5,16 @@ import { CalendarDaysIcon, ChevronLeftIcon, ChevronRightIcon, MapPinIcon, PhoneI
 import { useState } from "react";
 import type { Job } from "@/lib/types";
 import { authFetch } from "@/lib/client-auth";
+import { intakeCompleteness, type ReadinessCheck } from "@/lib/job-readiness";
+import { closedJobStatuses } from "@/lib/field-activity";
 import { PriorityBadge, StatusBadge } from "./StatusBadge";
-
-const closedStatuses = ["Complete", "Billed", "Paid"];
 
 export function ScheduleBoard({ jobs, canEditSchedule }: { jobs: Job[]; canEditSchedule: boolean }) {
   const [scheduleJobs, setScheduleJobs] = useState(jobs);
   const today = new Date();
   const todayKey = dateKey(today);
   const weekEndKey = dateKey(addDays(today, 6));
-  const active = scheduleJobs.filter((job) => !closedStatuses.includes(job.status));
+  const active = scheduleJobs.filter((job) => !closedJobStatuses.includes(job.status));
   const nextSevenDays = active.filter((job) => job.dueDate && job.dueDate >= todayKey && job.dueDate <= weekEndKey).sort(compareScheduledJobs);
   const unscheduled = active.filter((job) => !job.dueDate);
 
@@ -48,18 +48,34 @@ export function ScheduleBoard({ jobs, canEditSchedule }: { jobs: Job[]; canEditS
 }
 
 function ScheduleColumn({ title, description, jobs, unscheduled, canEditSchedule }: { title: string; description: string; jobs: Job[]; unscheduled?: boolean; canEditSchedule: boolean }) {
+  const unscheduledIntake = unscheduled ? jobs.map((job) => {
+    const missing = intakeCompleteness(job).core.filter((check) => !check.ok);
+    return { job, missing };
+  }) : [];
+  const readyToSchedule = unscheduledIntake.filter(({ missing }) => missing.length === 0).map(({ job }) => job);
+  const needsInformation = unscheduledIntake.filter(({ missing }) => missing.length > 0);
+
   return <section className="card overflow-hidden">
     <div className={`p-4 ${unscheduled ? "bg-orange-50 text-orange-950" : "bg-sand"}`}>
       <h2 className="text-lg font-black">{title}</h2>
       <p className="text-sm font-semibold text-black/45">{description}</p>
     </div>
     <div className="divide-y divide-black/5">
-      {jobs.length ? jobs.map((job) => <ScheduleCard key={job.jobId} job={job} canEditSchedule={canEditSchedule} />) : <p className="p-6 text-center text-sm font-semibold text-black/35">No jobs in this lane.</p>}
+      {!jobs.length ? <p className="p-6 text-center text-sm font-semibold text-black/35">No jobs in this lane.</p> : unscheduled ? <>
+        {readyToSchedule.length > 0 && <div className="divide-y divide-black/5">
+          <p className="bg-sand px-4 py-2 text-xs font-black uppercase tracking-wide text-forest">Ready to Schedule</p>
+          {readyToSchedule.map((job) => <ScheduleCard key={job.jobId} job={job} canEditSchedule={canEditSchedule} />)}
+        </div>}
+        {needsInformation.length > 0 && <div className="divide-y divide-black/5">
+          <p className="bg-orange-50 px-4 py-2 text-xs font-black uppercase tracking-wide text-orange-900">Needs Information</p>
+          {needsInformation.map(({ job, missing }) => <ScheduleCard key={job.jobId} job={job} missingCoreChecks={missing} canEditSchedule={canEditSchedule} />)}
+        </div>}
+      </> : jobs.map((job) => <ScheduleCard key={job.jobId} job={job} canEditSchedule={canEditSchedule} />)}
     </div>
   </section>;
 }
 
-function ScheduleCard({ job, canEditSchedule }: { job: Job; canEditSchedule: boolean }) {
+function ScheduleCard({ job, missingCoreChecks, canEditSchedule }: { job: Job; missingCoreChecks?: ReadinessCheck[]; canEditSchedule: boolean }) {
   return <Link href={canEditSchedule ? `/jobs/${job.jobId}/edit` : `/jobs/${job.jobId}`} className="block p-4 transition hover:bg-sand/60">
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0">
@@ -70,6 +86,11 @@ function ScheduleCard({ job, canEditSchedule }: { job: Job; canEditSchedule: boo
       <div className="flex shrink-0 flex-col items-end gap-1"><StatusBadge status={job.status} /><PriorityBadge priority={job.priority} /></div>
     </div>
     <p className="mt-3 inline-flex items-center gap-1 text-xs font-black text-forest"><MapPinIcon className="size-4" />{job.address || "Add address"}</p>
+    {missingCoreChecks && <div className="mt-3">
+      <p className="text-xs font-black text-orange-900">Needs Information · {missingCoreChecks.length}</p>
+      <p className="mt-1 text-xs font-semibold text-black/50">{missingCoreChecks.slice(0, 3).map((check) => check.label).join(" · ")}</p>
+      <span className="mt-2 inline-block text-xs font-black text-forest">{canEditSchedule ? "Edit job" : "Open job"} →</span>
+    </div>}
   </Link>;
 }
 
