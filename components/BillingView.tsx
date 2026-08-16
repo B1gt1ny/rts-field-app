@@ -8,7 +8,7 @@ import { factoryCostGrandTotal, getFactoryCostTotals } from "@/lib/factory-costs
 import { isReceiptBackupMissing } from "@/lib/receipt-backup";
 import type { Job, JobActivity } from "@/lib/types";
 import { StatusBadge } from "./StatusBadge";
-import { billingBoardState, billingBoardStates, billingBlockers, isReadyForBilling, readinessScore, type BillingBoardState } from "@/lib/job-readiness";
+import { billingBoardState, billingBoardStates, billingBlockers, isReadyForBilling, paymentFollowUpFor, readinessScore, type BillingBoardState } from "@/lib/job-readiness";
 
 type OfficeBillingAction = {
   id: string;
@@ -19,12 +19,7 @@ type OfficeBillingAction = {
   priority: "High" | "Normal";
 };
 
-type PaymentFollowUp = {
-  job: Job;
-  label: string;
-  pastDue: boolean;
-  invoiceTimestamp: number;
-};
+type PaymentFollowUp = NonNullable<ReturnType<typeof paymentFollowUpFor>> & { job: Job };
 
 export function BillingView() {
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -50,7 +45,7 @@ export function BillingView() {
   const paymentFollowUps = useMemo(() => jobs.flatMap((job) => {
     if (billingBoardState(job) !== "Invoiced" || job.status === "Paid" || job.invoiceStatus === "Paid" || job.paidDate) return [];
     const followUp = paymentFollowUpFor(job);
-    return followUp ? [followUp] : [];
+    return followUp ? [{ ...followUp, job }] : [];
   }).sort((a, b) => Number(b.pastDue) - Number(a.pastDue) || a.invoiceTimestamp - b.invoiceTimestamp || a.job.customerName.localeCompare(b.job.customerName)), [jobs]);
   const receiptTotal = billable.reduce((sum, job) => sum + (job.receipts || []).reduce((total, receipt) => total + (Number(receipt.amount) || 0), 0), 0);
   const factoryCostTotal = billable.reduce((sum, job) => sum + factoryCostGrandTotal(job), 0);
@@ -289,34 +284,6 @@ function OfficeBillingActionRow({ action }: { action: OfficeBillingAction }) {
     <p className="text-sm font-semibold text-black/55"><span className="mr-1 text-xs font-black uppercase tracking-wide text-black/35 md:hidden">Reason</span>{action.reason}</p>
     <Link href={action.href} className="mt-1 min-h-11 rounded-xl bg-forest px-4 py-2 text-center text-sm font-black text-white md:mt-0">Open</Link>
   </div>;
-}
-
-function paymentFollowUpFor(job: Job): PaymentFollowUp | null {
-  const invoiceTimestamp = dateTimestamp(job.invoiceDate);
-  if (job.paymentDueDate) {
-    const dueTimestamp = dateTimestamp(job.paymentDueDate);
-    return {
-      job,
-      label: dueTimestamp !== undefined && dueTimestamp < startOfToday() ? "Past Due" : "Due Soon",
-      pastDue: dueTimestamp !== undefined && dueTimestamp < startOfToday(),
-      invoiceTimestamp: invoiceTimestamp ?? Number.MAX_SAFE_INTEGER,
-    };
-  }
-  if (invoiceTimestamp === undefined) return { job, label: "Invoice date not recorded", pastDue: false, invoiceTimestamp: Number.MAX_SAFE_INTEGER };
-  const ageDays = Math.max(0, Math.floor((startOfToday() - invoiceTimestamp) / 86_400_000));
-  const label = ageDays <= 7 ? "Invoice Age 0–7 days" : ageDays <= 14 ? "Invoice Age 8–14 days" : ageDays <= 30 ? "Invoice Age 15–30 days" : "Invoice Age 30+ days";
-  return { job, label, pastDue: false, invoiceTimestamp };
-}
-
-function dateTimestamp(value?: string) {
-  if (!value) return undefined;
-  const timestamp = new Date(`${value.slice(0, 10)}T00:00:00`).getTime();
-  return Number.isNaN(timestamp) ? undefined : timestamp;
-}
-
-function startOfToday() {
-  const today = new Date();
-  return new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
 }
 
 function PaymentFollowUpRow({ followUp }: { followUp: PaymentFollowUp }) {

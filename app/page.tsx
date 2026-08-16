@@ -5,6 +5,7 @@ import { MonthlyCalendar } from "@/components/MonthlyCalendar";
 import { filterServerJobsForUser, getServerUser } from "@/lib/server-auth";
 import { buildJobReminders, formatReminderDate, reminderTone } from "@/lib/reminders";
 import { getUserRole, isDatabaseConfigured } from "@/lib/auth";
+import { billingBoardState, intakeCompleteness, paymentFollowUpFor } from "@/lib/job-readiness";
 import { isReceiptBackupMissing } from "@/lib/receipt-backup";
 import type { Job, JobActivity } from "@/lib/types";
 
@@ -29,6 +30,7 @@ export default async function Dashboard() {
   const reminders = buildJobReminders(jobs, today);
   const dueReminders = reminders.filter((reminder) => reminder.bucket === "Overdue" || reminder.bucket === "Today");
   const attentionItems = buildAttentionItems(jobs, dueReminders, today).slice(0, 6);
+  const officePriorities = isEmployee ? [] : buildOfficeDailyPriorities(jobs);
   const recentActivity = latestActivity(jobs).slice(0, 5);
 
   return <div className="space-y-5">
@@ -63,6 +65,13 @@ export default async function Dashboard() {
         {attentionItems.length ? attentionItems.map((item) => <AttentionRow key={item.key} item={item} />) : <EmptyRow message="Nothing urgent needs attention right now." />}
       </div>
     </section>
+
+    {!isEmployee && officePriorities.length > 0 && <section className="card overflow-hidden">
+      <SectionHeader title="Office Daily Priorities" detail="One current office action per job, based on intake, scheduling, and billing state." />
+      <div className="divide-y divide-black/5">
+        {officePriorities.map((priority) => <OfficePriorityRow key={priority.job.jobId} priority={priority} />)}
+      </div>
+    </section>}
 
     <section className="card overflow-hidden">
       <SectionHeader title="Today at a Glance" detail="Jobs due today, shown here as a quick owner preview." actionHref="/today" actionLabel="Open Today" />
@@ -134,6 +143,42 @@ function buildAttentionItems(jobs: Job[], reminders: ReturnType<typeof buildJobR
   return items.sort((a, b) => a.rank - b.rank || priorityRank[a.job.priority] - priorityRank[b.job.priority] || (a.job.dueDate || "9999-99-99").localeCompare(b.job.dueDate || "9999-99-99"));
 }
 
+type OfficePriority = {
+  job: Job;
+  action: "Needs Information" | "Ready to Schedule" | "Ready to Invoice" | "Billing Follow-Up";
+  reason: string;
+  href: string;
+  linkLabel: string;
+};
+
+function buildOfficeDailyPriorities(jobs: Job[]): OfficePriority[] {
+  const priorities: OfficePriority[] = [];
+  const seen = new Set<string>();
+  const add = (priority: OfficePriority) => {
+    if (seen.has(priority.job.jobId)) return;
+    seen.add(priority.job.jobId);
+    priorities.push(priority);
+  };
+
+  jobs.forEach((job) => {
+    if (closedStatuses.includes(job.status)) return;
+    const missing = intakeCompleteness(job).core.filter((check) => !check.ok);
+    if (missing.length) add({ job, action: "Needs Information", reason: missing.map((check) => check.label).join(" · "), href: `/jobs/${job.jobId}/edit`, linkLabel: "Edit" });
+  });
+  jobs.forEach((job) => {
+    if (!closedStatuses.includes(job.status) && intakeCompleteness(job).complete && !job.dueDate) add({ job, action: "Ready to Schedule", reason: "Core intake complete; scheduled date not assigned.", href: `/jobs/${job.jobId}/edit`, linkLabel: "Schedule / edit" });
+  });
+  jobs.forEach((job) => {
+    if (billingBoardState(job) === "Ready to Invoice") add({ job, action: "Ready to Invoice", reason: "Completion is ready for billing review.", href: `/jobs/${job.jobId}#billing-handoff`, linkLabel: "Open" });
+  });
+  jobs.forEach((job) => {
+    if (billingBoardState(job) !== "Invoiced" || job.status === "Paid" || job.invoiceStatus === "Paid" || job.paidDate) return;
+    const followUp = paymentFollowUpFor(job);
+    if (followUp) add({ job, action: "Billing Follow-Up", reason: followUp.label, href: `/jobs/${job.jobId}`, linkLabel: "Open" });
+  });
+  return priorities;
+}
+
 function latestActivity(jobs: Job[]) {
   return jobs.flatMap((job) => (job.activityLog || []).map((activity) => ({ job, activity })))
     .filter(({ activity }) => activity.createdAt)
@@ -168,6 +213,17 @@ function AttentionRow({ item }: { item: { job: Job; reason: string; tone: string
       <span className={`hidden rounded-full px-3 py-1 text-xs font-black sm:inline-flex ${item.tone}`}>{item.reason}</span>
       <Link href={`/jobs/${item.job.jobId}`} className="rounded-xl bg-forest px-3 py-2 text-xs font-black text-white">Open job</Link>
     </div>
+  </div>;
+}
+
+function OfficePriorityRow({ priority }: { priority: OfficePriority }) {
+  return <div className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+    <div className="min-w-0">
+      <p className="truncate text-sm font-black">{priority.job.customerName || "Customer not recorded"} <span className="text-black/40">· {priority.job.jobId}</span></p>
+      <p className="mt-1 text-xs font-black uppercase tracking-wide text-forest">{priority.action}</p>
+      <p className="mt-0.5 truncate text-sm font-semibold text-black/50">{priority.reason}</p>
+    </div>
+    <Link href={priority.href} className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-xl border border-black/10 bg-white px-3 py-2 text-sm font-black text-forest">{priority.linkLabel}</Link>
   </div>;
 }
 

@@ -56,6 +56,9 @@ export function JobsView({ title, description, preset = {} }: { title: string; d
     const missing = intakeCompleteness(job).core.filter((check) => !check.ok);
     return missing.length ? [{ job, missing }] : [];
   }).sort((a, b) => b.missing.length - a.missing.length), [jobs]);
+  const readyToSchedule = useMemo(() => jobs.filter((job) =>
+    !closedJobStatuses.includes(job.status) && intakeCompleteness(job).core.every((check) => check.ok) && !job.dueDate
+  ), [jobs]);
 
   function clearFilters() {
     setSearch("");
@@ -69,6 +72,28 @@ export function JobsView({ title, description, preset = {} }: { title: string; d
 
   return <>
     <div className="mb-5"><p className="mb-1 text-sm font-extrabold uppercase tracking-widest text-forest">Field operations</p><h1 className="text-3xl font-black tracking-tight sm:text-4xl">{title}</h1><p className="mt-2 max-w-2xl text-sm text-black/50 sm:text-base">{description}</p></div>
+    <section className="card mb-5 overflow-hidden">
+      <div className="flex items-center justify-between gap-3 bg-sand p-4">
+        <div>
+          <h2 className="text-lg font-black">Ready to Schedule</h2>
+          <p className="text-sm font-semibold text-black/45">Active jobs with complete intake and no scheduled date.</p>
+        </div>
+        <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-forest">{readyToSchedule.length}</span>
+      </div>
+      <div className="divide-y divide-black/5">
+        {readyToSchedule.length ? readyToSchedule.map((job) => <div key={job.jobId} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <p className="truncate font-black">{job.customerName?.trim() || "Customer not recorded"} <span className="text-black/40">— {job.jobId}</span></p>
+            <p className="mt-1 text-sm font-semibold text-black/50">{job.jobType?.trim() || "Work type not recorded"} · {job.city?.trim() || "City not recorded"}</p>
+            <p className="mt-1 truncate text-xs font-semibold text-black/40">{job.address?.trim() || "Address not recorded"}{job.factoryWorkOrderNumber?.trim() ? ` · Work order ${job.factoryWorkOrderNumber}` : ""}</p>
+          </div>
+          <div className="flex shrink-0 gap-2">
+            <Link href={`/jobs/${job.jobId}`} className="inline-flex min-h-11 items-center justify-center rounded-xl border border-black/10 px-3 py-2 text-sm font-black text-forest">Open job</Link>
+            <Link href={`/jobs/${job.jobId}/edit`} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-forest px-3 py-2 text-sm font-black text-white">Schedule / edit</Link>
+          </div>
+        </div>) : <div className="p-5 text-center text-sm font-semibold text-black/45">No active jobs are ready to schedule.</div>}
+      </div>
+    </section>
     <section className="card mb-5 overflow-hidden">
       <div className="bg-ink p-4 text-white">
         <p className="text-xs font-black uppercase tracking-widest text-lime">Job command filters</p>

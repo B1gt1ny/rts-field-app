@@ -166,6 +166,39 @@ export function billingBoardState(job: Job): BillingBoardState {
   return "Not Ready";
 }
 
+export type PaymentFollowUp = {
+  label: string;
+  pastDue: boolean;
+  invoiceTimestamp: number;
+};
+
+export function paymentFollowUpFor(job: Job, today = startOfToday()): PaymentFollowUp | null {
+  const invoiceTimestamp = dateTimestamp(job.invoiceDate);
+  if (job.paymentDueDate) {
+    const dueTimestamp = dateTimestamp(job.paymentDueDate);
+    return {
+      label: dueTimestamp !== undefined && dueTimestamp < today ? "Past Due" : "Due Soon",
+      pastDue: dueTimestamp !== undefined && dueTimestamp < today,
+      invoiceTimestamp: invoiceTimestamp ?? Number.MAX_SAFE_INTEGER,
+    };
+  }
+  if (invoiceTimestamp === undefined) return { label: "Invoice date not recorded", pastDue: false, invoiceTimestamp: Number.MAX_SAFE_INTEGER };
+  const ageDays = Math.max(0, Math.floor((today - invoiceTimestamp) / 86_400_000));
+  const label = ageDays <= 7 ? "Invoice Age 0–7 days" : ageDays <= 14 ? "Invoice Age 8–14 days" : ageDays <= 30 ? "Invoice Age 15–30 days" : "Invoice Age 30+ days";
+  return { label, pastDue: false, invoiceTimestamp };
+}
+
+function dateTimestamp(value?: string) {
+  if (!value) return undefined;
+  const timestamp = new Date(`${value.slice(0, 10)}T00:00:00`).getTime();
+  return Number.isNaN(timestamp) ? undefined : timestamp;
+}
+
+function startOfToday() {
+  const today = new Date();
+  return new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+}
+
 function billingEvidenceChecks(job: Job): ReadinessCheck[] {
   const entries = job.timeEntries || [];
   const travelStarted = entries.some((entry) => entry.notes === "Started Travel");
