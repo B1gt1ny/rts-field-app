@@ -37,6 +37,16 @@ export function isTravelStarted(entry: TimeEntry) {
   return entry.notes === "Started Travel";
 }
 
+export function getWorkSession(job: Job) {
+  const session = currentFieldSession(job.timeEntries || [], (entry) => entry.type === "Work started", (entry) => entry.type === "Departed");
+  return { started: session.started, finished: session.end, active: session.active };
+}
+
+export function getTravelState(job: Job) {
+  const session = currentFieldSession(job.timeEntries || [], isTravelStarted, (entry) => entry.type === "Arrived");
+  return { started: session.started, arrived: session.end, active: session.active };
+}
+
 export function recordedWorkSessions(entries: TimeEntry[]) {
   return recordedSessions(entries, (entry) => entry.type === "Work started", (entry) => entry.type === "Departed");
 }
@@ -47,6 +57,17 @@ export function recordedTravelSessions(entries: TimeEntry[]) {
 
 export function sameEmployee(a: string, b: string) {
   return a.trim().toLowerCase() === b.trim().toLowerCase();
+}
+
+function currentFieldSession(entries: TimeEntry[], isStart: (entry: TimeEntry) => boolean, isEnd: (entry: TimeEntry) => boolean) {
+  const ordered = [...entries].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const started = ordered.find(isStart);
+  const end = ordered.find(isEnd);
+  return {
+    started,
+    end,
+    active: Boolean(started && (!end || started.createdAt > end.createdAt)),
+  };
 }
 
 function recordedSessions(entries: TimeEntry[], isStart: (entry: TimeEntry) => boolean, isEnd: (entry: TimeEntry) => boolean): RecordedFieldSession[] {

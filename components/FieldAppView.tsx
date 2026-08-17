@@ -8,7 +8,8 @@ import { authFetch } from "@/lib/client-auth";
 import { getFactoryCostTotals, hasFactoryCostWork } from "@/lib/factory-costs";
 import { hasReceiptDollars, hasUploadedReceiptBackup } from "@/lib/receipt-backup";
 import { checklistProgress } from "@/lib/job-readiness";
-import { isTodayJob, todayFieldStatus } from "@/lib/field-activity";
+import { getTravelState, getWorkSession, isTodayJob, todayFieldStatus } from "@/lib/field-activity";
+import { fieldAttentionItems, fieldNextStep } from "@/lib/field-next-step";
 import { useAuthUser } from "./AuthGate";
 import { StatusBadge } from "./StatusBadge";
 
@@ -466,7 +467,8 @@ function CurrentJobPanel({ job, employeeName, today, saving, permissions, onStar
     <p className="text-lg font-black">No assigned work right now.</p>
     <p className="mt-1 text-sm font-semibold text-black/45">Assigned jobs will show here when dispatch puts them on your crew list.</p>
   </section>;
-  const action = primaryFieldAction(job);
+  const action = fieldNextStep(job);
+  const attention = fieldAttentionItems(job, action);
   const session = getWorkSession(job);
   const fieldStatus = todayFieldStatus(job, employeeName, today);
   return <section className="card overflow-hidden">
@@ -482,7 +484,17 @@ function CurrentJobPanel({ job, employeeName, today, saving, permissions, onStar
       </div>
       {job.assignedCrew && <p className="mt-2 text-xs font-black uppercase tracking-wide text-black/40">Crew: {job.assignedCrew}</p>}
       <p className="mt-2 text-xs font-black uppercase tracking-wide text-black/40">{fieldStatus}</p>
-      <p className="mt-3 rounded-xl bg-white p-3 text-sm font-bold text-black/65">{nextActionReason(job)}</p>
+      <div className="mt-3 rounded-xl bg-white p-3">
+        <p className="text-xs font-black uppercase tracking-wide text-forest">Next Step</p>
+        <p className="mt-1 text-sm font-bold text-black/65">{action.reason}</p>
+        {attention.items.length > 0 && <div className="mt-3 border-t border-black/10 pt-3">
+          <p className="text-xs font-black uppercase tracking-wide text-black/45">Also remember</p>
+          <div className="mt-2 space-y-1.5">
+            {attention.items.map((item) => <p key={item.kind} className="text-xs font-semibold text-black/65"><span className="font-black text-black/80">{item.label}</span> · {item.detail}</p>)}
+            {attention.remaining > 0 && <p className="text-xs font-bold text-black/45">+{attention.remaining} more</p>}
+          </div>
+        </div>}
+      </div>
     </div>
     <div className="space-y-3 p-4">
       <CurrentJobInfo job={job} />
@@ -1076,32 +1088,6 @@ function fieldHelpMessage(job: Job, review: ReturnType<typeof fieldReviewStatus>
 
 type FieldBlocker = { job: Job; label: string; detail: string; href: string };
 
-function primaryFieldAction(job: Job) {
-  const travel = getTravelState(job);
-  const session = getWorkSession(job);
-  if (travel.active) return { kind: "arrive" as const, label: "Arrive at Job", href: `/jobs/${job.jobId}#time-log` };
-  if (!travel.started && !session.started && ["New", "Scheduled"].includes(job.status)) return { kind: "travel" as const, label: "Start Travel", href: `/jobs/${job.jobId}#time-log` };
-  if (session.active) return { kind: "continue" as const, label: "Continue Job", href: `/jobs/${job.jobId}` };
-  if (travel.arrived && !session.started && ["New", "Scheduled"].includes(job.status)) return { kind: "start" as const, label: "Start Job", href: `/jobs/${job.jobId}` };
-  if (job.status === "In Progress") return { kind: "continue" as const, label: "Continue Job", href: `/jobs/${job.jobId}` };
-  if (job.status === "Waiting on Parts") return { kind: "open" as const, label: "Review Parts", href: `/jobs/${job.jobId}#parts` };
-  if (["New", "Scheduled"].includes(job.status)) return { kind: "start" as const, label: "Start Job", href: `/jobs/${job.jobId}` };
-  return { kind: "open" as const, label: "Open Job", href: `/jobs/${job.jobId}` };
-}
-
-function nextActionReason(job: Job) {
-  const travel = getTravelState(job);
-  if (travel.active) return "Travel is active. Tap Arrive at Job when you get on site.";
-  if (!travel.started && !getWorkSession(job).started && ["New", "Scheduled"].includes(job.status)) return "Heading out? Start travel first, then arrive before starting work.";
-  if (travel.arrived && !getWorkSession(job).started) return "Arrived on site. Start the job when work begins.";
-  if (job.status === "In Progress") return "Already started. Continue the guided job workspace.";
-  if (job.status === "Waiting on Parts") return "Parts are blocking the job. Review the parts section.";
-  if (job.status === "Needs Inspection") return "Ready for manager review. Check closeout if anything was returned.";
-  if (job.dueDate === new Date().toLocaleDateString("en-CA")) return "Due today. Open the job before heading out.";
-  if (job.dueDate) return `Upcoming assignment for ${formatDue(job.dueDate)}.`;
-  return "Assigned with no due date. Open the job for details.";
-}
-
 function getFieldBlockers(jobs: Job[], options: FieldReviewOptions, today: string): FieldBlocker[] {
   const blockers: FieldBlocker[] = [];
   for (const job of jobs) {
@@ -1189,28 +1175,6 @@ function matchesCrewFilter(job: Job, filter: CrewFilter, today: string, options:
   if (filter === "parts") return job.status === "Waiting on Parts";
   if (filter === "closeout") return needsFieldCloseout(job, options);
   return true;
-}
-
-function getWorkSession(job: Job) {
-  const entries = [...(job.timeEntries || [])].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  const started = entries.find((entry) => entry.type === "Work started");
-  const finished = entries.find((entry) => entry.type === "Departed");
-  return {
-    started,
-    finished,
-    active: Boolean(started && (!finished || started.createdAt > finished.createdAt)),
-  };
-}
-
-function getTravelState(job: Job) {
-  const entries = [...(job.timeEntries || [])].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  const started = entries.find((entry) => entry.notes === "Started Travel");
-  const arrived = entries.find((entry) => entry.type === "Arrived");
-  return {
-    started,
-    arrived,
-    active: Boolean(started && (!arrived || started.createdAt > arrived.createdAt)),
-  };
 }
 
 function formatDue(dueDate: string) {
