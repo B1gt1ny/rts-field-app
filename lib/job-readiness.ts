@@ -188,6 +188,11 @@ export function paymentFollowUpFor(job: Job, today = startOfToday()): PaymentFol
   return { label, pastDue: false, invoiceTimestamp };
 }
 
+export function paymentFollowUpForBilling(job: Job, today = startOfToday()): PaymentFollowUp | null {
+  if (billingBoardState(job) !== "Invoiced" || job.status === "Paid" || job.invoiceStatus === "Paid" || job.paidDate) return null;
+  return paymentFollowUpFor(job, today);
+}
+
 function dateTimestamp(value?: string) {
   if (!value) return undefined;
   const timestamp = new Date(`${value.slice(0, 10)}T00:00:00`).getTime();

@@ -8,7 +8,7 @@ import { factoryCostGrandTotal, getFactoryCostTotals } from "@/lib/factory-costs
 import { isReceiptBackupMissing } from "@/lib/receipt-backup";
 import type { Job, JobActivity } from "@/lib/types";
 import { StatusBadge } from "./StatusBadge";
-import { billingBoardState, billingBoardStates, billingBlockers, isReadyForBilling, paymentFollowUpFor, readinessScore, type BillingBoardState } from "@/lib/job-readiness";
+import { billingBoardState, billingBoardStates, billingBlockers, isReadyForBilling, paymentFollowUpForBilling, readinessScore, type BillingBoardState } from "@/lib/job-readiness";
 
 type OfficeBillingAction = {
   id: string;
@@ -19,7 +19,7 @@ type OfficeBillingAction = {
   priority: "High" | "Normal";
 };
 
-type PaymentFollowUp = NonNullable<ReturnType<typeof paymentFollowUpFor>> & { job: Job };
+type PaymentFollowUp = NonNullable<ReturnType<typeof paymentFollowUpForBilling>> & { job: Job };
 
 export function BillingView() {
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -43,8 +43,7 @@ export function BillingView() {
     return action ? [{ ...action, id: `${job.jobId}-office-billing-action`, job }] : [];
   }).sort((a, b) => officeActionRank(a.priority) - officeActionRank(b.priority) || a.job.customerName.localeCompare(b.job.customerName)), [jobs]);
   const paymentFollowUps = useMemo(() => jobs.flatMap((job) => {
-    if (billingBoardState(job) !== "Invoiced" || job.status === "Paid" || job.invoiceStatus === "Paid" || job.paidDate) return [];
-    const followUp = paymentFollowUpFor(job);
+    const followUp = paymentFollowUpForBilling(job);
     return followUp ? [{ ...followUp, job }] : [];
   }).sort((a, b) => Number(b.pastDue) - Number(a.pastDue) || a.invoiceTimestamp - b.invoiceTimestamp || a.job.customerName.localeCompare(b.job.customerName)), [jobs]);
   const receiptTotal = billable.reduce((sum, job) => sum + (job.receipts || []).reduce((total, receipt) => total + (Number(receipt.amount) || 0), 0), 0);
