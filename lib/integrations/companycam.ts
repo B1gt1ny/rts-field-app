@@ -4,6 +4,12 @@ const API_URL = "https://api.companycam.com/v2";
 
 type CompanyCamProject = { id: string; project_url?: string };
 
+export type CompanyCamPhotoReference = {
+  id: string;
+  thumbnailUrl?: string;
+  createdAt?: string;
+};
+
 export function isCompanyCamConfigured() {
   return Boolean(process.env.COMPANYCAM_ACCESS_TOKEN);
 }
@@ -24,8 +30,6 @@ function projectBody(job: Job) {
     address: {
       street_address_1: job.address,
       city: job.city,
-      state: "TX",
-      country: "US",
     },
     primary_contact: job.phone ? { name: job.customerName, phone_number: job.phone } : undefined,
   };
@@ -51,10 +55,43 @@ export async function syncCompanyCamProject(job: Job): Promise<Job> {
 }
 
 export async function getCompanyCamPhotoCount(projectId: string) {
+  return (await getCompanyCamPhotos(projectId)).length;
+}
+
+export async function getCompanyCamProjectPhotos(projectId: string): Promise<CompanyCamPhotoReference[]> {
+  const photos = await getCompanyCamPhotos(projectId);
+  return photos.flatMap((photo) => {
+    if (!photo || typeof photo !== "object") return [];
+    const record = photo as Record<string, unknown>;
+    const id = stringValue(record.id);
+    if (!id) return [];
+    return [{
+      id,
+      thumbnailUrl: safeUrl(stringValue(record.thumbnail_url) || stringValue(record.thumbnailUrl) || stringValue(record.thumbnail)),
+      createdAt: stringValue(record.created_at) || stringValue(record.createdAt),
+    }];
+  });
+}
+
+async function getCompanyCamPhotos(projectId: string): Promise<unknown[]> {
   const requestHeaders = headers();
-  if (!requestHeaders) return null;
+  if (!requestHeaders) return [];
   const response = await fetch(`${API_URL}/projects/${projectId}/photos?per_page=100`, { headers: requestHeaders });
   if (!response.ok) throw new Error(`CompanyCam photo sync failed (${response.status})`);
-  const photos = await response.json() as unknown[];
-  return photos.length;
+  const photos = await response.json() as unknown;
+  if (!Array.isArray(photos)) return [];
+  return photos;
+}
+
+function stringValue(value: unknown) {
+  return typeof value === "string" || typeof value === "number" ? String(value) : undefined;
+}
+
+function safeUrl(value?: string) {
+  if (!value) return undefined;
+  try {
+    return new URL(value).protocol === "https:" ? value : undefined;
+  } catch {
+    return undefined;
+  }
 }

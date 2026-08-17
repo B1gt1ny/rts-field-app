@@ -17,6 +17,8 @@ type CompanyCamState = {
   photoCount: number | null;
   projectId?: string;
   projectUrl?: string | null;
+  photos?: { id: string; thumbnailUrl?: string; createdAt?: string }[];
+  photoError?: string;
   error?: string;
 };
 
@@ -75,8 +77,11 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
   }
   useEffect(() => {
     let active = true;
-    fetch(`/api/jobs/${job.jobId}/companycam`)
-      .then((response) => response.json())
+    authFetch(`/api/jobs/${job.jobId}/companycam`)
+      .then(async (response) => {
+        if (!response.ok) throw new Error("CompanyCam status could not be loaded.");
+        return response.json();
+      })
       .then((status) => { if (active) setCompanyCam((old) => ({ ...old, ...status })); })
       .catch(() => { if (active) setCompanyCam((old) => ({ ...old, error: "CompanyCam status could not be loaded." })); });
     return () => { active = false; };
@@ -186,12 +191,12 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
       </WorkspaceSection>
       <WorkspaceSection id="photos" title="Photos" summary={`${photoTotal(job)} saved`} openSection={openSection} setOpenSection={setOpenSection}>
         <PhotoUploadPanel job={job} saving={saving} onSave={saveJobPatch} />
-        <details id="companycam" className="scroll-mt-24">
+        {canManageJob && <details id="companycam" className="scroll-mt-24">
           <summary className="cursor-pointer rounded-xl border border-black/10 bg-white px-4 py-3 text-lg font-black">More actions / CompanyCam fallback</summary>
           <div className="mt-4">
             <CompanyCamPanel job={job} status={companyCam} setStatus={setCompanyCam} onJobSynced={setJob} />
           </div>
-        </details>
+        </details>}
       </WorkspaceSection>
       <WorkspaceSection id="parts" title="Parts" summary={`${job.partsItems?.length || 0} tracked`} openSection={openSection} setOpenSection={setOpenSection}>
         <PartsPanel job={job} saving={saving} onSave={saveJobPatch} />
@@ -2121,7 +2126,8 @@ function CalendarPanel({ job, setJob }: { job: Job; setJob: React.Dispatch<React
   }
 
   const calendarDate = job.dueDate ? new Date(`${job.dueDate}T12:00:00`) : null;
-  const googleCalendarQuickAdd = calendarDate ? `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(`${job.jobId} — ${job.customerName} — ${job.jobType}`)}&dates=${job.dueDate.replaceAll("-", "")}/${new Date(calendarDate.getTime() + 86400000).toISOString().slice(0, 10).replaceAll("-", "")}&location=${encodeURIComponent(`${job.address}, ${job.city}, TX`)}&details=${encodeURIComponent(`Status: ${job.status}\nEmployees: ${job.assignedCrew}\nPriority: ${job.priority}\n\n${job.scopeNotes}`)}` : "https://calendar.google.com";
+  const calendarLocation = [job.address, job.city].filter(Boolean).join(", ");
+  const googleCalendarQuickAdd = calendarDate ? `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(`${job.jobId} — ${job.customerName} — ${job.jobType}`)}&dates=${job.dueDate.replaceAll("-", "")}/${new Date(calendarDate.getTime() + 86400000).toISOString().slice(0, 10).replaceAll("-", "")}&location=${encodeURIComponent(calendarLocation)}&details=${encodeURIComponent(`Status: ${job.status}\nEmployees: ${job.assignedCrew}\nPriority: ${job.priority}\n\n${job.scopeNotes}`)}` : "https://calendar.google.com";
 
   return <section id="scheduling" className="card p-4 sm:p-6">
     <div className="mb-4 flex items-start gap-3">
@@ -2739,6 +2745,7 @@ function fallbackStoredFile(file: File, category: FileCategory, caption = "") {
 
 function CompanyCamPanel({ job, status, setStatus, onJobSynced }: { job: Job; status: CompanyCamState; setStatus: React.Dispatch<React.SetStateAction<CompanyCamState>>; onJobSynced: React.Dispatch<React.SetStateAction<Job>> }) {
   const [syncing, setSyncing] = useState(false);
+  const [loadingPhotos, setLoadingPhotos] = useState(false);
   async function syncProject() {
     setSyncing(true);
     setStatus((old) => ({ ...old, error: "" }));
@@ -2752,6 +2759,21 @@ function CompanyCamPanel({ job, status, setStatus, onJobSynced }: { job: Job; st
       setStatus((old) => ({ ...old, error: caught instanceof Error ? caught.message : "CompanyCam project could not be synced." }));
     } finally {
       setSyncing(false);
+    }
+  }
+
+  async function loadPhotos() {
+    setLoadingPhotos(true);
+    setStatus((old) => ({ ...old, photoError: "" }));
+    try {
+      const response = await authFetch(`/api/jobs/${job.jobId}/companycam?photos=1`);
+      const result = await response.json();
+      if (!response.ok) throw new Error("CompanyCam photos could not be loaded.");
+      setStatus((old) => ({ ...old, ...result, photos: result.photos || [], photoError: result.photoError || "" }));
+    } catch {
+      setStatus((old) => ({ ...old, photoError: "CompanyCam photos could not be loaded." }));
+    } finally {
+      setLoadingPhotos(false);
     }
   }
 
@@ -2775,12 +2797,28 @@ function CompanyCamPanel({ job, status, setStatus, onJobSynced }: { job: Job; st
         </div>
       </div>
       {status.projectUrl && <a href={status.projectUrl} target="_blank" className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-forest px-4 py-3 text-center font-black text-white">Open CompanyCam <ArrowTopRightOnSquareIcon className="size-5" /></a>}
+      {status.projectUrl && <CompanyCamPhotoReferences projectUrl={status.projectUrl} photos={status.photos} loading={loadingPhotos} onLoad={loadPhotos} />}
       <button type="button" onClick={syncProject} disabled={syncing} className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-black/10 bg-white px-4 py-3 text-center font-black disabled:opacity-50">
         <ArrowPathIcon className={`size-5 ${syncing ? "animate-spin" : ""}`} />
         {syncing ? "Syncing…" : status.projectUrl ? "Update CompanyCam project" : "Create CompanyCam project"}
       </button>
       {!status.configured && <p className="mt-3 text-xs font-semibold text-orange-700">CompanyCam token is not connected in Vercel yet. The button is ready, but it will not create projects until that token is added.</p>}
       {status.error && <p role="alert" className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-700">{status.error}</p>}
+      {status.photoError && <p role="alert" className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-700">{status.photoError}</p>}
     </div>
   </section>;
+}
+
+function CompanyCamPhotoReferences({ projectUrl, photos, loading, onLoad }: { projectUrl: string; photos?: CompanyCamState["photos"]; loading: boolean; onLoad: () => void }) {
+  return <>
+    <button type="button" onClick={onLoad} disabled={loading} className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border-2 border-black/10 bg-white px-4 py-2 text-center text-sm font-black disabled:opacity-50">
+      <ArrowPathIcon className={`size-4 ${loading ? "animate-spin" : ""}`} />
+      {loading ? "Loading references…" : "View CompanyCam photo references"}
+    </button>
+    {photos && <div className="mt-3 grid grid-cols-4 gap-2" aria-label="CompanyCam photo references">
+      {photos.slice(0, 8).map((photo) => photo.thumbnailUrl ? <a key={photo.id} href={projectUrl} target="_blank" title={photo.createdAt ? `Added ${formatJobDate(photo.createdAt)}` : "Open in CompanyCam"} className="aspect-square overflow-hidden rounded-lg border border-black/10 bg-white"><img src={photo.thumbnailUrl} alt="CompanyCam project photo reference" className="size-full object-cover" /></a> : <a key={photo.id} href={projectUrl} target="_blank" className="grid aspect-square place-items-center rounded-lg border border-black/10 bg-white text-xs font-bold text-black/50">Photo</a>)}
+    </div>}
+    {photos?.length === 0 && !loading && <p className="mt-3 text-xs font-semibold text-black/55">No CompanyCam photo references are available for this project.</p>}
+    <p className="mt-3 text-xs font-semibold text-black/55">CompanyCam photos are reference-only. Native RTS photos remain required for closeout and billing evidence.</p>
+  </>;
 }
