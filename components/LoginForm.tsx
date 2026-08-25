@@ -36,8 +36,8 @@ export function LoginForm() {
         <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-lime text-ink"><ShieldCheckIcon className="size-7" /></span>
         <div>
           <p className="text-sm font-black uppercase tracking-widest text-forest">Secure access</p>
-          <h1 className="text-3xl font-black">Company Command</h1>
-          <p className="mt-1 text-sm text-black/50">Sign in to RTS Field App.</p>
+          <h1 className="text-3xl font-black">Field Service</h1>
+          <p className="mt-1 text-sm text-black/50">Sign in to Field App.</p>
         </div>
       </div>
       <label><span className="label">Email</span><input className="field" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required /></label>

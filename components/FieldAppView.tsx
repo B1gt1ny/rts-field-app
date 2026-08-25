@@ -48,7 +48,7 @@ export function FieldAppView() {
   const [crewFilter, setCrewFilter] = useState<CrewFilter>("today");
   const [fieldNotice, setFieldNotice] = useState("Open your assigned job, check the scope, take required photos, add notes, and tap Ready Review when field work is complete.");
   const [reviewInstructions, setReviewInstructions] = useState("Manager review checks after photos, completion notes, work completed, and open parts before billing.");
-  const [customerTextTemplate, setCustomerTextTemplate] = useState("RTS update for {customerName}: crew is on your job {jobId}.");
+  const [customerTextTemplate, setCustomerTextTemplate] = useState("Company update for {customerName}: crew is on your job {jobId}.");
   const [fieldNoteTemplates, setFieldNoteTemplates] = useState(defaultFieldNoteTemplates);
   const [factoryCostInstructions, setFactoryCostInstructions] = useState("Factory jobs: enter miles, drive time, hotel, materials, and other receipt totals before sending the job for review.");
   const [requireBeforePhotosForReview, setRequireBeforePhotosForReview] = useState(true);
@@ -1204,7 +1204,7 @@ function formatTodayLabel() {
 }
 
 function formatCustomerText(template: string, job: Job) {
-  return (template || "RTS update for {customerName}: crew is on your job {jobId}.")
+  return (template || "Company update for {customerName}: crew is on your job {jobId}.")
     .replaceAll("{customerName}", job.customerName || "your home")
     .replaceAll("{jobId}", job.jobId)
     .replaceAll("{jobType}", job.jobType || "service")

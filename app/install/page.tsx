@@ -8,7 +8,7 @@ export default function InstallPage() {
       <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-lime text-ink"><DevicePhoneMobileIcon className="size-7" /></span>
       <div>
         <p className="text-sm font-extrabold uppercase tracking-widest text-forest">Phone setup</p>
-        <h1 className="text-3xl font-black">Install Company Command</h1>
+        <h1 className="text-3xl font-black">Install Field Service</h1>
         <p className="mt-1 text-sm text-black/50">Add the live app to your phone home screen so it opens like a normal app.</p>
       </div>
     </div>
@@ -18,10 +18,10 @@ export default function InstallPage() {
     <section className="card p-4 sm:p-6">
       <h2 className="text-lg font-black">iPhone / Safari</h2>
       <ol className="mt-4 space-y-3 text-sm font-semibold text-black/65">
-        <li className="rounded-xl bg-sand p-3">1. Open <span className="font-black">rts-field-app.vercel.app</span> in Safari.</li>
+        <li className="rounded-xl bg-sand p-3">1. Open the Field Service app link in Safari.</li>
         <li className="rounded-xl bg-sand p-3">2. Tap the Share button <ShareIcon className="inline size-4" /> at the bottom of Safari.</li>
         <li className="rounded-xl bg-sand p-3">3. Tap <span className="font-black">Add to Home Screen</span>.</li>
-        <li className="rounded-xl bg-sand p-3">4. Name it <span className="font-black">Company Command</span> or <span className="font-black">Command</span>, then tap Add.</li>
+        <li className="rounded-xl bg-sand p-3">4. Name it <span className="font-black">Field Service</span> or <span className="font-black">Field App</span>, then tap Add.</li>
       </ol>
       <p className="mt-4 rounded-xl bg-orange-50 p-3 text-sm font-bold text-orange-900">On iPhone, use Safari for the home-screen install. Chrome on iPhone can open the app, but Safari gives the best app-style install.</p>
     </section>
@@ -29,7 +29,7 @@ export default function InstallPage() {
     <section className="card p-4 sm:p-6">
       <h2 className="text-lg font-black">Android / Chrome</h2>
       <ol className="mt-4 space-y-3 text-sm font-semibold text-black/65">
-        <li className="rounded-xl bg-sand p-3">1. Open <span className="font-black">rts-field-app.vercel.app</span> in Chrome.</li>
+        <li className="rounded-xl bg-sand p-3">1. Open the Field Service app link in Chrome.</li>
         <li className="rounded-xl bg-sand p-3">2. Tap the three-dot menu.</li>
         <li className="rounded-xl bg-sand p-3">3. Tap <span className="font-black">Install app</span> or <span className="font-black">Add to Home screen</span>.</li>
         <li className="rounded-xl bg-sand p-3">4. Confirm the install.</li>

@@ -24,7 +24,7 @@ export function InstallAssistant() {
     };
   }, []);
 
-  const appUrl = useMemo(() => typeof window === "undefined" ? "https://rts-field-app.vercel.app" : window.location.origin, []);
+  const appUrl = useMemo(() => typeof window === "undefined" ? "" : window.location.origin, []);
 
   async function copyLink() {
     await navigator.clipboard.writeText(appUrl).then(() => setMessage("App link copied."), () => setMessage("Copy did not work. Long-press the link and copy it."));
@@ -32,7 +32,7 @@ export function InstallAssistant() {
 
   async function copyCrewInstructions() {
     const text = [
-      "Company Command field app",
+      "Field Service app",
       "",
       `Open: ${appUrl}`,
       "",
@@ -46,7 +46,7 @@ export function InstallAssistant() {
 
   async function shareApp() {
     if (navigator.share) {
-      await navigator.share({ title: "Company Command", text: "Open the RTS field app:", url: appUrl }).then(() => setMessage("Share sheet opened."), () => undefined);
+      await navigator.share({ title: "Field Service", text: "Open the Field Service app:", url: appUrl }).then(() => setMessage("Share sheet opened."), () => undefined);
       return;
     }
     await copyLink();

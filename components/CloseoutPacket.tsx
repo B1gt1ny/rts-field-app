@@ -37,7 +37,7 @@ export function CloseoutPacket({ job }: { job: Job }) {
 
     <section className="card overflow-hidden">
       <div className="bg-ink p-5 text-white sm:p-7">
-        <p className="text-xs font-black uppercase tracking-[.25em] text-lime">Company Command Closeout Packet</p>
+        <p className="text-xs font-black uppercase tracking-[.25em] text-lime">Field Service Closeout Packet</p>
         <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-3xl font-black tracking-tight">{job.customerName}</h1>

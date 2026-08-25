@@ -356,7 +356,7 @@ function formatReminderDate(value: string) {
 }
 
 function buildCustomerText(job: Job) {
-  return `RTS update for ${job.customerName}: your ${job.jobType || "service"} job is scheduled for ${job.dueDate || "TBD"}. Address: ${job.address}, ${job.city}. Reply here if anything changes.`;
+  return `Company update for ${job.customerName}: your ${job.jobType || "service"} job is scheduled for ${job.dueDate || "TBD"}. Address: ${job.address}, ${job.city}. Reply here if anything changes.`;
 }
 
 function buildCommunicationBrief({ job, entry }: CommunicationRow) {

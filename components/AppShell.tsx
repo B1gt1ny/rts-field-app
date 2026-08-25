@@ -54,7 +54,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <aside className="hidden border-r border-black/5 bg-ink px-5 py-6 text-white lg:block">
       <Link href="/" className="mb-8 flex items-center gap-3">
         <span className="grid size-11 place-items-center rounded-xl bg-lime text-lg font-black text-ink">CC</span>
-        <span><span className="block text-lg font-extrabold">Company Command</span><span className="text-xs text-white/50">RTS Field App</span></span>
+        <span><span className="block text-lg font-extrabold">Field Service</span><span className="text-xs text-white/50">Field App</span></span>
       </Link>
       <nav className="space-y-1">
         {visibleNavigation.map(({ href, label, icon: Icon }) => <NavLink key={href} href={href} active={isActiveRoute(pathname, href)}><Icon className="size-5" />{label}</NavLink>)}
@@ -68,8 +68,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     </aside>
     <div className="min-w-0">
       <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-black/5 bg-sand/90 px-4 backdrop-blur lg:px-8">
-        <Link href="/" className="flex items-center gap-2 font-extrabold lg:hidden"><span className="grid size-9 place-items-center rounded-lg bg-ink text-xs text-lime">CC</span>Command</Link>
-        <div className="hidden lg:block"><p className="text-sm font-semibold text-black/45">RTS Field App</p><p className="font-extrabold">Company Command</p></div>
+        <Link href="/" className="flex items-center gap-2 font-extrabold lg:hidden"><span className="grid size-9 place-items-center rounded-lg bg-ink text-xs text-lime">FA</span>Field App</Link>
+        <div className="hidden lg:block"><p className="text-sm font-semibold text-black/45">Field App</p><p className="font-extrabold">Field Service</p></div>
         <div className="flex gap-2"><span className={`hidden items-center rounded-full px-3 py-2 text-xs font-black sm:inline-flex ${online ? "bg-forest text-white" : "bg-orange-100 text-orange-800"}`}>{online ? "Online" : "Offline"}</span><RoleBadge /><LogoutButton /></div>
       </header>
       <main className="mx-auto max-w-7xl px-4 pb-28 pt-5 lg:px-8 lg:pb-10 lg:pt-8">{children}</main>

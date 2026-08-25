@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Company Command — RTS Field App",
-    short_name: "Command",
-    description: "Mobile-first field operations for mobile home contractors.",
+    name: "Field Service",
+    short_name: "Field App",
+    description: "Mobile-first field service operations.",
     start_url: "/field",
     scope: "/",
     display: "standalone",

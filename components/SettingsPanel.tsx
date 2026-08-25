@@ -25,23 +25,23 @@ type AccessUser = { id: string; email: string; role: UserRole; employeeId?: stri
 
 const defaultCompany: BusinessSettings = {
   businessId: "rts",
-  appDisplayName: "Company Command",
-  headerName: "Company Command — RTS",
-  brandShortName: "CC",
-  companyName: "RTS Field App",
+  appDisplayName: "Field Service",
+  headerName: "Field Service",
+  brandShortName: "FA",
+  companyName: "Company",
   phone: "",
-  email: "Texastrimout@gmail.com",
+  email: "",
   address: "",
   city: "",
   defaultCalendar: "Google Calendar",
-  defaultState: "TX",
+  defaultState: "",
   merchandiseLink: "",
   fieldSupportName: "Office",
   fieldSupportPhone: "",
   employeeHelpInstructions: "If something blocks the job, tap Need Help, add what is missing, then call or text the office before leaving.",
   employeeFieldNotice: "Open your assigned job, check the scope, take required photos, add notes, and tap Ready Review when field work is complete.",
   managerReviewInstructions: "Manager review checks after photos, completion notes, work completed, and open parts before billing.",
-  customerTextTemplate: "RTS update for {customerName}: crew is on your job {jobId}.",
+  customerTextTemplate: "Company update for {customerName}: crew is on your job {jobId}.",
   factoryCostInstructions: "Factory jobs: enter miles, drive time, hotel, materials, and other receipt totals before sending the job for review.",
   factoryCostDefaults: defaultFactoryCost(),
   employeeCanRequestHelp: true,
@@ -330,7 +330,7 @@ export function SettingsPanel() {
     <section className="card overflow-hidden">
       <div className="grid lg:grid-cols-[.9fr_1.1fr]">
         <div className="bg-ink p-5 text-white sm:p-6">
-          <p className="text-xs font-black uppercase tracking-widest text-lime">Company Command setup</p>
+          <p className="text-xs font-black uppercase tracking-widest text-lime">Field Service setup</p>
           <h2 className="mt-2 text-2xl font-black">{setupPercent}% ready</h2>
           <p className="mt-2 text-sm text-white/60">{setupComplete} of {setupChecklist.length} admin setup items are complete. This is the quick admin checklist for daily field use.</p>
           <div className="mt-5 h-3 overflow-hidden rounded-full bg-white/10">
@@ -545,7 +545,7 @@ export function SettingsPanel() {
         <ListEditor label="Priorities" values={company.priorityOptions} onChange={(values) => set("priorityOptions", values)} placeholder="Low, Normal, High, Urgent" />
         <ListEditor label="Default checklist" values={company.checklistOptions} onChange={(values) => set("checklistOptions", values)} placeholder="One checklist item per line" />
         <ListEditor label="Employee quick note buttons" values={company.employeeFieldNoteTemplates} onChange={(values) => set("employeeFieldNoteTemplates", values)} placeholder="Arrived | Crew arrived on site. | Time" />
-        <Textarea label="Customer text template" value={company.customerTextTemplate} onChange={(value) => set("customerTextTemplate", value)} placeholder="Example: RTS update for {customerName}: crew is on your job {jobId}." />
+        <Textarea label="Customer text template" value={company.customerTextTemplate} onChange={(value) => set("customerTextTemplate", value)} placeholder="Example: Company update for {customerName}: crew is on your job {jobId}." />
         <p className="rounded-xl bg-sand p-3 text-xs font-semibold text-black/45 lg:col-span-2">Available placeholders: {"{customerName}"}, {"{jobId}"}, {"{jobType}"}, and {"{dueDate}"}. This controls the Text button employees see in the field app.</p>
         <p className="rounded-xl bg-sand p-3 text-xs font-semibold text-black/45 lg:col-span-2">Quick note format: Button label | message saved to job | type. Good types: Note, Status, Customer, Parts, Time.</p>
         <Textarea label="Factory cost instructions" value={company.factoryCostInstructions} onChange={(value) => set("factoryCostInstructions", value)} placeholder="Tell employees what to enter on factory cost cards" />
@@ -753,9 +753,9 @@ function AdminControlMap({ employees, users }: { employees: number; users: numbe
 
 function buildCrewInvite(company: BusinessSettings) {
   return [
-    `Company Command field app`,
+    `Field Service app`,
     "",
-    `Open: https://rts-field-app.vercel.app`,
+    `Open: use your Field Service app link`,
     "",
     `Use your assigned login. After you log in, go to My Jobs / Field App.`,
     "",

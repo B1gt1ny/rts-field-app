@@ -2615,7 +2615,7 @@ async function shareProfile(job: Job, text: string) {
 }
 
 function buildCustomerText(job: Job) {
-  return `RTS update for ${job.customerName}: your ${job.jobType || "service"} job is scheduled for ${job.dueDate || "TBD"}. Address: ${job.address}, ${job.city}. Reply here if anything changes.`;
+  return `Company update for ${job.customerName}: your ${job.jobType || "service"} job is scheduled for ${job.dueDate || "TBD"}. Address: ${job.address}, ${job.city}. Reply here if anything changes.`;
 }
 
 function sourceContactLabel(job: Job) {
@@ -2626,7 +2626,7 @@ function sourceContactLabel(job: Job) {
 
 function buildSourceText(job: Job) {
   return [
-    `RTS source update — ${job.jobId}`,
+    `Company source update — ${job.jobId}`,
     `${job.customerName} · ${job.address}, ${job.city}`,
     `Source: ${job.source}${job.dealerName ? ` / ${job.dealerName}` : ""}${job.factoryWorkOrderNumber ? ` / WO ${job.factoryWorkOrderNumber}` : ""}`,
     `Status: ${job.status} · Priority: ${job.priority}`,
@@ -2819,6 +2819,6 @@ function CompanyCamPhotoReferences({ projectUrl, photos, loading, onLoad }: { pr
       {photos.slice(0, 8).map((photo) => photo.thumbnailUrl ? <a key={photo.id} href={projectUrl} target="_blank" title={photo.createdAt ? `Added ${formatJobDate(photo.createdAt)}` : "Open in CompanyCam"} className="aspect-square overflow-hidden rounded-lg border border-black/10 bg-white"><img src={photo.thumbnailUrl} alt="CompanyCam project photo reference" className="size-full object-cover" /></a> : <a key={photo.id} href={projectUrl} target="_blank" className="grid aspect-square place-items-center rounded-lg border border-black/10 bg-white text-xs font-bold text-black/50">Photo</a>)}
     </div>}
     {photos?.length === 0 && !loading && <p className="mt-3 text-xs font-semibold text-black/55">No CompanyCam photo references are available for this project.</p>}
-    <p className="mt-3 text-xs font-semibold text-black/55">CompanyCam photos are reference-only. Native RTS photos remain required for closeout and billing evidence.</p>
+    <p className="mt-3 text-xs font-semibold text-black/55">CompanyCam photos are reference-only. Native job photos remain required for closeout and billing evidence.</p>
   </>;
 }
