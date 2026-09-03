@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import { AppShell } from "@/components/AppShell";
 import { AuthGate } from "@/components/AuthGate";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
@@ -16,5 +17,5 @@ export const metadata: Metadata = {
 export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#17211c" };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en"><body><ServiceWorkerRegister /><AuthGate><AppShell>{children}</AppShell></AuthGate></body></html>;
+  return <html lang="en"><body><ServiceWorkerRegister /><AuthGate><AppShell>{children}</AppShell></AuthGate><Analytics /></body></html>;
 }
