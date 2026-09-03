@@ -104,7 +104,7 @@ npm start
 
 In production, jobs, employees, admin company settings, and merchandise requests are stored in Supabase Postgres. Apply `supabase/schema.sql`, then set the variables shown in `.env.example`. The service-role key is server-only and must never use a `NEXT_PUBLIC_` prefix.
 
-Without Supabase environment variables, local development falls back to `data/jobs.json`, `data/employees.json`, `data/settings.json`, and `data/merch-requests.json`. A new empty hosted jobs table is seeded once from the included mock job data.
+Without Supabase environment variables, local development falls back to `data/jobs.json`, `data/employees.json`, `data/settings.json`, and `data/merch-requests.json`. Missing settings and merchandise files start from safe built-in defaults and are created on the first save. A new empty hosted jobs table is seeded once from the included mock job data.
 
 The repository boundaries in `lib/jobs.ts`, `lib/employees.ts`, and `lib/settings.ts` are the intended replacement points for SQLite, Google Sheets, AppSheet, or a fuller multi-company database model.
 

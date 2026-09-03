@@ -16,19 +16,35 @@ function database() {
 }
 
 async function getLocalSettings(): Promise<BusinessSettings> {
-  return JSON.parse(await fs.readFile(settingsFile, "utf8")) as BusinessSettings;
+  try {
+    return JSON.parse(await fs.readFile(settingsFile, "utf8")) as BusinessSettings;
+  } catch (error) {
+    if (isMissingFile(error)) return normalizeSettings({ businessId: defaultBusinessId });
+    throw error;
+  }
 }
 
 async function saveLocalSettings(settings: BusinessSettings) {
+  await fs.mkdir(path.dirname(settingsFile), { recursive: true });
   await fs.writeFile(settingsFile, JSON.stringify(settings, null, 2));
 }
 
 async function getLocalMerchRequests(): Promise<MerchRequest[]> {
-  return JSON.parse(await fs.readFile(merchFile, "utf8")) as MerchRequest[];
+  try {
+    return JSON.parse(await fs.readFile(merchFile, "utf8")) as MerchRequest[];
+  } catch (error) {
+    if (isMissingFile(error)) return [];
+    throw error;
+  }
 }
 
 async function saveLocalMerchRequests(requests: MerchRequest[]) {
+  await fs.mkdir(path.dirname(merchFile), { recursive: true });
   await fs.writeFile(merchFile, JSON.stringify(requests, null, 2));
+}
+
+function isMissingFile(error: unknown): error is NodeJS.ErrnoException {
+  return error instanceof Error && "code" in error && error.code === "ENOENT";
 }
 
 function normalizeSettings(input: Partial<BusinessSettings>): BusinessSettings {
