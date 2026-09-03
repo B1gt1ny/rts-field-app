@@ -206,7 +206,7 @@ function BillingPacketActions({ job, blockers }: { job: Job; blockers: number })
       `Closeout score: ${readinessScore(job)}%`,
       `Receipts: ${job.receipts?.length || 0} totaling $${receiptTotal.toFixed(2)}`,
       job.source === "Factory" ? `Factory cost total: $${factoryTotal.toFixed(2)}` : "",
-      job.source === "Factory" ? `Factory breakdown: mileage $${factoryCosts.mileage.toFixed(2)}, labor $${(factoryCosts.driveTime + factoryCosts.helper).toFixed(2)}, per diem $${factoryCosts.perDiem.toFixed(2)}, receipts $${(factoryCosts.hotel + factoryCosts.materials + factoryCosts.otherReceipts).toFixed(2)}` : "",
+      job.source === "Factory" ? `Factory breakdown: ${job.factoryCost?.tripCount || "0"} trips, ${job.factoryCost?.miles || "0"} miles, drive $${factoryCosts.driveTime.toFixed(2)}, work $${factoryCosts.work.toFixed(2)}, helper $${factoryCosts.helper.toFixed(2)}, per diem $${factoryCosts.perDiem.toFixed(2)}, receipts $${(factoryCosts.hotel + factoryCosts.meals + factoryCosts.materials + factoryCosts.otherReceipts).toFixed(2)}` : "",
       `Files: ${job.workOrderFiles?.length || 0}`,
       `Sign-offs: ${job.signoffs?.length || 0}`,
       `Completion notes: ${job.completionNotes || "Missing"}`,
@@ -242,9 +242,11 @@ function FactoryCostPacketSection({ totals, notes }: { totals: ReturnType<typeof
   const items = [
     ["Mileage", totals.mileage],
     ["Drive time labor", totals.driveTime],
+    ["Work labor", totals.work],
     ["Helper labor", totals.helper],
     ["Per diem", totals.perDiem],
     ["Hotel receipts", totals.hotel],
+    ["Meal receipts", totals.meals],
     ["Materials receipts", totals.materials],
     ["Other receipts", totals.otherReceipts],
   ];
