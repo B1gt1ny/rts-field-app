@@ -213,6 +213,8 @@ function billingEvidenceChecks(job: Job): ReadinessCheck[] {
   const mileageRecorded = entries.some((entry) => entry.type === "Mileage" && entry.mileage !== undefined && entry.mileage !== "");
   const helperHours = job.factoryCost?.helperHours?.trim() || "";
   const helperRate = job.factoryCost?.helperRate?.trim() || "";
+  const workHours = job.factoryCost?.workHours?.trim() || "";
+  const workRate = job.factoryCost?.workRate?.trim() || "";
   const correctionsOpen = hasActiveCorrections(job);
 
   return [
@@ -230,6 +232,11 @@ function billingEvidenceChecks(job: Job): ReadinessCheck[] {
       label: "Work session",
       ok: !workStarted || departed,
       detail: !workStarted ? "No work session logged" : departed ? "Work departure logged" : "Work started without departure",
+    },
+    {
+      label: "Work cost details",
+      ok: job.source !== "Factory" || Boolean(workHours) === Boolean(workRate),
+      detail: job.source !== "Factory" ? "Not a factory job" : !workHours && !workRate ? "No work cost recorded" : workHours && workRate ? "Hours and rate recorded" : workHours ? "Work rate missing" : "Work hours missing",
     },
     {
       label: "Helper cost details",
