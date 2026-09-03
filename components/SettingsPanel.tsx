@@ -554,7 +554,8 @@ export function SettingsPanel() {
           <p className="mt-1 text-sm font-semibold text-black/45">Pre-fill common rates on factory job cost trackers. Jobs with saved numbers keep their own totals.</p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Input label="Mileage rate" value={company.factoryCostDefaults?.mileageRate || ""} onChange={(value) => setFactoryCostDefault("mileageRate", value)} placeholder="0.67" />
-            <Input label="Hourly rate" value={company.factoryCostDefaults?.hourlyRate || ""} onChange={(value) => setFactoryCostDefault("hourlyRate", value)} placeholder="0" />
+            <Input label="Drive time rate" value={company.factoryCostDefaults?.hourlyRate || ""} onChange={(value) => setFactoryCostDefault("hourlyRate", value)} placeholder="0" />
+            <Input label="Work rate" value={company.factoryCostDefaults?.workRate || ""} onChange={(value) => setFactoryCostDefault("workRate", value)} placeholder="0" />
             <Input label="Helper rate" value={company.factoryCostDefaults?.helperRate || ""} onChange={(value) => setFactoryCostDefault("helperRate", value)} placeholder="0" />
             <Input label="Per diem rate" value={company.factoryCostDefaults?.perDiemRate || ""} onChange={(value) => setFactoryCostDefault("perDiemRate", value)} placeholder="0" />
           </div>
