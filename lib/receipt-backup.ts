@@ -4,7 +4,7 @@ import type { Job } from "./types";
 export function hasReceiptDollars(job: Job) {
   const receiptTotal = (job.receipts || []).reduce((sum, receipt) => sum + (Number(receipt.amount) || 0), 0);
   const factoryCosts = getFactoryCostTotals(job.factoryCost);
-  return receiptTotal > 0 || factoryCosts.hotel > 0 || factoryCosts.materials > 0 || factoryCosts.otherReceipts > 0;
+  return receiptTotal > 0 || factoryCosts.hotel > 0 || factoryCosts.meals > 0 || factoryCosts.materials > 0 || factoryCosts.otherReceipts > 0;
 }
 
 export function hasUploadedReceiptBackup(job: Job) {
