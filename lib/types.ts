@@ -140,15 +140,19 @@ export type CustomerSurvey = {
   completedDate?: string;
 };
 export type FactoryCostTracker = {
+  tripCount: string;
   mileageRate: string;
   miles: string;
   driveTimeHours: string;
   hourlyRate: string;
+  workHours: string;
+  workRate: string;
   helperHours: string;
   helperRate: string;
   perDiemDays: string;
   perDiemRate: string;
   hotelTotal: string;
+  mealTotal: string;
   materialsTotal: string;
   otherReceiptsTotal: string;
   notes?: string;
@@ -232,15 +236,19 @@ export const makeChecklist = (completed = 0): ChecklistItem[] => checklistLabels
 
 export function defaultFactoryCost(): FactoryCostTracker {
   return {
+    tripCount: "",
     mileageRate: "0.67",
     miles: "",
     driveTimeHours: "",
     hourlyRate: "",
+    workHours: "",
+    workRate: "",
     helperHours: "",
     helperRate: "",
     perDiemDays: "",
     perDiemRate: "",
     hotelTotal: "",
+    mealTotal: "",
     materialsTotal: "",
     otherReceiptsTotal: "",
     notes: "",

@@ -1596,6 +1596,7 @@ function billingBlockerAction(blocker: { label: string; detail: string }) {
     case "Mileage log": return { label: "Missing mileage", href: "#time-log" };
     case "Work session": return { label: "Missing work hours", href: "#time-log" };
     case "Helper cost details": return { label: blocker.detail === "Helper rate missing" ? "Missing helper rate" : "Missing helper hours", href: "#time-log" };
+    case "Work cost details": return { label: blocker.detail === "Work rate missing" ? "Missing work rate" : "Missing work hours", href: "#factory-costs" };
     case "Receipt backup": return { label: "Missing required receipt/documentation", href: "#receipts" };
     case "Manager corrections": return { label: "Correction required" };
     default: return { label: blocker.label };
@@ -1635,6 +1636,7 @@ function ContractorInvoiceDataSummary({ job }: { job: Job }) {
     {
       title: "Travel",
       fields: [
+        { label: "Trip count", value: recorded(tracker?.tripCount?.trim() || tripStarts.length), href: "#factory-costs" },
         { label: "Trip date", value: recorded(tripStarts.length), href: "#time-log" },
         { label: "Origin", value: recorded(tripOrigins.length), href: "#time-log" },
         { label: "Destination", value: recorded([job.address, job.city].filter(Boolean).join(", ")), href: "#time-log" },
@@ -1646,14 +1648,14 @@ function ContractorInvoiceDataSummary({ job }: { job: Job }) {
     {
       title: "Labor",
       fields: [
-        { label: "Work hours", value: recorded(formatEntryDuration(entries, "Work started", "Departed") !== "0m"), href: "#time-log" },
+        { label: "Work hours", value: recorded(tracker?.workHours?.trim() || formatEntryDuration(entries, "Work started", "Departed") !== "0m"), href: "#factory-costs" },
         { label: "Helper hours", value: recorded(tracker?.helperHours?.trim()), href: "#factory-costs" },
       ],
     },
     {
       title: "Expenses",
       fields: [
-        { label: "Meals", value: recorded(receiptCategoryRecorded(["Meal"])), href: "#receipts" },
+        { label: "Meals", value: recorded(tracker?.mealTotal?.trim() || receiptCategoryRecorded(["Meal"])), href: "#factory-costs" },
         { label: "Lodging", value: recorded(receiptCategoryRecorded(["Lodging"])), href: "#receipts" },
         { label: "Parts / Materials", value: recorded(receiptCategoryRecorded(["Parts / Materials", "Parts", "Materials"])), href: "#receipts" },
         { label: "Materials tracked", value: recorded(tracker?.materialsTotal?.trim()), href: "#factory-costs" },
@@ -1750,6 +1752,12 @@ function BillingHandoffPanel({ job, saving, onSave }: { job: Job; saving: boolea
       `Closeout score: ${score}%`,
       `Receipts: ${job.receipts?.length || 0} totaling $${receiptTotal.toFixed(2)}`,
       job.source === "Factory" ? `Factory cost total: $${factoryTotal.toFixed(2)}` : "",
+      job.source === "Factory" ? `Trips: ${job.factoryCost?.tripCount || "Not recorded"}` : "",
+      job.source === "Factory" ? `Mileage: ${job.factoryCost?.miles || "Not recorded"} miles` : "",
+      job.source === "Factory" ? `Drive time: ${job.factoryCost?.driveTimeHours || "Not recorded"} hours` : "",
+      job.source === "Factory" ? `Work time: ${job.factoryCost?.workHours || "Not recorded"} hours` : "",
+      job.source === "Factory" ? `Helper time: ${job.factoryCost?.helperHours || "Not recorded"} hours` : "",
+      job.source === "Factory" ? `Meals: $${Number(job.factoryCost?.mealTotal || 0).toFixed(2)}` : "",
       receiptBackupMissing ? "Receipt backup missing: uploaded receipt file needed." : "",
       `Files: ${job.workOrderFiles?.length || 0}`,
       `Sign-offs: ${job.signoffs?.length || 0}`,
@@ -1831,15 +1839,19 @@ function FactoryCostTrackerPanel({ job, saving, onSave }: { job: Job; saving: bo
 
   const totals = getFactoryCostTotals(draft);
   const fields: { key: keyof FactoryCostTracker; label: string; placeholder?: string }[] = [
+    { key: "tripCount", label: "Number of trips", placeholder: "0" },
     { key: "miles", label: "Miles", placeholder: "0" },
     { key: "mileageRate", label: "Mileage rate", placeholder: "0.67" },
     { key: "driveTimeHours", label: "Drive time hours", placeholder: "0" },
-    { key: "hourlyRate", label: "Hourly rate", placeholder: "0" },
+    { key: "hourlyRate", label: "Drive time rate", placeholder: "0" },
+    { key: "workHours", label: "Work hours", placeholder: "0" },
+    { key: "workRate", label: "Work rate", placeholder: "0" },
     { key: "helperHours", label: "Helper hours", placeholder: "0" },
     { key: "helperRate", label: "Helper rate", placeholder: "0" },
     { key: "perDiemDays", label: "Per diem days", placeholder: "0" },
     { key: "perDiemRate", label: "Per diem rate", placeholder: "0" },
     { key: "hotelTotal", label: "Hotel receipts total", placeholder: "0.00" },
+    { key: "mealTotal", label: "Meal receipts total", placeholder: "0.00" },
     { key: "materialsTotal", label: "Materials receipts total", placeholder: "0.00" },
     { key: "otherReceiptsTotal", label: "Other receipts total", placeholder: "0.00" },
   ];
@@ -1862,8 +1874,8 @@ function FactoryCostTrackerPanel({ job, saving, onSave }: { job: Job; saving: bo
     </div>
     <div className="mb-4 grid gap-3 sm:grid-cols-4">
       <MiniMetric label="Mileage" value={`$${totals.mileage.toFixed(2)}`} icon={<MapPinIcon />} />
-      <MiniMetric label="Labor" value={`$${(totals.driveTime + totals.helper).toFixed(2)}`} icon={<ClockIcon />} />
-      <MiniMetric label="Receipts" value={`$${(totals.hotel + totals.materials + totals.otherReceipts).toFixed(2)}`} icon={<ReceiptPercentIcon />} />
+      <MiniMetric label="Labor" value={`$${(totals.driveTime + totals.work + totals.helper).toFixed(2)}`} icon={<ClockIcon />} />
+      <MiniMetric label="Receipts" value={`$${(totals.hotel + totals.meals + totals.materials + totals.otherReceipts).toFixed(2)}`} icon={<ReceiptPercentIcon />} />
       <MiniMetric label="Grand total" value={`$${totals.grandTotal.toFixed(2)}`} icon={<BanknotesIcon />} />
     </div>
     <div className="grid gap-3 sm:grid-cols-2">

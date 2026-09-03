@@ -770,14 +770,18 @@ function FieldJobCard({ job, noteDraft, saving, permissions, customerTextTemplat
 function FactoryCostQuickEntry({ job, instructions, saving, onSave }: { job: Job; instructions: string; saving: boolean; onSave: (costPatch: Partial<FactoryCostTracker>) => void }) {
   const existing = { ...defaultFactoryCost(), ...(job.factoryCost || {}) };
   const [draft, setDraft] = useState({
+    tripCount: existing.tripCount,
     miles: existing.miles,
     driveTimeHours: existing.driveTimeHours,
     hourlyRate: existing.hourlyRate,
+    workHours: existing.workHours,
+    workRate: existing.workRate,
     helperHours: existing.helperHours,
     helperRate: existing.helperRate,
     perDiemDays: existing.perDiemDays,
     perDiemRate: existing.perDiemRate,
     hotelTotal: existing.hotelTotal,
+    mealTotal: existing.mealTotal,
     materialsTotal: existing.materialsTotal,
     otherReceiptsTotal: existing.otherReceiptsTotal,
     notes: existing.notes || "",
@@ -794,14 +798,18 @@ function FactoryCostQuickEntry({ job, instructions, saving, onSave }: { job: Job
       <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-blue-900">${preview.grandTotal.toFixed(2)}</span>
     </div>
     <div className="grid grid-cols-2 gap-2">
+      <FieldCostInput label="Trips" value={draft.tripCount} onChange={(value) => setDraft((old) => ({ ...old, tripCount: value }))} />
       <FieldCostInput label="Miles" value={draft.miles} onChange={(value) => setDraft((old) => ({ ...old, miles: value }))} />
       <FieldCostInput label="Drive hrs" value={draft.driveTimeHours} onChange={(value) => setDraft((old) => ({ ...old, driveTimeHours: value }))} />
-      <FieldCostInput label="Hourly $" value={draft.hourlyRate} onChange={(value) => setDraft((old) => ({ ...old, hourlyRate: value }))} />
+      <FieldCostInput label="Drive rate $" value={draft.hourlyRate} onChange={(value) => setDraft((old) => ({ ...old, hourlyRate: value }))} />
+      <FieldCostInput label="Work hrs" value={draft.workHours} onChange={(value) => setDraft((old) => ({ ...old, workHours: value }))} />
+      <FieldCostInput label="Work rate $" value={draft.workRate} onChange={(value) => setDraft((old) => ({ ...old, workRate: value }))} />
       <FieldCostInput label="Helper hrs" value={draft.helperHours} onChange={(value) => setDraft((old) => ({ ...old, helperHours: value }))} />
       <FieldCostInput label="Helper $" value={draft.helperRate} onChange={(value) => setDraft((old) => ({ ...old, helperRate: value }))} />
       <FieldCostInput label="Per diem days" value={draft.perDiemDays} onChange={(value) => setDraft((old) => ({ ...old, perDiemDays: value }))} />
       <FieldCostInput label="Per diem $" value={draft.perDiemRate} onChange={(value) => setDraft((old) => ({ ...old, perDiemRate: value }))} />
       <FieldCostInput label="Hotel $" value={draft.hotelTotal} onChange={(value) => setDraft((old) => ({ ...old, hotelTotal: value }))} />
+      <FieldCostInput label="Meals $" value={draft.mealTotal} onChange={(value) => setDraft((old) => ({ ...old, mealTotal: value }))} />
       <FieldCostInput label="Materials $" value={draft.materialsTotal} onChange={(value) => setDraft((old) => ({ ...old, materialsTotal: value }))} />
       <FieldCostInput label="Other $" value={draft.otherReceiptsTotal} onChange={(value) => setDraft((old) => ({ ...old, otherReceiptsTotal: value }))} />
       <input value={draft.notes} onChange={(event) => setDraft((old) => ({ ...old, notes: event.target.value }))} className="min-h-10 rounded-xl border border-black/10 bg-white px-3 py-2 text-sm font-bold outline-none focus:border-blue-500" placeholder="Notes" />
