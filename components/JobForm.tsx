@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { intakeCompleteness } from "@/lib/job-readiness";
+import { jobSaveDestination, type JobImportHandoff } from "@/lib/calendar-dispatch-handoff";
 import { emptyJob, jobTypeOptions, priorities, sources, statuses, type AIWorkOrderImport, type BusinessSettings, type Employee, type Job, type WorkOrderFile } from "@/lib/types";
 import { authFetch } from "@/lib/client-auth";
 
@@ -27,6 +28,7 @@ export function JobForm({ initialJob }: { initialJob?: Job }) {
   const [options, setOptions] = useState(defaultOptions);
   const [importPreview, setImportPreview] = useState<AIWorkOrderImport | null>(null);
   const [importFile, setImportFile] = useState<WorkOrderFile | null>(null);
+  const [importHandoff, setImportHandoff] = useState<JobImportHandoff>({});
   const draftKey = initialJob ? `company-command-job-draft-${initialJob.jobId}` : "company-command-job-draft-new";
   const previewCompleteness = useMemo(() => importPreview ? intakeCompleteness({ ...job, ...importPreview }) : null, [importPreview, job]);
   useEffect(() => { fetch("/api/employees").then((response) => response.json()).then(setEmployees).catch(() => setError("Employees could not be loaded.")); }, []);
@@ -35,9 +37,10 @@ export function JobForm({ initialJob }: { initialJob?: Job }) {
     try {
       const raw = window.sessionStorage.getItem("company-command-work-order-import");
       if (!raw) return;
-      const imported = JSON.parse(raw) as { proposal?: AIWorkOrderImport; file?: WorkOrderFile | null };
+      const imported = JSON.parse(raw) as { proposal?: AIWorkOrderImport; file?: WorkOrderFile | null } & JobImportHandoff;
       if (imported.proposal) setImportPreview(imported.proposal);
       if (imported.file) setImportFile(imported.file);
+      setImportHandoff({ origin: imported.origin, returnTo: imported.returnTo });
       window.sessionStorage.removeItem("company-command-work-order-import");
     } catch { setImportPreview(null); setImportFile(null); }
   }, [initialJob]);
@@ -112,7 +115,7 @@ export function JobForm({ initialJob }: { initialJob?: Job }) {
       if (!response.ok) throw new Error(saved.error || "The job could not be saved.");
       window.localStorage.removeItem(draftKey);
       setDraftDirty(false);
-      router.push(`/jobs/${saved.jobId}`);
+      router.push(jobSaveDestination(saved.jobId, importHandoff));
     } catch (caught) {
       setError(`${caught instanceof Error ? caught.message : "The job could not be saved."} Your phone draft is still saved here so you do not have to re-enter the job.`);
     } finally {
@@ -134,7 +137,7 @@ export function JobForm({ initialJob }: { initialJob?: Job }) {
     }
   }
   return <form onSubmit={submit} className="space-y-5">
-    {!initialJob && importPreview && <ImportPreview preview={importPreview} completeness={previewCompleteness} onHide={() => setImportPreview(null)} onApply={applyImportPreview} />}
+    {!initialJob && importPreview && <ImportPreview preview={importPreview} completeness={previewCompleteness} calendarImport={importHandoff.origin === "calendar"} onHide={() => setImportPreview(null)} onApply={applyImportPreview} />}
     <FormSection title="Job basics" description="Source, schedule, and assignment">
       <Select label="Source" value={job.source} options={[...sources]} onChange={(v) => set("source", v as Job["source"])} />
       {job.source === "Dealer" && <Input label="Dealer name" value={job.dealerName} onChange={(v) => set("dealerName", v)} required />}
@@ -186,7 +189,7 @@ export function JobForm({ initialJob }: { initialJob?: Job }) {
   </form>;
 }
 
-function ImportPreview({ preview, completeness, onHide, onApply }: { preview: AIWorkOrderImport; completeness: ReturnType<typeof intakeCompleteness> | null; onHide: () => void; onApply: (preview: AIWorkOrderImport) => void }) {
+function ImportPreview({ preview, completeness, calendarImport, onHide, onApply }: { preview: AIWorkOrderImport; completeness: ReturnType<typeof intakeCompleteness> | null; calendarImport: boolean; onHide: () => void; onApply: (preview: AIWorkOrderImport) => void }) {
   const rows = [
     ["Customer", preview.customerName],
     ["Phone", preview.phone],
@@ -200,7 +203,7 @@ function ImportPreview({ preview, completeness, onHide, onApply }: { preview: AI
     ["Parts", preview.partsNeeded],
     ["Home size", preview.homeSize],
   ];
-  return <section className="card border-forest/20 bg-forest/5 p-4 sm:p-6"><div className="flex items-start justify-between gap-3"><div><h2 className="mt-1 text-lg font-black">Work-order import preview</h2><p className="mt-1 text-sm text-black/55">Review proposed values, then apply them to this new job form for final edits and saving.</p></div><button type="button" onClick={onHide} className="min-h-10 rounded-xl border border-black/10 bg-white px-3 py-2 text-sm font-black text-ink">Hide</button></div><div className="mt-4 grid gap-2 sm:grid-cols-2">{rows.map(([label, value]) => <div key={label} className="rounded-xl bg-white p-3"><p className="text-xs font-black uppercase tracking-wide text-black/35">{label}</p><p className="mt-1 whitespace-pre-wrap font-bold text-ink">{value || "Not provided"}</p></div>)}</div>{completeness && <div className="mt-4 rounded-xl border border-black/10 bg-white p-3"><p className="text-xs font-black uppercase tracking-wide text-black/35">Intake completeness preview</p><p className="mt-1 text-sm font-semibold text-black/55">{completeness.core.filter((check) => check.ok).length} of {completeness.core.length} core details recorded</p></div>}<button type="button" onClick={() => onApply(preview)} className="mt-4 min-h-11 rounded-xl bg-forest px-4 py-2 font-black text-white">Apply to Job Form</button></section>;
+  return <section className="card border-forest/20 bg-forest/5 p-4 sm:p-6"><div className="flex items-start justify-between gap-3"><div><h2 className="mt-1 text-lg font-black">{calendarImport ? "Calendar job review" : "Work-order import preview"}</h2><p className="mt-1 text-sm text-black/55">{calendarImport ? "Apply the calendar details, fill in anything missing, choose the crew, and save. The new job will open in Dispatch for the final handoff." : "Review proposed values, then apply them to this new job form for final edits and saving."}</p></div><button type="button" onClick={onHide} className="min-h-10 rounded-xl border border-black/10 bg-white px-3 py-2 text-sm font-black text-ink">Hide</button></div><div className="mt-4 grid gap-2 sm:grid-cols-2">{rows.map(([label, value]) => <div key={label} className="rounded-xl bg-white p-3"><p className="text-xs font-black uppercase tracking-wide text-black/35">{label}</p><p className="mt-1 whitespace-pre-wrap font-bold text-ink">{value || "Not provided"}</p></div>)}</div>{completeness && <div className="mt-4 rounded-xl border border-black/10 bg-white p-3"><p className="text-xs font-black uppercase tracking-wide text-black/35">Intake completeness preview</p><p className="mt-1 text-sm font-semibold text-black/55">{completeness.core.filter((check) => check.ok).length} of {completeness.core.length} core details recorded</p></div>}<button type="button" onClick={() => onApply(preview)} className="mt-4 min-h-11 rounded-xl bg-forest px-4 py-2 font-black text-white">{calendarImport ? "Apply Calendar Details" : "Apply to Job Form"}</button></section>;
 }
 
 function FormSection({ title, description, children }: { title: string; description: string; children: React.ReactNode }) { return <section className="card p-4 sm:p-6"><div className="mb-5"><h2 className="text-lg font-black">{title}</h2><p className="text-sm text-black/45">{description}</p></div><div className="grid gap-4 sm:grid-cols-2">{children}</div></section>; }

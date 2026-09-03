@@ -24,7 +24,7 @@ type DispatchWarning = {
   href: string;
 };
 
-export function DispatchHandoffView({ jobs, employees }: { jobs: Job[]; employees: Employee[] }) {
+export function DispatchHandoffView({ jobs, employees, focusJobId }: { jobs: Job[]; employees: Employee[]; focusJobId?: string }) {
   const today = new Date().toLocaleDateString("en-CA");
   const activeJobs = jobs.filter((job) => activeStatuses.includes(job.status));
   const activeEmployees = employees.filter((employee) => employee.active);
@@ -32,13 +32,20 @@ export function DispatchHandoffView({ jobs, employees }: { jobs: Job[]; employee
     const assigned = activeJobs.filter((job) => isAssignedTo(job, employee));
     return { employee, assigned, todayJobs: assigned.filter((job) => job.dueDate === today) };
   }).sort((a, b) => a.todayJobs.length - b.todayJobs.length || a.assigned.length - b.assigned.length || a.employee.name.localeCompare(b.employee.name));
-  const rows = buildDispatchRows(jobs, activeEmployees, loads, today).slice(0, 14);
+  const focusJob = activeJobs.find((job) => job.jobId === focusJobId);
+  const rows = prioritizeCalendarHandoff(buildDispatchRows(jobs, activeEmployees, loads, today), focusJob, activeEmployees, loads, today).slice(0, 14);
   const warnings = buildDispatchWarnings(activeJobs, employees, loads, today);
   const unassigned = activeJobs.filter((job) => isUnassigned(job)).length;
   const unscheduled = activeJobs.filter((job) => !job.dueDate).length;
   const high = rows.filter((row) => row.priority === "High").length;
 
   return <div className="mx-auto max-w-7xl space-y-5">
+    {focusJob && <section className="card border-forest/20 bg-forest/5 p-4 sm:p-5" aria-live="polite">
+      <p className="text-xs font-black uppercase tracking-widest text-forest">Calendar intake saved</p>
+      <h2 className="mt-1 text-lg font-black">{focusJob.customerName} is ready for dispatch review.</h2>
+      <p className="mt-1 text-sm font-semibold text-black/55">Confirm the crew, date, scope, and contact details before sending the team.</p>
+      <div className="mt-3 flex flex-wrap gap-2"><Link href={`/jobs/${focusJob.jobId}/edit`} className="min-h-11 rounded-xl bg-forest px-4 py-2 text-sm font-black text-white">Confirm assignment</Link><Link href={`/jobs/${focusJob.jobId}`} className="min-h-11 rounded-xl border border-black/10 bg-white px-4 py-2 text-sm font-black text-ink">Open job</Link></div>
+    </section>}
     <section className="rounded-3xl bg-ink p-5 text-white sm:p-7">
       <div className="flex items-start gap-3">
         <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-lime text-ink"><UserGroupIcon className="size-7" /></span>
@@ -158,6 +165,22 @@ function buildDispatchRows(jobs: Job[], employees: Employee[], loads: Array<{ em
     });
   }
   return dedupeRows(rows).sort((a, b) => priorityRank(a.priority) - priorityRank(b.priority) || (a.job.dueDate || "9999-99-99").localeCompare(b.job.dueDate || "9999-99-99"));
+}
+
+function prioritizeCalendarHandoff(rows: HandoffRow[], job: Job | undefined, employees: Employee[], loads: Array<{ employee: Employee; assigned: Job[]; todayJobs: Job[] }>, today: string) {
+  if (!job) return rows;
+  const assigned = !isUnassigned(job);
+  const calendarRow: HandoffRow = {
+    id: `${job.jobId}-calendar-handoff`,
+    job,
+    title: assigned ? "Confirm calendar job dispatch" : "Assign the calendar job",
+    detail: `${job.dueDate ? `Due ${formatDate(job.dueDate)}` : "Needs a date"} · ${job.assignedCrew || "Unassigned"}`,
+    reason: "Calendar intake",
+    priority: !job.dueDate || job.dueDate <= today ? "High" : "Normal",
+    href: `/jobs/${job.jobId}/edit`,
+    suggestedEmployee: currentOrLightest(job, employees, loads),
+  };
+  return [calendarRow, ...rows.filter((row) => row.job.jobId !== job.jobId)];
 }
 
 function taskToHandoff(task: JobTask, employees: Employee[], loads: Array<{ employee: Employee; assigned: Job[]; todayJobs: Job[] }>): HandoffRow {
