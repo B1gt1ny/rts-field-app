@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { authClient, getUserEmployee, getUserRole, requireRole, roles, type UserRole } from "@/lib/auth";
+import { employeeLinkConflict } from "@/lib/employee-onboarding";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,12 @@ export async function POST(request: Request) {
   if (!input.email?.trim()) return NextResponse.json({ error: "Email is required." }, { status: 400 });
   if (!input.password || input.password.length < 8) return NextResponse.json({ error: "Temporary password must be at least 8 characters." }, { status: 400 });
   const role = roles.includes(input.role as UserRole) ? input.role as UserRole : "Employee";
+  if (input.employeeId) {
+    const { data: existing, error: listError } = await db.auth.admin.listUsers();
+    if (listError) return NextResponse.json({ error: listError.message }, { status: 500 });
+    const conflict = employeeLinkConflict(existing.users.map((user) => ({ id: user.id, role: getUserRole(user), ...getUserEmployee(user) })), input.employeeId);
+    if (conflict) return NextResponse.json({ error: "That employee already has a linked login." }, { status: 409 });
+  }
   const { data, error } = await db.auth.admin.createUser({
     email: input.email.trim(),
     password: input.password,
@@ -47,6 +54,12 @@ export async function PUT(request: Request) {
   const input = await request.json() as { userId?: string; role?: UserRole; employeeId?: string; employeeName?: string };
   if (!input.userId) return NextResponse.json({ error: "User ID is required." }, { status: 400 });
   if (!roles.includes(input.role as UserRole)) return NextResponse.json({ error: "Valid role is required." }, { status: 400 });
+  if (input.employeeId) {
+    const { data: existing, error: listError } = await db.auth.admin.listUsers();
+    if (listError) return NextResponse.json({ error: listError.message }, { status: 500 });
+    const conflict = employeeLinkConflict(existing.users.map((user) => ({ id: user.id, role: getUserRole(user), ...getUserEmployee(user) })), input.employeeId, input.userId);
+    if (conflict) return NextResponse.json({ error: "That employee already has a linked login." }, { status: 409 });
+  }
   const { data, error } = await db.auth.admin.updateUserById(input.userId, {
     user_metadata: { role: input.role, employeeId: input.employeeId || "", employeeName: input.employeeName || "" },
   });
