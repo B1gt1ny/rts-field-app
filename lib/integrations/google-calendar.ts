@@ -1,4 +1,5 @@
 import type { Job } from "@/lib/types";
+import type { CalendarIntakeEvent } from "@/lib/calendar-intake";
 
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const CALENDAR_API = "https://www.googleapis.com/calendar/v3";
@@ -19,6 +20,50 @@ async function accessToken() {
 
 export function isGoogleCalendarConfigured() {
   return Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.env.GOOGLE_REFRESH_TOKEN);
+}
+
+export async function listGoogleCalendarEvents(days = 30): Promise<CalendarIntakeEvent[]> {
+  const token = await accessToken();
+  if (!token) throw new Error("Google Calendar is not connected.");
+  const calendarId = encodeURIComponent(process.env.GOOGLE_CALENDAR_ID || "primary");
+  const timeMin = new Date();
+  timeMin.setHours(0, 0, 0, 0);
+  const timeMax = new Date(timeMin.getTime() + days * 86400000);
+  const params = new URLSearchParams({
+    timeMin: timeMin.toISOString(),
+    timeMax: timeMax.toISOString(),
+    singleEvents: "true",
+    orderBy: "startTime",
+    maxResults: "100",
+  });
+  const response = await fetch(`${CALENDAR_API}/calendars/${calendarId}/events?${params}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  if (!response.ok) throw new Error("Google Calendar intake failed.");
+  const data = await response.json() as { items?: Array<{
+    id?: string;
+    summary?: string;
+    description?: string;
+    location?: string;
+    htmlLink?: string;
+    status?: string;
+    start?: { date?: string; dateTime?: string };
+    extendedProperties?: { private?: { rtsJobId?: string } };
+  }> };
+  return (data.items || []).filter((event) => event.id && event.status !== "cancelled").map((event) => {
+    const dateTime = event.start?.dateTime || "";
+    return {
+      id: event.id || "",
+      title: event.summary || "Untitled calendar event",
+      description: event.description || "",
+      location: event.location || "",
+      startDate: event.start?.date || dateTime.slice(0, 10),
+      startTime: event.start?.date ? "" : dateTime.slice(11, 16),
+      htmlLink: event.htmlLink,
+      rtsJobId: event.extendedProperties?.private?.rtsJobId,
+    };
+  });
 }
 
 function calendarTiming(job: Job) {
