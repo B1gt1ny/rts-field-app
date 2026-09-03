@@ -28,10 +28,13 @@ export function CalendarIntake() {
   useEffect(() => { void load(); }, []);
 
   function review(item: CalendarIntakeItem) {
-    window.sessionStorage.setItem("company-command-work-order-import", JSON.stringify({
-      proposal: item.proposal,
-      calendarEvent: { id: item.id, htmlLink: item.htmlLink },
-    }));
+    const proposal = {
+      ...item.proposal,
+      googleCalendarEventId: item.id,
+      googleCalendarEventUrl: item.htmlLink || "",
+      syncToCalendar: false,
+    };
+    window.sessionStorage.setItem("company-command-work-order-import", JSON.stringify({ proposal }));
     window.location.href = "/jobs/new?source=calendar";
   }
 
