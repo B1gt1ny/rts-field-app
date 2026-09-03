@@ -17,6 +17,7 @@ A mobile-first field operations app for mobile home contractors. Built with Next
 - Home-page monthly field calendar for quick scheduling reference
 - Home-page follow-up reminder widget for overdue, due-today, and unscheduled communication follow-ups
 - Schedule Board with today, tomorrow, upcoming week, and unscheduled active jobs
+- Calendar intake handoff that carries reviewed event details into a new job and opens the saved job in Dispatch for crew confirmation
 - Dedicated Reminders page for overdue, due-today, unscheduled, and upcoming follow-ups
 - Reports page with manager snapshot including missing receipt backup, printable daily dispatch, parts run, billing review, sign-off review, inspection context, document manifest, and CSV exports
 - Reports billing review rows flag missing uploaded receipt backup and open directly to Receipts when needed

@@ -1,0 +1,32 @@
+name: Sprint 5.5 Validation
+
+on:
+  push:
+    branches:
+      - sprint-5.5-calendar-dispatch-handoff
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate calendar dispatch handoff
+        run: npm run verify:calendar-dispatch-handoff
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
