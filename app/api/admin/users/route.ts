@@ -4,14 +4,30 @@ import { employeeLinkConflict } from "@/lib/employee-onboarding";
 
 export const dynamic = "force-dynamic";
 
+type AuthAdminClient = NonNullable<ReturnType<typeof authClient>>;
+
+async function listAllAuthUsers(db: AuthAdminClient) {
+  const users = [];
+  const perPage = 1000;
+  let page = 1;
+
+  while (true) {
+    const { data, error } = await db.auth.admin.listUsers({ page, perPage });
+    if (error) return { users: [], error };
+    users.push(...data.users);
+    if (data.users.length < perPage) return { users, error: null };
+    page += 1;
+  }
+}
+
 export async function GET(request: Request) {
   const access = await requireRole(request, ["Admin"]);
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
   const db = authClient();
   if (!db) return NextResponse.json({ error: "Supabase Auth is not configured." }, { status: 503 });
-  const { data, error } = await db.auth.admin.listUsers();
+  const { users, error } = await listAllAuthUsers(db);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data.users.map((user) => ({
+  return NextResponse.json(users.map((user) => ({
     id: user.id,
     email: user.email,
     role: getUserRole(user),
@@ -31,9 +47,9 @@ export async function POST(request: Request) {
   if (!input.password || input.password.length < 8) return NextResponse.json({ error: "Temporary password must be at least 8 characters." }, { status: 400 });
   const role = roles.includes(input.role as UserRole) ? input.role as UserRole : "Employee";
   if (input.employeeId) {
-    const { data: existing, error: listError } = await db.auth.admin.listUsers();
+    const { users: existing, error: listError } = await listAllAuthUsers(db);
     if (listError) return NextResponse.json({ error: listError.message }, { status: 500 });
-    const conflict = employeeLinkConflict(existing.users.map((user) => ({ id: user.id, role: getUserRole(user), ...getUserEmployee(user) })), input.employeeId);
+    const conflict = employeeLinkConflict(existing.map((user) => ({ id: user.id, role: getUserRole(user), ...getUserEmployee(user) })), input.employeeId);
     if (conflict) return NextResponse.json({ error: "That employee already has a linked login." }, { status: 409 });
   }
   const { data, error } = await db.auth.admin.createUser({
@@ -55,9 +71,9 @@ export async function PUT(request: Request) {
   if (!input.userId) return NextResponse.json({ error: "User ID is required." }, { status: 400 });
   if (!roles.includes(input.role as UserRole)) return NextResponse.json({ error: "Valid role is required." }, { status: 400 });
   if (input.employeeId) {
-    const { data: existing, error: listError } = await db.auth.admin.listUsers();
+    const { users: existing, error: listError } = await listAllAuthUsers(db);
     if (listError) return NextResponse.json({ error: listError.message }, { status: 500 });
-    const conflict = employeeLinkConflict(existing.users.map((user) => ({ id: user.id, role: getUserRole(user), ...getUserEmployee(user) })), input.employeeId, input.userId);
+    const conflict = employeeLinkConflict(existing.map((user) => ({ id: user.id, role: getUserRole(user), ...getUserEmployee(user) })), input.employeeId, input.userId);
     if (conflict) return NextResponse.json({ error: "That employee already has a linked login." }, { status: 409 });
   }
   const { data, error } = await db.auth.admin.updateUserById(input.userId, {
