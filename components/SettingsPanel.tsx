@@ -6,6 +6,7 @@ import { ArrowTopRightOnSquareIcon, BellAlertIcon, BuildingOffice2Icon, Calendar
 import { defaultFactoryCost, jobTypeOptions, statuses, type BusinessSettings, type Employee, type FactoryCostTracker, type MerchRequest, type MerchRequestStatus } from "@/lib/types";
 import { authFetch } from "@/lib/client-auth";
 import type { UserRole } from "@/lib/auth";
+import { employeeOnboardingStatus, linkedEmployeeUser } from "@/lib/employee-onboarding";
 
 type IntegrationStatus = Record<string, boolean>;
 type PlatformStatus = {
@@ -115,6 +116,8 @@ export function SettingsPanel() {
   const [cleanupConfirm, setCleanupConfirm] = useState("");
   const [saved, setSaved] = useState("");
   const [copiedInvite, setCopiedInvite] = useState(false);
+  const [newUserRole, setNewUserRole] = useState<UserRole>("Employee");
+  const [newUserEmployeeId, setNewUserEmployeeId] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -165,7 +168,7 @@ export function SettingsPanel() {
   const integrationNextSteps = useMemo(() => buildIntegrationNextSteps(integrations, setupStatus), [integrations, setupStatus]);
   const employeeUsers = users.filter((user) => user.role === "Employee");
   const linkedEmployeeUsers = employeeUsers.filter((user) => Boolean(user.employeeId));
-  const employeesWithoutLogins = employees.filter((employee) => !employeeUsers.some((user) => user.employeeId === employee.id));
+  const employeesWithoutLogins = employees.filter((employee) => !users.some((user) => user.employeeId === employee.id));
   const rolloutChecklist = [
     { title: "Employees added", done: employees.length > 0, detail: `${employees.length} active employee${employees.length === 1 ? "" : "s"}` },
     { title: "Employee logins created", done: employeeUsers.length > 0, detail: `${employeeUsers.length} employee login${employeeUsers.length === 1 ? "" : "s"}` },
@@ -269,8 +272,10 @@ export function SettingsPanel() {
       return;
     }
     setUsers((old) => [result, ...old]);
-    setSaved("User access created.");
+    setSaved(linkedEmployee ? `${linkedEmployee.name}'s login was created and linked.` : "User access created. Link it to an employee if this is a field login.");
     event.currentTarget.reset();
+    setNewUserRole("Employee");
+    setNewUserEmployeeId("");
   }
 
   async function updateUserAccess(userId: string, changes: Partial<Pick<AccessUser, "role" | "employeeId">>) {
@@ -470,14 +475,25 @@ export function SettingsPanel() {
         <p className="font-black">{employeesWithoutLogins.length ? `${employeesWithoutLogins.length} employee${employeesWithoutLogins.length === 1 ? "" : "s"} need${employeesWithoutLogins.length === 1 ? "s" : ""} a login` : "All active employees have a linked login"}</p>
         {employeesWithoutLogins.length ? <p className="mt-1 text-xs">{employeesWithoutLogins.map((employee) => employee.name).join(", ")}</p> : null}
       </div>
-      <form onSubmit={createUser} className="grid gap-3 lg:grid-cols-[1fr_1fr_.7fr_.9fr_auto]">
+      <div className="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {employees.map((employee) => {
+          const linked = linkedEmployeeUser(users, employee.id);
+          const status = employeeOnboardingStatus(employee, users);
+          const tone = status === "Ready" ? "bg-forest/10 text-forest" : status === "Never signed in" ? "bg-blue-50 text-blue-900" : "bg-orange-50 text-orange-900";
+          return <div key={employee.id} className="rounded-xl border border-black/10 bg-sand p-3">
+            <div className="flex items-start justify-between gap-2"><div><p className="font-black">{employee.name}</p><p className="mt-1 text-xs font-semibold text-black/50">{linked?.email || "No linked login"}</p></div><span className={`rounded-full px-2 py-1 text-[10px] font-black uppercase ${tone}`}>{status}</span></div>
+            {!linked && <button type="button" onClick={() => { setNewUserRole("Employee"); setNewUserEmployeeId(employee.id); document.getElementById("create-employee-login")?.scrollIntoView({ behavior: "smooth", block: "center" }); }} className="mt-3 min-h-10 w-full rounded-lg bg-ink px-3 py-2 text-xs font-black text-white">Create {employee.name}'s login</button>}
+          </div>;
+        })}
+      </div>
+      <form id="create-employee-login" onSubmit={createUser} className="grid gap-3 rounded-2xl border border-black/10 bg-white p-4 lg:grid-cols-[1fr_1fr_.7fr_.9fr_auto]">
         <Input label="Email" name="email" placeholder="employee@email.com" />
-        <Input label="Temporary password" name="password" placeholder="At least 8 characters" />
-        <Select label="Role" name="role" options={["Employee", "Manager", "Admin"]} />
-        <Select label="Linked employee" name="employeeId" options={["", ...employees.map((employee) => employee.id)]} optionLabels={Object.fromEntries([["", "Not linked"], ...employees.map((employee) => [employee.id, employee.name])])} />
+        <Input label="One-time temporary password" name="password" placeholder="At least 8 characters" />
+        <Select label="Role" name="role" value={newUserRole} onChange={(value) => { const role = value as UserRole; setNewUserRole(role); if (role !== "Employee") setNewUserEmployeeId(""); }} options={["Employee", "Manager", "Admin"]} />
+        <Select label="Linked employee" name="employeeId" value={newUserEmployeeId} onChange={setNewUserEmployeeId} disabled={newUserRole !== "Employee"} options={["", ...employees.map((employee) => employee.id)]} optionLabels={Object.fromEntries([["", newUserRole === "Employee" ? "Choose employee" : "Admin/Manager not linked"], ...employees.map((employee) => [employee.id, employee.name])])} />
         <button className="btn-primary self-end">Create Login</button>
       </form>
-      <p className="mt-3 text-xs font-semibold text-black/45">Passwords are sent only to Supabase Auth for creation, are never saved in employee records, and are not shown again after this form submits. Have the employee change it from My login after first access.</p>
+      <p className="mt-3 text-xs font-semibold text-black/45">The temporary password is sent once to Supabase Auth, never saved in employee records, and cannot be viewed here again. Give it to the employee separately and have them change it from My Account after first sign-in.</p>
       <div className="mt-5 space-y-2">
         {users.length ? users.map((user) => <div key={user.id} className="flex flex-col gap-3 rounded-xl bg-sand p-3 sm:flex-row sm:items-center sm:justify-between">
           <div><p className="font-black">{user.email}</p><p className="text-xs font-semibold text-black/45">{user.employeeName ? `Linked to ${user.employeeName}` : "No employee linked"} · {user.lastSignInAt ? `Last sign in: ${new Date(user.lastSignInAt).toLocaleDateString()}` : "No sign-in yet"}</p></div>
@@ -822,8 +838,8 @@ function Textarea({ label, value, onChange, placeholder }: { label: string; valu
   return <label className="sm:col-span-2"><span className="label">{label}</span><textarea className="field min-h-28 resize-y" value={value || ""} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} /></label>;
 }
 
-function Select({ label, name, options, optionLabels = {} }: { label: string; name: string; options: string[]; optionLabels?: Record<string, string> }) {
-  return <label><span className="label">{label}</span><select className="field" name={name}>{options.map((option) => <option key={option || "blank"} value={option}>{optionLabels[option] || option}</option>)}</select></label>;
+function Select({ label, name, options, optionLabels = {}, value, onChange, disabled }: { label: string; name: string; options: string[]; optionLabels?: Record<string, string>; value?: string; onChange?: (value: string) => void; disabled?: boolean }) {
+  return <label><span className="label">{label}</span><select className="field disabled:opacity-50" name={name} value={value} onChange={onChange ? (event) => onChange(event.target.value) : undefined} disabled={disabled}>{options.map((option) => <option key={option || "blank"} value={option}>{optionLabels[option] || option}</option>)}</select></label>;
 }
 
 function ListEditor({ label, values, onChange, placeholder }: { label: string; values: string[]; onChange: (values: string[]) => void; placeholder: string }) {
