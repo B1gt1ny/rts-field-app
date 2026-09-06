@@ -1,6 +1,23 @@
 import { aiWorkOrderImportFields, type AIWorkOrderImport } from "./types";
 
 const allowedFields = aiWorkOrderImportFields;
+export const workOrderExtractionFileTypes = ["application/pdf", "image/jpeg", "image/png", "image/webp"] as const;
+export type WorkOrderExtractionFileType = typeof workOrderExtractionFileTypes[number];
+export type WorkOrderExtractionDocument =
+  | { type: "input_file"; filename: string; file_data: string; detail: "high" }
+  | { type: "input_image"; image_url: string; detail: "high" };
+
+export function isWorkOrderExtractionFileType(value: string): value is WorkOrderExtractionFileType {
+  return workOrderExtractionFileTypes.includes(value as WorkOrderExtractionFileType);
+}
+
+export function buildWorkOrderExtractionDocument(fileType: WorkOrderExtractionFileType, fileName: string, base64Data: string): WorkOrderExtractionDocument {
+  const dataUrl = "data:" + fileType + ";base64," + base64Data;
+  return fileType === "application/pdf"
+    ? { type: "input_file", filename: fileName, file_data: dataUrl, detail: "high" }
+    : { type: "input_image", image_url: dataUrl, detail: "high" };
+}
+
 
 export function validateWorkOrderProposal(output: string | undefined): AIWorkOrderImport | null | "invalid" {
   let parsed: unknown;

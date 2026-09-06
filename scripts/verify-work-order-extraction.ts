@@ -1,5 +1,37 @@
 import { strict as assert } from "node:assert";
-import { validateWorkOrderProposal } from "../lib/work-order-extraction";
+import { buildWorkOrderExtractionDocument, isWorkOrderExtractionFileType, validateWorkOrderProposal, workOrderExtractionFileTypes } from "../lib/work-order-extraction";
+
+assert.deepEqual(workOrderExtractionFileTypes, ["application/pdf", "image/jpeg", "image/png", "image/webp"]);
+assert.equal(isWorkOrderExtractionFileType("application/pdf"), true);
+assert.equal(isWorkOrderExtractionFileType("image/jpeg"), true);
+assert.equal(isWorkOrderExtractionFileType("image/png"), true);
+assert.equal(isWorkOrderExtractionFileType("image/webp"), true);
+assert.equal(isWorkOrderExtractionFileType("text/plain"), false);
+
+assert.deepEqual(buildWorkOrderExtractionDocument("application/pdf", "work-order.pdf", "JVBERi0x"), {
+  type: "input_file",
+  filename: "work-order.pdf",
+  file_data: "data:application/pdf;base64,JVBERi0x",
+  detail: "high",
+});
+
+assert.deepEqual(buildWorkOrderExtractionDocument("image/jpeg", "work-order.jpg", "/9j/4AAQ"), {
+  type: "input_image",
+  image_url: "data:image/jpeg;base64,/9j/4AAQ",
+  detail: "high",
+});
+
+assert.deepEqual(buildWorkOrderExtractionDocument("image/png", "work-order.png", "iVBORw0KGgo"), {
+  type: "input_image",
+  image_url: "data:image/png;base64,iVBORw0KGgo",
+  detail: "high",
+});
+
+assert.deepEqual(buildWorkOrderExtractionDocument("image/webp", "work-order.webp", "UklGRg"), {
+  type: "input_image",
+  image_url: "data:image/webp;base64,UklGRg",
+  detail: "high",
+});
 
 const complete = validateWorkOrderProposal(JSON.stringify({
   customerName: "Jordan Lee",

@@ -2,12 +2,11 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { requireRole } from "@/lib/auth";
 import { aiWorkOrderImportFields, type WorkOrderFile } from "@/lib/types";
-import { validateWorkOrderProposal } from "@/lib/work-order-extraction";
+import { buildWorkOrderExtractionDocument, isWorkOrderExtractionFileType, validateWorkOrderProposal } from "@/lib/work-order-extraction";
 
 export const dynamic = "force-dynamic";
 
 const bucketName = process.env.SUPABASE_STORAGE_BUCKET || "job-files";
-const allowedTypes = new Set(["application/pdf", "image/jpeg", "image/png", "image/webp"]);
 const allowedFields = aiWorkOrderImportFields;
 const extractionUnavailable = "Work-order extraction is unavailable. Try again or enter the job manually.";
 
@@ -24,7 +23,7 @@ export async function POST(request: Request) {
   try { ({ file } = await request.json() as { file?: WorkOrderFile }); }
   catch { return NextResponse.json({ error: "Select your uploaded PDF, JPG, PNG, or WEBP work-order file." }, { status: 400 }); }
   const owner = access.user?.id ? access.user.id.toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "") : "local-admin";
-  if (!file?.storagePath || !file.fileName || !allowedTypes.has(file.fileType) || !file.storagePath.startsWith(`draft/${owner}/work-order/`)) {
+  if (!file?.storagePath || !file.fileName || !isWorkOrderExtractionFileType(file.fileType) || !file.storagePath.startsWith(`draft/${owner}/work-order/`)) {
     return NextResponse.json({ error: "Select your uploaded PDF, JPG, PNG, or WEBP work-order file." }, { status: 400 });
   }
   if (!process.env.OPENAI_API_KEY) return NextResponse.json({ error: extractionUnavailable }, { status: 503 });
@@ -36,9 +35,7 @@ export async function POST(request: Request) {
     if (downloaded.error || !downloaded.data) return NextResponse.json({ error: "The selected file could not be read. Upload it again or enter the job manually." }, { status: 404 });
     data = Buffer.from(await downloaded.data.arrayBuffer()).toString("base64");
   } catch { return NextResponse.json({ error: "The selected file could not be read. Upload it again or enter the job manually." }, { status: 404 }); }
-  const document = file.fileType === "application/pdf"
-    ? { type: "input_file", filename: file.fileName, file_data: `data:${file.fileType};base64,${data}` }
-    : { type: "input_image", image_url: `data:${file.fileType};base64,${data}`, detail: "high" };
+  const document = buildWorkOrderExtractionDocument(file.fileType, file.fileName, data);
   try {
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.OPENAI_API_KEY}` }, signal: AbortSignal.timeout(30_000),
