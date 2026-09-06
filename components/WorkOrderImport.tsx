@@ -38,6 +38,7 @@ export function WorkOrderImport() {
   const [draftStatus, setDraftStatus] = useState("");
   const [copied, setCopied] = useState(false);
   const [extractionReady, setExtractionReady] = useState(false);
+  const [lastExtractionFailed, setLastExtractionFailed] = useState(false);
   const importDraftKey = "company-command-import-draft";
   const supportedFileTypes = new Set(["application/pdf", "image/jpeg", "image/png", "image/webp"]);
 
@@ -111,6 +112,7 @@ export function WorkOrderImport() {
     const uploaded = await uploadFile(selected, "draft", "Work Order");
     if (!uploaded.storagePath) { setError("Private storage is required to extract this work order. Enter the job manually or try the upload again after storage is available."); return; }
     setDraftDirty(true);
+    setLastExtractionFailed(false);
     setFile({ ...uploaded, category: "Work Order" });
   }
 
@@ -129,7 +131,7 @@ export function WorkOrderImport() {
   }
 
   async function copyImportSummary() {
-    await navigator.clipboard?.writeText(buildImportSummary(draft, review.score, file, workOrderText));
+    await navigator.clipboard?.writeText(buildImportSummary(draft, review.score, file, workOrderText, lastExtractionFailed));
     setCopied(true);
     window.setTimeout(() => setCopied(false), 2200);
   }
@@ -143,13 +145,17 @@ export function WorkOrderImport() {
 
   async function extractWorkOrder() {
     if (!file) { setError("Upload a work-order PDF or image before extracting."); return; }
-    setExtracting(true); setError("");
+    setExtracting(true); setError(""); setLastExtractionFailed(false);
     try {
       const response = await authFetch("/api/work-order-extract", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ file }) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "The work order could not be extracted.");
       continueToJobForm(result.proposal as AIWorkOrderImport);
-    } catch (caught) { setError(caught instanceof Error ? caught.message : "The work order could not be extracted."); }
+    } catch (caught) {
+      setLastExtractionFailed(true);
+      setDraftStatus("Extraction failed. The fields below are unchanged defaults/manual entries, not AI results.");
+      setError(caught instanceof Error ? caught.message : "The work order could not be extracted.");
+    }
     finally { setExtracting(false); }
   }
 
@@ -390,9 +396,10 @@ function reviewDraft(draft: ImportDraft, hasPaperwork: boolean) {
   return { items, readyCount, score: Math.round((readyCount / items.length) * 100) };
 }
 
-function buildImportSummary(draft: ImportDraft, score: number, file: WorkOrderFile | null, workOrderText: string) {
+function buildImportSummary(draft: ImportDraft, score: number, file: WorkOrderFile | null, workOrderText: string, extractionFailed: boolean) {
   return [
     "Company Command import review",
+    extractionFailed ? "Extraction status: FAILED - values below are defaults/manual entries, not AI results" : "Extraction status: Not failed in this browser session",
     `Import score: ${score}%`,
     `Source: ${draft.source}`,
     `Dealer: ${draft.dealerName || "N/A"}`,
