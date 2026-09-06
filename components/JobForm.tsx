@@ -99,6 +99,7 @@ export function JobForm({ initialJob }: { initialJob?: Job }) {
     const populatedPreview = Object.fromEntries(Object.entries(preview).filter(([, value]) => value !== "" && value !== undefined)) as Partial<AIWorkOrderImport>;
     updateJob((old) => ({
       ...old,
+      source: populatedPreview.factoryWorkOrderNumber ? "Factory" : old.source,
       ...populatedPreview,
       workOrderFiles: importFile ? [importFile, ...(old.workOrderFiles || [])] : old.workOrderFiles,
     }));

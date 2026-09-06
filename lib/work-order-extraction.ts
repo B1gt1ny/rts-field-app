@@ -6,6 +6,12 @@ export type WorkOrderExtractionFileType = typeof workOrderExtractionFileTypes[nu
 export type WorkOrderExtractionDocument =
   | { type: "input_file"; filename: string; file_data: string; detail: "high" }
   | { type: "input_image"; image_url: string; detail: "high" };
+export type WorkOrderExtractionSchema = {
+  type: "object";
+  additionalProperties: false;
+  properties: Record<string, { type: ("string" | "boolean" | "null")[] }>;
+  required: string[];
+};
 
 export function isWorkOrderExtractionFileType(value: string): value is WorkOrderExtractionFileType {
   return workOrderExtractionFileTypes.includes(value as WorkOrderExtractionFileType);
@@ -18,6 +24,18 @@ export function buildWorkOrderExtractionDocument(fileType: WorkOrderExtractionFi
     : { type: "input_image", image_url: dataUrl, detail: "high" };
 }
 
+
+export function buildWorkOrderExtractionSchema(): WorkOrderExtractionSchema {
+  return {
+    type: "object",
+    additionalProperties: false,
+    properties: Object.fromEntries(allowedFields.map((field) => [
+      field,
+      { type: field === "returnVisitRequired" ? ["boolean", "null"] : ["string", "null"] },
+    ])),
+    required: [...allowedFields],
+  };
+}
 
 export function validateWorkOrderProposal(output: string | undefined): AIWorkOrderImport | null | "invalid" {
   let parsed: unknown;

@@ -1,5 +1,6 @@
 import { strict as assert } from "node:assert";
-import { buildWorkOrderExtractionDocument, isWorkOrderExtractionFileType, validateWorkOrderProposal, workOrderExtractionFileTypes } from "../lib/work-order-extraction";
+import { aiWorkOrderImportFields } from "../lib/types";
+import { buildWorkOrderExtractionDocument, buildWorkOrderExtractionSchema, isWorkOrderExtractionFileType, validateWorkOrderProposal, workOrderExtractionFileTypes } from "../lib/work-order-extraction";
 
 assert.deepEqual(workOrderExtractionFileTypes, ["application/pdf", "image/jpeg", "image/png", "image/webp"]);
 assert.equal(isWorkOrderExtractionFileType("application/pdf"), true);
@@ -33,6 +34,11 @@ assert.deepEqual(buildWorkOrderExtractionDocument("image/webp", "work-order.webp
   detail: "high",
 });
 
+const schema = buildWorkOrderExtractionSchema();
+assert.deepEqual(schema.required, aiWorkOrderImportFields);
+assert.deepEqual(schema.properties.customerName, { type: ["string", "null"] });
+assert.deepEqual(schema.properties.returnVisitRequired, { type: ["boolean", "null"] });
+
 const complete = validateWorkOrderProposal(JSON.stringify({
   customerName: "Jordan Lee",
   address: " 42 Service Lane ",
@@ -59,6 +65,7 @@ assert.deepEqual(complete, {
 assert.deepEqual(validateWorkOrderProposal(JSON.stringify({
   customerName: "  Morgan Cruz ",
   address: "8 Field Road",
+  phone: null,
   scopeNotes: "Inspect the entry door.",
   city: "",
   partsNeeded: "   ",
