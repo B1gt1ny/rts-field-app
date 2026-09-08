@@ -1,9 +1,14 @@
 import type { FactoryCostTracker, Job } from "./types";
 
+export function roundUpToQuarterHour(value?: string) {
+  const hours = Number(value) || 0;
+  return Math.ceil(hours * 4) / 4;
+}
+
 export function getFactoryCostTotals(cost?: FactoryCostTracker) {
   const numberValue = (value?: string) => Number(value) || 0;
   const mileage = numberValue(cost?.miles) * numberValue(cost?.mileageRate);
-  const driveTime = numberValue(cost?.driveTimeHours) * numberValue(cost?.hourlyRate);
+  const driveTime = roundUpToQuarterHour(cost?.driveTimeHours) * numberValue(cost?.hourlyRate);
   const work = numberValue(cost?.workHours) * numberValue(cost?.workRate);
   const helper = numberValue(cost?.helperHours) * numberValue(cost?.helperRate);
   const perDiem = numberValue(cost?.perDiemDays) * numberValue(cost?.perDiemRate);
