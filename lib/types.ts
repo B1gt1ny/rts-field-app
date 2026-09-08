@@ -237,10 +237,10 @@ export const makeChecklist = (completed = 0): ChecklistItem[] => checklistLabels
 export function defaultFactoryCost(): FactoryCostTracker {
   return {
     tripCount: "",
-    mileageRate: "0.67",
+    mileageRate: "0.85",
     miles: "",
     driveTimeHours: "",
-    hourlyRate: "",
+    hourlyRate: "20",
     workHours: "",
     workRate: "",
     helperHours: "",
