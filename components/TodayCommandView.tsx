@@ -143,7 +143,7 @@ function todayIssues(job: Job): Omit<TodayAction, "id" | "job">[] {
   const parts = openParts(job);
   if (!assigned) issues.push({ title: "Assign today’s work", detail: "This job is due today but has no assigned crew.", href: `/jobs/${job.jobId}/edit`, actionLabel: "Assign", rank: 0 });
   if (job.status === "New" || job.status === "Scheduled") issues.push({ title: "Start or update status", detail: `${job.status} job is on today’s schedule.`, href: `/jobs/${job.jobId}`, actionLabel: "Open Job", rank: 1 });
-  if (job.status === "Waiting on Parts" || parts.length > 0) issues.push({ title: "Parts blocking today", detail: parts.length ? `${parts.length} open part request${parts.length === 1 ? "" : "s"}.` : "Job is waiting on parts.", href: `/jobs/${job.jobId}#parts-needed`, actionLabel: "Review Parts", rank: 2 });
+  if (job.status === "Waiting on Parts" || parts.length > 0) issues.push({ title: "Parts update", detail: parts.length ? `${parts.length} open optional part request${parts.length === 1 ? "" : "s"}.` : "Job status is waiting on parts.", href: `/jobs/${job.jobId}#parts-needed`, actionLabel: "Review Parts", rank: 2 });
   if (job.status === "Needs Inspection") issues.push({ title: "Review required today", detail: "Job is waiting for manager review.", href: `/jobs/${job.jobId}`, actionLabel: "Review", rank: 3 });
   if (job.status === "Complete" && (!(job.afterPhotos || []).length || !job.completionNotes?.trim())) issues.push({ title: "Closeout needs proof", detail: "Completion notes or after photos are missing.", href: `/jobs/${job.jobId}#complete-job`, actionLabel: "Closeout", rank: 4 });
   const etaNeeded = (job.activityLog || []).some((entry) => entry.notify && !entry.resolvedAt && entry.followUpDueDate === new Date().toLocaleDateString("en-CA") && /eta|arrival|on the way|customer/i.test(entry.message));
@@ -154,7 +154,7 @@ function todayIssues(job: Job): Omit<TodayAction, "id" | "job">[] {
 function nextAction(job: Job) {
   if (!job.assignedCrew || job.assignedCrew === "Unassigned") return "Next: assign crew";
   if (job.status === "New" || job.status === "Scheduled") return "Next: start or update the job";
-  if (job.status === "Waiting on Parts" || openParts(job).length) return "Next: resolve parts blocker";
+  if (job.status === "Waiting on Parts") return "Next: review the waiting status";
   if (job.status === "Needs Inspection") return "Next: manager review";
   if (job.status === "In Progress") return "Next: continue work and add field update";
   return "Next: open job";

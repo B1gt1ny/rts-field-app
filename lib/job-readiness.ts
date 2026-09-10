@@ -25,6 +25,11 @@ export function openParts(job: Job) {
   return (job.partsItems || []).filter((part) => ["Needed", "Ordered", "Picked up"].includes(part.status));
 }
 
+export function hasOpenParts(job: Job) {
+  const trackedParts = job.partsItems || [];
+  return trackedParts.length ? openParts(job).length > 0 : Boolean(job.partsNeeded?.trim());
+}
+
 function readinessEvidence(job: Job) {
   const paperworkReady = Boolean(job.paperworkPickedUp || (job.workOrderFiles || []).length || (job.paperworkItems || []).some((item) => ["Collected", "Submitted", "Not needed"].includes(item.status)));
   const completionSignoff = (job.signoffs || []).some((signoff) => signoff.accepted && ["Completion Sign-off", "Customer Approval"].includes(signoff.type));
@@ -37,7 +42,7 @@ function readinessEvidence(job: Job) {
   const afterPhotoCount = (job.afterPhotos || []).length;
   const serialPhotoCount = (job.serialTagPhotos || []).length;
   const beforePhotosTaken = (job.beforePhotos || []).length > 0;
-  const parts = openParts(job);
+  const partsOpen = hasOpenParts(job);
   return {
     closeout: [
       { label: "Job complete", ok: jobComplete, detail: job.status },
@@ -46,11 +51,12 @@ function readinessEvidence(job: Job) {
       { label: "Serial/VIN photo", ok: serialPhotoCount > 0, detail: `${serialPhotoCount} uploaded` },
       { label: "Paperwork", ok: paperworkReady, detail: paperworkReady ? "Collected or attached" : "Missing" },
       { label: "Completion sign-off", ok: completionSignoff, detail: completionSignoff ? "Signed" : "Missing" },
-      { label: "Open parts", ok: parts.length === 0, detail: parts.length ? `${parts.length} still open` : "None open" },
+      { label: "Parts (optional)", ok: true, detail: partsOpen ? `${openParts(job).length || 1} still open — does not block billing` : "No open parts" },
       { label: "Customer/source notified", ok: sourceNotified, detail: sourceNotified ? "Logged" : "Not logged" },
       { label: "Invoice status", ok: invoiceReady, detail: job.invoiceStatus || "Not started" },
     ],
     checklist: {
+      "Work order": paperworkReady,
       "Paperwork picked up": paperworkReady,
       "Before photos taken": beforePhotosTaken,
       "Serial/VIN tag photo taken": serialPhotoCount > 0,
@@ -77,10 +83,13 @@ export function checklistProgress(job: Job) {
   const { checklist } = readinessEvidence(job);
   const items = (job.checklist || []).map((item) => ({
     ...item,
+    label: item.label === "Paperwork picked up" ? "Work order" : item.label === "Materials checked" ? "Parts picked up" : item.label,
+    optional: ["Materials checked", "Parts picked up"].includes(item.label),
     complete: item.complete || checklist[item.label] || false,
   }));
-  const complete = items.filter((item) => item.complete).length;
-  return { items, complete, total: items.length, remaining: items.length - complete, percent: items.length ? Math.round((complete / items.length) * 100) : 0 };
+  const requiredItems = items.filter((item) => !item.optional);
+  const complete = requiredItems.filter((item) => item.complete).length;
+  return { items, complete, total: requiredItems.length, remaining: requiredItems.length - complete, percent: requiredItems.length ? Math.round((complete / requiredItems.length) * 100) : 0 };
 }
 
 function activeCorrectionRequest(job: Job) {
@@ -107,7 +116,7 @@ export function correctionCategoryComplete(job: Job, category: CorrectionCategor
   };
   if (category === "Photos") return (job.workOrderFiles || []).some((file) => file.category === "After" && uploadedAfterRequest(file));
   if (category === "Paperwork") return (job.workOrderFiles || []).some((file) => ["Work Order", "Paperwork", "Signed Document"].includes(file.category || "") && uploadedAfterRequest(file));
-  if (category === "Checklist") return (job.checklist || []).filter((item) => !/invoice created/i.test(item.label)).every((item) => item.complete);
+  if (category === "Checklist") return (job.checklist || []).filter((item) => !/invoice created|materials checked|parts picked up/i.test(item.label)).every((item) => item.complete);
   if (category === "Notes") return Boolean(job.completionNotes?.trim());
   return false;
 }
@@ -151,7 +160,7 @@ export function correctionResolutionPatch(current: Job, next: Job): Partial<Job>
 }
 
 export function billingBlockers(job: Job) {
-  const closeoutBlockers = closeoutChecks(job).filter((check) => !check.ok && ["Job complete", "Completion notes", "After photos", "Paperwork", "Completion sign-off", "Open parts"].includes(check.label));
+  const closeoutBlockers = closeoutChecks(job).filter((check) => !check.ok && ["Job complete", "Completion notes", "After photos", "Paperwork", "Completion sign-off"].includes(check.label));
   return [...closeoutBlockers, ...billingEvidenceChecks(job).filter((check) => !check.ok)];
 }
 
@@ -259,14 +268,13 @@ function billingEvidenceChecks(job: Job): ReadinessCheck[] {
 export function dispatchChecks(job: Job): ReadinessCheck[] {
   const assigned = Boolean(job.fullCrew || job.assignedEmployeeIds?.length || (job.assignedCrew && job.assignedCrew !== "Unassigned"));
   const paperworkReady = Boolean(job.paperworkPickedUp || (job.workOrderFiles || []).length || (job.paperworkItems || []).some((item) => ["Collected", "Submitted", "Not needed"].includes(item.status)));
-  const partsOpen = openParts(job);
-  const materialsBlocked = job.status === "Waiting on Parts" || partsOpen.some((part) => ["Needed", "Ordered"].includes(part.status));
+  const partsOpen = hasOpenParts(job);
   return [
     { label: "Scheduled", ok: Boolean(job.dueDate), detail: job.dueDate || "Missing date" },
     { label: "Employee assigned", ok: assigned, detail: job.fullCrew ? "Full crew" : job.assignedCrew || "Unassigned" },
     { label: "Scope notes", ok: Boolean(job.scopeNotes?.trim()), detail: job.scopeNotes?.trim() ? "Added" : "Missing" },
     { label: "Paperwork/work order", ok: paperworkReady, detail: paperworkReady ? "Collected or attached" : "Missing" },
-    { label: "Materials/parts", ok: !materialsBlocked, detail: materialsBlocked ? `${partsOpen.length || 1} open part issue` : "No open blocker" },
+    { label: "Materials/parts (optional)", ok: true, detail: partsOpen ? `${openParts(job).length || 1} open part issue — optional` : "No open parts" },
     { label: "Customer info", ok: Boolean(job.customerName?.trim() && job.phone?.trim() && job.address?.trim() && job.city?.trim()), detail: job.phone && job.address ? "Contact and address added" : "Missing contact or address" },
   ];
 }

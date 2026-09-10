@@ -65,7 +65,9 @@ function normalizeSettings(input: Partial<BusinessSettings>): BusinessSettings {
     fieldSupportPhone: input.fieldSupportPhone?.trim() || input.phone?.trim() || "",
     employeeHelpInstructions: input.employeeHelpInstructions?.trim() || "If something blocks the job, tap Need Help, add what is missing, then call or text the office before leaving.",
     employeeFieldNotice: input.employeeFieldNotice?.trim() || "Open your assigned job, check the scope, take required photos, add notes, and tap Ready Review when field work is complete.",
-    managerReviewInstructions: input.managerReviewInstructions?.trim() || "Manager review checks after photos, completion notes, work completed, and open parts before billing.",
+    managerReviewInstructions: !input.managerReviewInstructions?.trim() || input.managerReviewInstructions.trim() === "Manager review checks after photos, completion notes, work completed, and open parts before billing."
+      ? "Manager review checks after photos, completion notes, and completed work before billing. Parts are optional tracking."
+      : input.managerReviewInstructions.trim(),
     customerTextTemplate: input.customerTextTemplate?.trim() || "Company update for {customerName}: crew is on your job {jobId}.",
     factoryCostInstructions: input.factoryCostInstructions?.trim() || "Factory jobs: enter miles, drive time, hotel, materials, and other receipt totals before sending the job for review.",
     factoryCostDefaults: { ...defaultFactoryCost(), ...(input.factoryCostDefaults || {}) },
@@ -83,7 +85,7 @@ function normalizeSettings(input: Partial<BusinessSettings>): BusinessSettings {
     jobTypeOptions: cleanList(input.jobTypeOptions, [...jobTypeOptions]),
     statusOptions: cleanList(input.statusOptions, [...statuses]),
     priorityOptions: cleanList(input.priorityOptions, [...priorities]),
-    checklistOptions: cleanList(input.checklistOptions, [...checklistLabels]),
+    checklistOptions: Array.from(new Set(cleanList(input.checklistOptions, [...checklistLabels]).map((item) => item === "Paperwork picked up" ? "Work order" : item === "Materials checked" ? "Parts picked up" : item))),
     employeeFieldNoteTemplates: cleanList(input.employeeFieldNoteTemplates, defaultFieldNoteTemplates),
     requireAfterPhotosToComplete: input.requireAfterPhotosToComplete ?? true,
     requireBeforePhotosForReview: input.requireBeforePhotosForReview ?? true,
@@ -92,7 +94,7 @@ function normalizeSettings(input: Partial<BusinessSettings>): BusinessSettings {
     requireAfterPhotosForReview: input.requireAfterPhotosForReview ?? true,
     requireCompletionNotesForReview: input.requireCompletionNotesForReview ?? true,
     requireWorkCompleteForReview: input.requireWorkCompleteForReview ?? true,
-    requirePartsClosedForReview: input.requirePartsClosedForReview ?? true,
+    requirePartsClosedForReview: false,
     requireFactoryCostsForReview: input.requireFactoryCostsForReview ?? true,
     requireReceiptBackupForReview: input.requireReceiptBackupForReview ?? true,
   };

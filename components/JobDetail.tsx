@@ -8,7 +8,7 @@ import { PriorityBadge, StatusBadge } from "./StatusBadge";
 import { authFetch } from "@/lib/client-auth";
 import { getFactoryCostTotals, hasFactoryCostWork } from "@/lib/factory-costs";
 import { isReceiptBackupMissing } from "@/lib/receipt-backup";
-import { activeCorrectionCategories, billingBlockers, buildCorrectionActivity, checklistProgress, closeoutChecks, correctionCategories, correctionCategoryComplete, correctionResolutionPatch, dispatchBlockers, dispatchReadinessScore, hasActiveCorrections, intakeCompleteness, readinessScore, type CorrectionCategory } from "@/lib/job-readiness";
+import { activeCorrectionCategories, billingBlockers, buildCorrectionActivity, checklistProgress, closeoutChecks, correctionCategories, correctionCategoryComplete, correctionResolutionPatch, dispatchBlockers, dispatchReadinessScore, hasActiveCorrections, hasOpenParts, intakeCompleteness, readinessScore, type CorrectionCategory } from "@/lib/job-readiness";
 import { useAuthUser } from "./AuthGate";
 
 type CompanyCamState = {
@@ -540,7 +540,7 @@ function buildNextActions(job: Job, companyCam: CompanyCamState) {
   if (!job.scopeNotes?.trim()) actions.push({ label: "Review the scope", detail: "Add enough job notes so the field can start clean.", href: `/jobs/${job.jobId}/edit` });
   if (!job.phone?.trim() || !job.address?.trim() || !job.city?.trim()) actions.push({ label: "Complete customer info", detail: "Phone, address, and city are needed for field work.", href: `/jobs/${job.jobId}/edit` });
   if ((job.paperworkItems || defaultPaperwork(job)).some((item) => item.status === "Needed")) actions.push({ label: "Collect paperwork", detail: "Upload or mark work order and sign-off paperwork.", href: "#paperwork" });
-  if ((job.partsItems || []).some((part) => ["Needed", "Ordered", "Picked up"].includes(part.status)) || job.status === "Waiting on Parts" || job.partsNeeded?.trim()) actions.push({ label: "Resolve parts", detail: "Order, pick up, install, or close open part requests.", href: "#parts-needed" });
+  if (hasOpenParts(job) || job.status === "Waiting on Parts") actions.push({ label: "Resolve parts", detail: "Order, pick up, install, or close open part requests.", href: "#parts-needed" });
   if (!job.googleCalendarEventUrl && job.dueDate) actions.push({ label: "Place on calendar", detail: "Use Google quick-add or sync after credentials are connected.", href: "#scheduling" });
   if (!companyCam.projectUrl) actions.push({ label: "Set up photo project", detail: "Create or link the CompanyCam project when credentials are ready.", href: "#companycam" });
   if (job.status === "In Progress" && !(job.afterPhotos || []).length) actions.push({ label: "Take after photos", detail: "Photos protect billing and completion proof.", href: "#photos" });
@@ -615,9 +615,7 @@ function JobWorkflowGuide({ job, canManageJob }: { job: Job; canManageJob: boole
 }
 
 function getPrimaryJobAction(job: Job, canManageJob: boolean): JobAction {
-  const openParts = hasOpenParts(job);
   const status = job.status;
-  if (openParts || status === "Waiting on Parts") return { label: "Review Parts", detail: "Parts are blocking or need a status update.", href: "#parts-needed", icon: <WrenchScrewdriverIcon /> };
   if (status === "Needs Inspection") return { label: "Review Closeout", detail: "Field work is ready for manager review.", href: "#closeout", icon: <CheckCircleIcon /> };
   if (["Complete", "Billed", "Paid"].includes(status)) {
     if (canManageJob && billingBlockers(job).length === 0) return { label: "Open Billing", detail: "Closeout looks ready for invoice handoff.", href: "#billing-handoff", icon: <BanknotesIcon /> };
@@ -625,7 +623,7 @@ function getPrimaryJobAction(job: Job, canManageJob: boolean): JobAction {
   }
   if (status === "In Progress") {
     if (!(job.afterPhotos || []).length) return { label: "Add Progress", detail: "Add photos, notes, or proof from the field.", href: "#photos", icon: <CameraIcon /> };
-    if (job.checklist.some((item) => !item.complete)) return { label: "Open Checklist", detail: "Finish the remaining field checklist items.", href: "#checklist", icon: <ClipboardDocumentListIcon /> };
+    if (checklistProgress(job).items.some((item) => !item.optional && !item.complete)) return { label: "Open Checklist", detail: "Finish the remaining field checklist items.", href: "#checklist", icon: <ClipboardDocumentListIcon /> };
     return { label: "Continue Work", detail: "Keep work moving from the field workspace.", href: "#time-log", icon: <WrenchScrewdriverIcon /> };
   }
   if (["New", "Scheduled"].includes(status)) {
@@ -671,18 +669,23 @@ function getJobProgressSteps(job: Job): Array<{ label: string; href: string; sta
   const started = ["In Progress", "Waiting on Parts", "Needs Inspection", "Complete", "Billed", "Paid"].includes(job.status) || (job.timeEntries || []).some((entry) => ["Arrived", "Work started"].includes(entry.type));
   const beforeDone = (job.beforePhotos || []).length > 0 || checklistDone("Before photos taken");
   const workDone = checklistDone("Work completed") || ["Needs Inspection", "Complete", "Billed", "Paid"].includes(job.status);
-  const partsDone = !hasOpenParts(job);
-  const afterDone = (job.afterPhotos || []).length > 0 || checklistDone("After photos taken");
   const paperworkDone = (job.paperworkItems || defaultPaperwork(job)).some((item) => item.status === "Collected" || item.status === "Submitted");
+  const workOrderDone = checklistDone("Work order") || checklistDone("Paperwork picked up") || paperworkDone;
+  const scopeDone = checklistDone("Scope reviewed");
+  const trackedParts = job.partsItems || [];
+  const partsPickedUp = trackedParts.length > 0 && trackedParts.every((part) => ["Picked up", "Installed", "Not needed"].includes(part.status));
+  const afterDone = (job.afterPhotos || []).length > 0 || checklistDone("After photos taken");
   const signoffDone = (job.signoffs || []).length > 0;
   const billingDone = ["Complete", "Billed", "Paid"].includes(job.status) || ["Ready", "Sent to Billing", "Sent", "Paid"].includes(job.invoiceStatus);
   const contactDone = job.activityLog?.some((entry) => entry.type === "Customer" || entry.type === "Source") || checklistDone("Customer/source notified");
   const facts = [
+    { label: "Work order", href: "#paperwork", done: workOrderDone, known: true },
+    { label: "Scope reviewed", href: "#checklist", done: scopeDone, known: true },
+    { label: "Parts picked up", href: "#parts-needed", done: partsPickedUp, known: partsPickedUp },
     { label: "Contact", href: "#communication-handoff", done: Boolean(contactDone), known: Boolean(job.phone || contactDone) },
     { label: "Arrive / Start", href: "#time-log", done: started, known: true },
     { label: "Before Photos", href: "#photos", done: beforeDone, known: true },
     { label: "Work / Checklist", href: "#checklist", done: workDone, known: true },
-    { label: "Progress / Parts", href: "#parts-needed", done: partsDone, known: (job.partsItems || []).length > 0 || Boolean(job.partsNeeded) || hasOpenParts(job) },
     { label: "After Photos", href: "#photos", done: afterDone, known: true },
     { label: "Paperwork", href: "#paperwork", done: paperworkDone, known: true },
     { label: "Sign-off", href: "#signoffs", done: signoffDone, known: true },
@@ -694,10 +697,6 @@ function getJobProgressSteps(job: Job): Array<{ label: string; href: string; sta
     href: step.href,
     state: step.done ? "complete" : !step.known ? "neutral" : index === firstOpen ? "current" : "upcoming",
   }));
-}
-
-function hasOpenParts(job: Job) {
-  return (job.partsItems || []).some((part) => ["Needed", "Ordered", "Picked up"].includes(part.status)) || Boolean(job.partsNeeded?.trim());
 }
 
 function mapsHref(job: Job) {
@@ -1260,7 +1259,7 @@ function closeoutRequirements(job: Job, stage: CloseoutStage = "current", option
   const billingDue = stage === "billing";
   const started = hasStarted(job) || closeoutDue;
   const checklistItems = checklistProgress(job).items;
-  const requiredChecklist = checklistItems.filter((item) => !/invoice created/i.test(item.label));
+  const requiredChecklist = checklistItems.filter((item) => !item.optional && !/invoice created/i.test(item.label));
   const checklistComplete = requiredChecklist.every((item) => item.complete);
   const beforeRequired = requiredChecklist.some((item) => /before photos/i.test(item.label));
   const afterRequired = options.requireAfterPhotos ?? requiredChecklist.some((item) => /after photos/i.test(item.label));
@@ -1271,7 +1270,6 @@ function closeoutRequirements(job: Job, stage: CloseoutStage = "current", option
   const signatureReady = hasCompletionSignoff(job) || ["Collected", "Submitted", "Not needed"].includes(completionSignoffItem?.status || "");
   const laborTimeEntries = (job.timeEntries || []).filter((entry) => entry.type !== "Note");
   const partsOpen = (job.partsItems || []).filter((part) => ["Needed", "Ordered", "Picked up"].includes(part.status));
-  const partsBlocking = job.status === "Waiting on Parts" || partsOpen.length > 0;
   const receiptApplicable = receiptBackupApplies(job);
   const receiptReady = !receiptApplicable || !isReceiptBackupMissing(job);
   const managerReviewed = ["Complete", "Billed", "Paid"].includes(job.status);
@@ -1283,7 +1281,7 @@ function closeoutRequirements(job: Job, stage: CloseoutStage = "current", option
     requirement("Paperwork", !closeoutDue ? "not-due" : paperworkReady ? "complete" : "missing", !closeoutDue ? "Not due yet" : paperworkReady ? "Paperwork collected or attached" : "Paperwork or work order missing", "#paperwork", closeoutDue),
     requirement("Customer signature", !signatureRequired ? "not-required" : signatureReady ? "complete" : "missing", !signatureRequired ? "No required sign-off identified" : signatureReady ? "Completion sign-off saved" : "Completion sign-off missing", "#signoffs", signatureRequired),
     requirement("Time entered", !started ? "not-due" : laborTimeEntries.length > 0 ? "complete" : "missing", !started ? "Not due yet" : laborTimeEntries.length > 0 ? `${laborTimeEntries.length} labor/time entr${laborTimeEntries.length === 1 ? "y" : "ies"}` : "No labor/time entry", "#time-log", started || stage !== "current"),
-    requirement("Parts resolved", partsBlocking ? "missing" : (job.partsItems || []).length ? "complete" : "not-required", partsBlocking ? `${partsOpen.length || 1} open part issue${(partsOpen.length || 1) === 1 ? "" : "s"}` : (job.partsItems || []).length ? "No blocking parts open" : "No parts required", "#parts-needed", partsBlocking),
+    requirement("Parts (optional)", partsOpen.length ? "not-required" : (job.partsItems || []).length ? "complete" : "not-required", partsOpen.length ? `${partsOpen.length} open part issue${partsOpen.length === 1 ? "" : "s"} — does not block closeout` : (job.partsItems || []).length ? "No open parts" : "No parts required", "#parts-needed", false),
     requirement("Receipt backup", !receiptApplicable ? "not-required" : receiptReady ? "complete" : "missing", !receiptApplicable ? "No receipt backup needed" : receiptReady ? "Receipt backup attached" : "Receipt dollars need backup", "#receipts", receiptApplicable),
     requirement("Completion notes", !closeoutDue ? "not-due" : job.completionNotes?.trim() ? "complete" : "missing", !closeoutDue ? "Not due yet" : job.completionNotes?.trim() ? "Completion note saved" : "Completion note missing", "#complete-job", closeoutDue),
     requirement("Manager review", !billingDue ? ["Complete", "Billed", "Paid"].includes(job.status) ? "complete" : job.status === "Needs Inspection" ? "missing" : "not-due" : managerReviewed ? "complete" : "missing", managerReviewed ? "Manager approved complete" : job.status === "Needs Inspection" ? "Manager review required" : "Not due yet", "#complete-job", billingDue || job.status === "Needs Inspection"),
@@ -1450,8 +1448,6 @@ function PartsPanel({ job, saving, onSave }: { job: Job; saving: boolean; onSave
     };
     await onSave({
       partsItems: [part, ...parts],
-      status: job.status === "Complete" ? job.status : "Waiting on Parts",
-      partsNeeded: [job.partsNeeded, `${part.quantity} × ${part.name}${part.notes ? ` — ${part.notes}` : ""}`].filter(Boolean).join("\n"),
       activityLog: addJobActivity(job, `Part requested: ${part.quantity} × ${part.name}.`, "Parts"),
     });
     setName("");
@@ -1462,10 +1458,8 @@ function PartsPanel({ job, saving, onSave }: { job: Job; saving: boolean; onSave
   async function updatePart(id: string, status: PartItem["status"]) {
     const current = parts.find((part) => part.id === id);
     const nextParts = parts.map((part) => part.id === id ? { ...part, status } : part);
-    const stillOpen = nextParts.some((part) => ["Needed", "Ordered", "Picked up"].includes(part.status));
     await onSave({
       partsItems: nextParts,
-      status: stillOpen && !["Complete", "Billed", "Paid"].includes(job.status) ? "Waiting on Parts" : job.status,
       activityLog: addJobActivity(job, `Part updated: ${current?.name || "part"} marked ${status}.`, "Parts"),
     });
   }
@@ -1475,7 +1469,7 @@ function PartsPanel({ job, saving, onSave }: { job: Job; saving: boolean; onSave
       <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-orange-100 text-orange-800"><WrenchScrewdriverIcon className="size-5" /></span>
       <div>
         <h2 className="text-lg font-black">Parts tracker</h2>
-        <p className="text-sm text-black/50">Request, order, pick up, and install parts without losing the note in a text box.</p>
+        <p className="text-sm text-black/50">Optional tracking only. Parts never hold up closeout or billing.</p>
       </div>
     </div>
     <div className="grid gap-3 sm:grid-cols-3">

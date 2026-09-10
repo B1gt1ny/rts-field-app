@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BanknotesIcon, ClipboardDocumentListIcon, ExclamationTriangleIcon, MapPinIcon, PhoneIcon, UserCircleIcon, WrenchScrewdriverIcon } from "@heroicons/react/24/outline";
 import type { Job } from "@/lib/types";
+import { hasOpenParts as hasOpenTrackedParts } from "@/lib/job-readiness";
 import { StatusBadge } from "./StatusBadge";
 
 type CustomerGroup = {
@@ -135,7 +136,7 @@ function customerRisk(customer: CustomerGroup) {
 }
 
 function hasOpenParts(job: Job) {
-  return job.status === "Waiting on Parts" || Boolean(job.partsNeeded?.trim()) || (job.partsItems || []).some((part) => ["Needed", "Ordered", "Picked up"].includes(part.status));
+  return job.status === "Waiting on Parts" || hasOpenTrackedParts(job);
 }
 
 function openFollowUpCount(job: Job) {

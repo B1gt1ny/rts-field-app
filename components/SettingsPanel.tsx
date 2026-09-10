@@ -41,7 +41,7 @@ const defaultCompany: BusinessSettings = {
   fieldSupportPhone: "",
   employeeHelpInstructions: "If something blocks the job, tap Need Help, add what is missing, then call or text the office before leaving.",
   employeeFieldNotice: "Open your assigned job, check the scope, take required photos, add notes, and tap Ready Review when field work is complete.",
-  managerReviewInstructions: "Manager review checks after photos, completion notes, work completed, and open parts before billing.",
+  managerReviewInstructions: "Manager review checks after photos, completion notes, and completed work before billing. Parts are optional tracking.",
   customerTextTemplate: "Company update for {customerName}: crew is on your job {jobId}.",
   factoryCostInstructions: "Factory jobs: enter miles, drive time, hotel, materials, and other receipt totals before sending the job for review.",
   factoryCostDefaults: defaultFactoryCost(),
@@ -60,7 +60,7 @@ const defaultCompany: BusinessSettings = {
   statusOptions: [...statuses],
   priorityOptions: ["Low", "Normal", "High", "Urgent"],
   checklistOptions: [
-    "Paperwork picked up", "Scope reviewed", "Materials checked", "Before photos taken",
+    "Work order", "Scope reviewed", "Parts picked up", "Before photos taken",
     "Serial/VIN tag photo taken", "Work completed", "After photos taken",
     "Completion notes added", "Customer/source notified", "Invoice created",
   ],
@@ -78,7 +78,7 @@ const defaultCompany: BusinessSettings = {
   requireAfterPhotosForReview: true,
   requireCompletionNotesForReview: true,
   requireWorkCompleteForReview: true,
-  requirePartsClosedForReview: true,
+  requirePartsClosedForReview: false,
   requireFactoryCostsForReview: true,
   requireReceiptBackupForReview: true,
 };
@@ -621,10 +621,9 @@ export function SettingsPanel() {
           <input type="checkbox" checked={company.requireWorkCompleteForReview} onChange={(event) => set("requireWorkCompleteForReview", event.target.checked)} className="size-5 accent-forest" />
           <span><span className="block font-black">Require work completed before Ready Review</span><span className="block text-xs font-semibold text-black/45">Employees must mark Work completed or move the job to a completion status before manager review.</span></span>
         </label>
-        <label className="flex min-h-14 items-center gap-3 rounded-xl border border-black/10 bg-sand p-3 lg:col-span-2">
-          <input type="checkbox" checked={company.requirePartsClosedForReview} onChange={(event) => set("requirePartsClosedForReview", event.target.checked)} className="size-5 accent-forest" />
-          <span><span className="block font-black">Require parts closed before Ready Review</span><span className="block text-xs font-semibold text-black/45">Employees must clear open needed/ordered/picked-up parts before manager review.</span></span>
-        </label>
+        <div className="flex min-h-14 items-center gap-3 rounded-xl border border-forest/10 bg-forest/5 p-3 lg:col-span-2">
+          <span><span className="block font-black">Parts tracking is optional</span><span className="block text-xs font-semibold text-black/45">Open parts stay visible, but they do not block Ready Review or billing.</span></span>
+        </div>
         <label className="flex min-h-14 items-center gap-3 rounded-xl border border-black/10 bg-sand p-3 lg:col-span-2">
           <input type="checkbox" checked={company.requireFactoryCostsForReview} onChange={(event) => set("requireFactoryCostsForReview", event.target.checked)} className="size-5 accent-forest" />
           <span><span className="block font-black">Require factory costs before Ready Review</span><span className="block text-xs font-semibold text-black/45">Factory jobs must have cost entries before employees can send them to manager review.</span></span>

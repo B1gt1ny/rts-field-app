@@ -124,7 +124,7 @@ export function ReadyCheckView({ jobs: initialJobs }: { jobs: Job[] }) {
         <section className="card p-4">
           <div className="mb-3 grid size-10 place-items-center rounded-xl bg-orange-100 text-orange-900"><ExclamationTriangleIcon className="size-5" /></div>
           <h2 className="font-black">What this checks</h2>
-          <p className="mt-1 text-sm font-semibold text-black/50">Schedule, assignment, scope, paperwork/work order, parts blockers, and customer contact/address.</p>
+          <p className="mt-1 text-sm font-semibold text-black/50">Schedule, assignment, scope, paperwork/work order, optional parts tracking, and customer contact/address.</p>
         </section>
       </div>
     </section>

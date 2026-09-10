@@ -47,7 +47,7 @@ export function FieldAppView() {
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
   const [crewFilter, setCrewFilter] = useState<CrewFilter>("today");
   const [fieldNotice, setFieldNotice] = useState("Open your assigned job, check the scope, take required photos, add notes, and tap Ready Review when field work is complete.");
-  const [reviewInstructions, setReviewInstructions] = useState("Manager review checks after photos, completion notes, work completed, and open parts before billing.");
+  const [reviewInstructions, setReviewInstructions] = useState("Manager review checks after photos, completion notes, and completed work before billing. Parts are optional tracking.");
   const [customerTextTemplate, setCustomerTextTemplate] = useState("Company update for {customerName}: crew is on your job {jobId}.");
   const [fieldNoteTemplates, setFieldNoteTemplates] = useState(defaultFieldNoteTemplates);
   const [factoryCostInstructions, setFactoryCostInstructions] = useState("Factory jobs: enter miles, drive time, hotel, materials, and other receipt totals before sending the job for review.");
@@ -58,7 +58,7 @@ export function FieldAppView() {
   const [requireAfterPhotosForReview, setRequireAfterPhotosForReview] = useState(true);
   const [requireCompletionNotesForReview, setRequireCompletionNotesForReview] = useState(true);
   const [requireWorkCompleteForReview, setRequireWorkCompleteForReview] = useState(true);
-  const [requirePartsClosedForReview, setRequirePartsClosedForReview] = useState(true);
+  const [requirePartsClosedForReview, setRequirePartsClosedForReview] = useState(false);
   const [requireFactoryCostsForReview, setRequireFactoryCostsForReview] = useState(true);
   const [requireReceiptBackupForReview, setRequireReceiptBackupForReview] = useState(true);
   const [fieldSupportName, setFieldSupportName] = useState("Office");
@@ -93,7 +93,7 @@ export function FieldAppView() {
       setRequireAfterPhotosForReview(businessSettings?.requireAfterPhotosForReview ?? true);
       setRequireCompletionNotesForReview(businessSettings?.requireCompletionNotesForReview ?? true);
       setRequireWorkCompleteForReview(businessSettings?.requireWorkCompleteForReview ?? true);
-      setRequirePartsClosedForReview(businessSettings?.requirePartsClosedForReview ?? true);
+      setRequirePartsClosedForReview(false);
       setRequireFactoryCostsForReview(businessSettings?.requireFactoryCostsForReview ?? true);
       setRequireReceiptBackupForReview(businessSettings?.requireReceiptBackupForReview ?? true);
       setFieldSupportName(businessSettings?.fieldSupportName || "Office");
@@ -1071,10 +1071,9 @@ function fieldReviewStatusFromOptions(job: Job, options: FieldReviewOptions) {
   return fieldReviewStatus(job, options.requireFactoryCostsForReview, options.requireReceiptBackupForReview, options.requireBeforePhotosForReview, options.requireSerialTagPhotoForReview, options.requireDamagePhotosForReview, options.requireAfterPhotosForReview, options.requireCompletionNotesForReview, options.requireWorkCompleteForReview, options.requirePartsClosedForReview);
 }
 
-function fieldReviewStatus(job: Job, requireFactoryCostsForReview = true, requireReceiptBackupForReview = true, requireBeforePhotosForReview = true, requireSerialTagPhotoForReview = true, requireDamagePhotosForReview = false, requireAfterPhotosForReview = true, requireCompletionNotesForReview = true, requireWorkCompleteForReview = true, requirePartsClosedForReview = true) {
+function fieldReviewStatus(job: Job, requireFactoryCostsForReview = true, requireReceiptBackupForReview = true, requireBeforePhotosForReview = true, requireSerialTagPhotoForReview = true, requireDamagePhotosForReview = false, requireAfterPhotosForReview = true, requireCompletionNotesForReview = true, requireWorkCompleteForReview = true, _requirePartsClosedForReview = false) {
   const checklist = job.checklist || [];
   const workCompleted = checklist.some((item) => item.label === "Work completed" && item.complete) || ["Complete", "Needs Inspection", "Billed", "Paid"].includes(job.status);
-  const openParts = (job.partsItems || []).some((part) => ["Needed", "Ordered", "Picked up"].includes(part.status)) || job.status === "Waiting on Parts";
   const factoryCostsReady = job.source !== "Factory" || !requireFactoryCostsForReview || hasFactoryCostWork(job.factoryCost);
   const receiptBackupReady = !requireReceiptBackupForReview || !hasReceiptDollars(job) || hasUploadedReceiptBackup(job);
   const items = [
@@ -1084,7 +1083,6 @@ function fieldReviewStatus(job: Job, requireFactoryCostsForReview = true, requir
     ...(requireAfterPhotosForReview ? [{ label: "After photos", ok: (job.afterPhotos || []).length > 0, detail: `${(job.afterPhotos || []).length} uploaded`, href: `/jobs/${job.jobId}#photos` }] : []),
     ...(requireCompletionNotesForReview ? [{ label: "Completion notes", ok: Boolean(job.completionNotes?.trim()), detail: job.completionNotes?.trim() ? "Added" : "Missing", href: `/jobs/${job.jobId}#complete-job` }] : []),
     ...(requireWorkCompleteForReview ? [{ label: "Work completed", ok: workCompleted, detail: workCompleted ? "Checked" : "Checklist/status needed", href: `/jobs/${job.jobId}` }] : []),
-    ...(requirePartsClosedForReview ? [{ label: "Parts closed", ok: !openParts, detail: openParts ? "Parts still open" : "No open parts", href: `/jobs/${job.jobId}#parts-needed` }] : []),
     ...(job.source === "Factory" && requireFactoryCostsForReview ? [{ label: "Factory costs", ok: factoryCostsReady, detail: factoryCostsReady ? "Added" : "Cost entry needed", href: `/jobs/${job.jobId}#factory-costs` }] : []),
     ...(requireReceiptBackupForReview && hasReceiptDollars(job) ? [{ label: "Receipt backup", ok: receiptBackupReady, detail: receiptBackupReady ? "Added" : "Receipt upload needed", href: `/jobs/${job.jobId}#receipts` }] : []),
   ];
