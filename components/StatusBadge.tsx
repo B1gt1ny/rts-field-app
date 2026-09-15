@@ -1,7 +1,7 @@
 import type { JobStatus, Priority } from "@/lib/types";
 
 const statusStyles: Record<JobStatus, string> = {
-  New: "bg-blue-50 text-blue-700", Scheduled: "bg-violet-50 text-violet-700", "In Progress": "bg-yellow-300 text-black",
+  New: "bg-blue-50 text-blue-700", Scheduled: "bg-violet-50 text-violet-700", "In Progress": "bg-white text-ink",
   "Waiting on Parts": "bg-orange-50 text-orange-700", "Needs Inspection": "bg-cyan-50 text-cyan-700", Complete: "bg-emerald-50 text-emerald-700",
   Billed: "bg-slate-100 text-slate-700", Paid: "bg-forest text-white",
 };
