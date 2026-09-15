@@ -22,7 +22,6 @@ html.dark .bg-forest { background-color: #176b4a !important; }
 html.dark .bg-lime.text-ink, html.dark [class*="bg-lime/"][class*="text-ink"] { color: #08120c !important; text-shadow: 0 1px 0 rgba(0,0,0,.82); }
 html.dark .bg-forest.text-white, html.dark .btn-primary, html.dark [class*="bg-forest"][class*="text-white"] { text-shadow: 0 1px 1px rgba(0,0,0,.9); }
 html.dark .action-contrast { background-color: #176b4a !important; border-color: #0b3928 !important; color: #fff !important; text-shadow: 0 1px 1px rgba(0,0,0,.9); }
-html.dark .btn-secondary, html.dark .attention-tile { background-color: #f4c842 !important; border-color: #a66f00 !important; color: #111 !important; }
 
 @media print {
   body { background: white !important; color: black !important; }
