@@ -178,12 +178,14 @@ function MonthlySchedule({ jobs, unscheduledJobs, today, onSchedule, canEditSche
       </div>
     </div>
     <div>
-      <div className="min-w-0">
-        <div className="grid grid-cols-7 gap-px text-center text-[9px] font-black uppercase tracking-wide text-black/35 sm:text-[10px]">
+      <div className="overflow-x-auto">
+        <div className="min-w-[640px]">
+        <div className="grid grid-cols-7 gap-px text-center text-xs font-black uppercase tracking-wide text-black/45">
           {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => <div key={day} className="py-1">{day}</div>)}
         </div>
         <div className="grid grid-cols-7 gap-px">
           {days.map(({ date, key, isCurrentMonth, jobs: dayJobs }) => <CalendarDay key={key} date={date} dateKey={key} jobs={dayJobs} isToday={key === todayKey} isCurrentMonth={isCurrentMonth} onSelectDate={canEditSchedule ? openScheduler : undefined} onSelectEvent={openEvent} />)}
+        </div>
         </div>
       </div>
     </div>
@@ -229,11 +231,11 @@ function CalendarFilter({ label, value, options, onChange }: { label: string; va
 function CalendarDay({ date, dateKey: key, jobs, isToday, isCurrentMonth, onSelectDate, onSelectEvent }: { date: Date; dateKey: string; jobs: Job[]; isToday: boolean; isCurrentMonth: boolean; onSelectDate?: (date: string) => void; onSelectEvent: (job: Job) => void }) {
   const [showAll, setShowAll] = useState(false);
   const visibleJobs = showAll ? jobs : jobs.slice(0, 2);
-  return <div className={`min-w-0 min-h-20 overflow-hidden border p-1 text-left sm:min-h-24 sm:p-1.5 ${isToday ? "border-forest bg-forest/5" : isCurrentMonth ? "border-black/5 bg-white" : "border-black/5 bg-black/[.025]"}`}>
-    {onSelectDate ? <button type="button" onClick={() => onSelectDate(key)} aria-label={`Schedule work for ${formatDate(key)}`} className={`mb-1 rounded px-0.5 text-[10px] font-black hover:bg-black/5 sm:text-xs ${isToday ? "text-forest" : isCurrentMonth ? "text-black/45" : "text-black/25"}`}>{date.getDate()}</button> : <span className={`mb-1 block px-0.5 text-[10px] font-black sm:text-xs ${isToday ? "text-forest" : isCurrentMonth ? "text-black/45" : "text-black/25"}`}>{date.getDate()}</span>}
+  return <div className={`min-w-0 min-h-24 overflow-hidden border p-1.5 text-left ${isToday ? "border-forest bg-forest/5" : isCurrentMonth ? "border-black/5 bg-white" : "border-black/5 bg-black/[.025]"}`}>
+    {onSelectDate ? <button type="button" onClick={() => onSelectDate(key)} aria-label={`Schedule work for ${formatDate(key)}`} className={`mb-1 rounded px-0.5 text-xs font-black hover:bg-black/5 ${isToday ? "text-forest" : isCurrentMonth ? "text-black/55" : "text-black/35"}`}>{date.getDate()}</button> : <span className={`mb-1 block px-0.5 text-xs font-black ${isToday ? "text-forest" : isCurrentMonth ? "text-black/55" : "text-black/35"}`}>{date.getDate()}</span>}
     <div className="space-y-0.5">
-      {visibleJobs.map((job) => <button key={job.jobId} type="button" onClick={() => onSelectEvent(job)} className="block min-w-0 max-w-full truncate rounded px-1 py-0.5 text-left text-[9px] font-black leading-tight text-white shadow-sm hover:brightness-95 sm:text-[10px]" style={calendarCrewStyle(job)} title={`${job.customerName} · ${job.assignedCrew || "Unassigned"} · ${job.schedulePlan || "Confirmed"}`}>{job.customerName}</button>)}
-      {jobs.length > 2 && <button type="button" onClick={() => setShowAll((expanded) => !expanded)} className="block max-w-full truncate rounded bg-black/5 px-1 py-0.5 text-left text-[9px] font-black leading-tight text-black/45 hover:bg-black/10 sm:text-[10px]">{showAll ? "Show less" : `+${jobs.length - 2} more`}</button>}
+      {visibleJobs.map((job) => <button key={job.jobId} type="button" onClick={() => onSelectEvent(job)} className="block min-w-0 max-w-full truncate rounded px-1 py-1 text-left text-xs font-black leading-tight text-white shadow-sm hover:brightness-95" style={calendarCrewStyle(job)} title={`${job.customerName} · ${job.assignedCrew || "Unassigned"} · ${job.schedulePlan || "Confirmed"}`}>{job.customerName}</button>)}
+      {jobs.length > 2 && <button type="button" onClick={() => setShowAll((expanded) => !expanded)} className="block max-w-full truncate rounded bg-black/5 px-1 py-1 text-left text-xs font-black leading-tight text-black/55 hover:bg-black/10">{showAll ? "Show less" : `+${jobs.length - 2} more`}</button>}
     </div>
   </div>;
 }
