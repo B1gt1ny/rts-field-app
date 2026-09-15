@@ -71,9 +71,9 @@ export function JobsView({ title, description, preset = {} }: { title: string; d
   }
 
   return <>
-    <div className="mb-5"><p className="mb-1 text-sm font-extrabold uppercase tracking-widest text-forest">Field operations</p><h1 className="text-3xl font-black tracking-tight sm:text-4xl">{title}</h1><p className="mt-2 max-w-2xl text-sm text-black/50 sm:text-base">{description}</p></div>
+    <div className="mb-6"><p className="eyebrow mb-2">Field operations</p><h1 className="text-3xl font-black tracking-tight sm:text-4xl">{title}</h1><p className="mt-2 max-w-2xl text-sm leading-relaxed text-black/50 sm:text-base">{description}</p></div>
     <section className="card mb-5 overflow-hidden">
-      <div className="flex items-center justify-between gap-3 bg-sand p-4">
+      <div className="flex items-center justify-between gap-3 bg-sand/80 p-4 sm:p-5">
         <div>
           <h2 className="text-lg font-black">Ready to Schedule</h2>
           <p className="text-sm font-semibold text-black/45">Active jobs with complete intake and no scheduled date.</p>
@@ -88,8 +88,8 @@ export function JobsView({ title, description, preset = {} }: { title: string; d
             <p className="mt-1 truncate text-xs font-semibold text-black/40">{job.address?.trim() || "Address not recorded"}{job.factoryWorkOrderNumber?.trim() ? ` · Work order ${job.factoryWorkOrderNumber}` : ""}</p>
           </div>
           <div className="flex shrink-0 gap-2">
-            <Link href={`/jobs/${job.jobId}`} className="inline-flex min-h-11 items-center justify-center rounded-xl border border-black/10 px-3 py-2 text-sm font-black text-forest">Open job</Link>
-            <Link href={`/jobs/${job.jobId}/edit`} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-forest px-3 py-2 text-sm font-black text-white">Schedule / edit</Link>
+            <Link href={`/jobs/${job.jobId}`} className="btn-secondary min-h-11 !px-3 !py-2 text-sm !font-black text-forest">Open job</Link>
+            <Link href={`/jobs/${job.jobId}/edit`} className="btn-primary min-h-11 !px-3 !py-2 text-sm !font-black">Schedule / edit</Link>
           </div>
         </div>) : <div className="p-5 text-center text-sm font-semibold text-black/45">No active jobs are ready to schedule.</div>}
       </div>
@@ -100,7 +100,7 @@ export function JobsView({ title, description, preset = {} }: { title: string; d
         <h2 className="mt-1 text-2xl font-black">Find the job that needs you next</h2>
         <p className="mt-1 text-sm text-white/55">One-tap manager filters for overdue work, unscheduled jobs, parts, follow-ups, billing, and high priority work.</p>
       </div>
-      <div className="grid grid-cols-2 gap-2 p-3 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-2 bg-white/70 p-3 sm:grid-cols-3 lg:grid-cols-6">
         <QuickFilterButton label="Overdue" value="overdue" count={counts.overdue} active={quickFilter === "overdue"} onClick={setQuickFilter} icon={<ExclamationTriangleIcon />} />
         <QuickFilterButton label="Unscheduled" value="unscheduled" count={counts.unscheduled} active={quickFilter === "unscheduled"} onClick={setQuickFilter} icon={<CalendarDaysIcon />} />
         <QuickFilterButton label="Parts" value="parts" count={counts.parts} active={quickFilter === "parts"} onClick={setQuickFilter} icon={<WrenchScrewdriverIcon />} />
@@ -126,7 +126,7 @@ export function JobsView({ title, description, preset = {} }: { title: string; d
               <p className="mt-2 text-sm font-black text-orange-900">{missing.length} missing</p>
               <p className="mt-1 text-sm font-semibold text-black/55">{missing.map((check) => check.label).join(" · ")}</p>
             </div>
-            <Link href={`/jobs/${job.jobId}/edit`} className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-xl bg-forest px-4 py-2 text-sm font-black text-white">Edit job</Link>
+            <Link href={`/jobs/${job.jobId}/edit`} className="btn-primary min-h-11 shrink-0 !px-4 !py-2 text-sm !font-black">Edit job</Link>
           </div>
         </div>) : <div className="p-5 text-center text-sm font-semibold text-black/45">All active jobs have core intake information.</div>}
       </div>
@@ -156,7 +156,7 @@ export function JobsView({ title, description, preset = {} }: { title: string; d
 }
 
 function QuickFilterButton({ label, value, count, active, onClick, icon }: { label: string; value: QuickFilter; count: number; active: boolean; onClick: (value: QuickFilter) => void; icon: React.ReactNode }) {
-  return <button type="button" onClick={() => onClick(active ? "" : value)} className={`min-h-24 rounded-2xl border p-3 text-left transition active:scale-[.98] ${active ? "border-forest bg-forest text-white" : "border-black/10 bg-sand text-ink"}`}>
+  return <button type="button" onClick={() => onClick(active ? "" : value)} className={`min-h-24 rounded-2xl border p-3 text-left shadow-sm transition duration-150 hover:-translate-y-px active:translate-y-0 active:scale-[.98] ${active ? "border-forest bg-forest text-white shadow-forest/15" : "border-black/10 bg-sand/70 text-ink hover:border-forest/20 hover:bg-white"}`}>
     <div className={`mb-2 grid size-9 place-items-center rounded-xl ${active ? "bg-white/15" : "bg-white text-forest"} [&>svg]:size-5`}>{icon}</div>
     <p className="text-2xl font-black">{count}</p>
     <p className={`text-xs font-black uppercase tracking-wide ${active ? "text-white/70" : "text-black/45"}`}>{label}</p>
@@ -164,7 +164,7 @@ function QuickFilterButton({ label, value, count, active, onClick, icon }: { lab
 }
 
 function ActiveChip({ label, onClear }: { label: string; onClear: () => void }) {
-  return <button type="button" onClick={onClear} className="rounded-full bg-forest/10 px-3 py-1.5 text-xs font-black text-forest">{label} ×</button>;
+  return <button type="button" onClick={onClear} className="rounded-full border border-forest/10 bg-forest/10 px-3 py-1.5 text-xs font-black text-forest transition hover:bg-forest/15">{label} ×</button>;
 }
 
 function Filter({ value, onChange, label, options, optionLabels = {} }: { value: string; onChange: (value: string) => void; label: string; options: string[]; optionLabels?: Record<string, string> }) {

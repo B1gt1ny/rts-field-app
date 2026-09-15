@@ -417,7 +417,7 @@ export function FieldAppView() {
   }
 
   return <div className="mx-auto max-w-3xl space-y-4">
-    <section className="rounded-2xl bg-ink p-4 text-white sm:p-5">
+    <section className="overflow-hidden rounded-3xl bg-ink p-4 text-white shadow-card sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-black uppercase tracking-widest text-lime">Employee field app</p>
@@ -425,7 +425,7 @@ export function FieldAppView() {
           <p className="mt-1 text-sm font-semibold text-white/60">{formatTodayLabel()} · {todayJobs.length} assigned today</p>
           <p className="mt-2 text-sm text-white/70">Next job, next action, then the rest of today.</p>
         </div>
-        <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-lime text-ink"><UserCircleIcon className="size-6" /></span>
+        <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-lime text-ink shadow-lg shadow-lime/10"><UserCircleIcon className="size-6" /></span>
       </div>
       {employees.length > 0 && !lockedToLogin && <label className="mt-4 block">
         <span className="mb-2 block text-xs font-black uppercase tracking-wide text-white/60">Viewing employee</span>
@@ -454,14 +454,14 @@ export function FieldAppView() {
 
     {!loading && employee && assignedJobs.length ? <section id="all-assigned-work" className="scroll-mt-24">
       <details>
-        <summary className="cursor-pointer rounded-xl border border-black/10 bg-white px-4 py-3 text-base font-black">All assigned work</summary>
+        <summary className="cursor-pointer rounded-2xl border border-black/10 bg-white px-4 py-3 text-base font-black shadow-sm">All assigned work</summary>
         <div className="mt-3">
           <CrewFilterBar value={crewFilter} counts={crewFilterCounts} onChange={setCrewFilter} />
           <div className="grid gap-3 md:grid-cols-2">{filteredAssignedJobs.map((job) => <FieldJobCard key={job.jobId} job={job} noteDraft={noteDrafts[job.jobId] || ""} saving={savingJobId === job.jobId} permissions={fieldPermissions} customerTextTemplate={customerTextTemplate} fieldNoteTemplates={fieldNoteTemplates} reviewInstructions={reviewInstructions} factoryCostInstructions={factoryCostInstructions} factoryTravelRates={factoryTravelRates} requireBeforePhotosForReview={requireBeforePhotosForReview} requireSerialTagPhotoForReview={requireSerialTagPhotoForReview} requireDamagePhotosForReview={requireDamagePhotosForReview} requireAfterPhotosForReview={requireAfterPhotosForReview} requireCompletionNotesForReview={requireCompletionNotesForReview} requireWorkCompleteForReview={requireWorkCompleteForReview} requirePartsClosedForReview={requirePartsClosedForReview} requireFactoryCostsForReview={requireFactoryCostsForReview} requireReceiptBackupForReview={requireReceiptBackupForReview} fieldSupportName={fieldSupportName} fieldSupportPhone={fieldSupportPhone} employeeHelpInstructions={employeeHelpInstructions} onStart={() => startJob(job)} onReadyReview={() => readyForManagerReview(job)} onChecklist={(itemId) => toggleChecklist(job, itemId)} onNote={(message, type) => saveFieldNote(job, message, type)} onCompletionNotes={(notes) => saveCompletionNotes(job, notes)} onFactoryCost={(costPatch) => saveFactoryCost(job, costPatch)} onNoteDraft={(value) => setNoteDrafts((old) => ({ ...old, [job.jobId]: value }))} />)}</div>
           {assignedJobs.length > 0 && !filteredAssignedJobs.length && <div className="card p-6 text-center">
             <p className="font-black">No jobs in this lane.</p>
             <p className="mt-1 text-sm text-black/45">Try another crew filter or view all assigned work.</p>
-            <button type="button" onClick={() => setCrewFilter("all")} className="mt-4 min-h-11 rounded-xl bg-forest px-4 py-2 font-black text-white">Show All Work</button>
+            <button type="button" onClick={() => setCrewFilter("all")} className="btn-primary mt-4 min-h-11 !px-4 !py-2">Show All Work</button>
           </div>}
         </div>
       </details>
@@ -484,8 +484,8 @@ function CurrentJobPanel({ job, employeeName, today, saving, permissions, onStar
   const session = getWorkSession(job);
   const fieldStatus = todayFieldStatus(job, employeeName, today);
   return <section className="card overflow-hidden">
-    <div className="bg-sand p-4">
-      <p className="text-xs font-black uppercase tracking-widest text-forest">Current / next job</p>
+    <div className="bg-sand/80 p-4 sm:p-5">
+      <p className="eyebrow">Current / next job</p>
       <div className="mt-2 flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate text-sm font-black text-black/45">{job.jobId} · {job.priority}</p>
@@ -496,7 +496,7 @@ function CurrentJobPanel({ job, employeeName, today, saving, permissions, onStar
       </div>
       {job.assignedCrew && <p className="mt-2 text-xs font-black uppercase tracking-wide text-black/40">Crew: {job.assignedCrew}</p>}
       <p className="mt-2 text-xs font-black uppercase tracking-wide text-black/40">{fieldStatus}</p>
-      <div className="mt-3 rounded-xl bg-white p-3">
+      <div className="mt-3 rounded-2xl border border-black/[.06] bg-white p-3 shadow-sm">
         <p className="text-xs font-black uppercase tracking-wide text-forest">Next Step</p>
         <p className="mt-1 text-sm font-bold text-black/65">{action.reason}</p>
         {attention.items.length > 0 && <div className="mt-3 border-t border-black/10 pt-3">
@@ -513,21 +513,21 @@ function CurrentJobPanel({ job, employeeName, today, saving, permissions, onStar
       {job.phone && <p className="rounded-xl bg-blue-50 p-3 text-sm font-black text-blue-900">Contact customer with ETA before arrival</p>}
       <FieldWorkflowGuide />
       {action.kind === "arrive"
-        ? <button type="button" disabled={saving} onClick={() => onArrive(job)} className="block min-h-12 w-full rounded-xl bg-forest px-4 py-3 text-center font-black text-white disabled:opacity-50">{saving ? "Saving..." : action.label}</button>
+        ? <button type="button" disabled={saving} onClick={() => onArrive(job)} className="btn-primary block w-full">{saving ? "Saving..." : action.label}</button>
         : action.kind === "travel"
-          ? <button type="button" disabled={saving} onClick={() => onStartTravel(job)} className="block min-h-12 w-full rounded-xl bg-forest px-4 py-3 text-center font-black text-white disabled:opacity-50">{saving ? "Saving..." : action.label}</button>
+          ? <button type="button" disabled={saving} onClick={() => onStartTravel(job)} className="btn-primary block w-full">{saving ? "Saving..." : action.label}</button>
           : session.started
-            ? <Link href={`/jobs/${job.jobId}`} className="block min-h-12 rounded-xl bg-forest px-4 py-3 text-center font-black text-white">{action.label}</Link>
+            ? <Link href={`/jobs/${job.jobId}`} className="btn-primary flex w-full">{action.label}</Link>
             : permissions.employeeCanStartJobs && action.kind === "start"
-              ? <button type="button" disabled={saving} onClick={() => onStart(job)} className="block min-h-12 w-full rounded-xl bg-forest px-4 py-3 text-center font-black text-white disabled:opacity-50">{saving ? "Saving..." : action.label}</button>
-              : <Link href={action.href} className="block min-h-12 rounded-xl bg-forest px-4 py-3 text-center font-black text-white">{action.label}</Link>}
+              ? <button type="button" disabled={saving} onClick={() => onStart(job)} className="btn-primary block w-full">{saving ? "Saving..." : action.label}</button>
+              : <Link href={action.href} className="btn-primary flex w-full">{action.label}</Link>}
       <QuickCurrentJobActions job={job} canUpload={permissions.employeeCanUploadFiles} />
     </div>
   </section>;
 }
 
 function CurrentJobInfo({ job }: { job: Job }) {
-  return <div className="rounded-2xl border border-black/10 bg-white p-3">
+  return <div className="rounded-2xl border border-black/[.08] bg-white p-3 shadow-sm">
     <div className="grid gap-2 text-sm">
       <InfoLine label="Customer / job" value={job.customerName || job.jobId} />
       <InfoLine label="Address" value={[job.address, job.city].filter(Boolean).join(", ")} />
@@ -553,7 +553,7 @@ function InfoLine({ label, value }: { label: string; value?: string }) {
 
 function FieldWorkflowGuide() {
   const steps = ["Before Photos", "Perform Work", "Progress Photos", "Completed Photos", "Paperwork", "Ready for Review"];
-  return <div className="flex flex-wrap items-center gap-1 rounded-xl bg-sand p-2 text-[11px] font-black text-black/55">
+  return <div className="flex flex-wrap items-center gap-1 rounded-2xl border border-black/[.05] bg-sand/75 p-2 text-[11px] font-black text-black/55">
     {steps.map((step, index) => <span key={step} className="inline-flex items-center gap-1">
       <span className="rounded-full bg-white px-2 py-1">{step}</span>
       {index < steps.length - 1 && <span aria-hidden="true">→</span>}
@@ -570,8 +570,8 @@ function QuickCurrentJobActions({ job, canUpload }: { job: Job; canUpload: boole
   ].filter(Boolean).slice(0, 4) as Array<{ label: string; href: string; icon: React.ReactNode; external?: boolean }>;
   return <div className="grid grid-cols-2 gap-2">
     {actions.map((action) => action.external
-      ? <a key={action.label} href={action.href} target="_blank" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-black/10 bg-white px-3 py-2 text-sm font-black text-ink">{action.icon}{action.label}</a>
-      : <Link key={action.label} href={action.href} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-black/10 bg-white px-3 py-2 text-sm font-black text-ink">{action.icon}{action.label}</Link>)}
+      ? <a key={action.label} href={action.href} target="_blank" className="btn-secondary min-h-12 !px-3 !py-2 text-sm !font-black">{action.icon}{action.label}</a>
+      : <Link key={action.label} href={action.href} className="btn-secondary min-h-12 !px-3 !py-2 text-sm !font-black">{action.icon}{action.label}</Link>)}
   </div>;
 }
 
@@ -645,7 +645,7 @@ function CrewFilterBar({ value, counts, onChange }: { value: CrewFilter; counts:
     { value: "all", label: "All" },
   ];
   return <div className="mb-4 grid grid-cols-3 gap-2 sm:grid-cols-6">
-    {filters.map((filter) => <button key={filter.value} type="button" onClick={() => onChange(filter.value)} className={`min-h-16 rounded-2xl border p-2 text-center transition active:scale-[.98] ${value === filter.value ? "border-forest bg-forest text-white" : "border-black/10 bg-white text-ink"}`}>
+    {filters.map((filter) => <button key={filter.value} type="button" onClick={() => onChange(filter.value)} className={`min-h-16 rounded-2xl border p-2 text-center shadow-sm transition duration-150 hover:-translate-y-px active:translate-y-0 active:scale-[.98] ${value === filter.value ? "border-forest bg-forest text-white shadow-forest/15" : "border-black/10 bg-white text-ink hover:border-forest/20"}`}>
       <span className="block text-2xl font-black">{counts[filter.value]}</span>
       <span className={`text-[11px] font-black uppercase tracking-wide ${value === filter.value ? "text-white/70" : "text-black/45"}`}>{filter.label}</span>
     </button>)}

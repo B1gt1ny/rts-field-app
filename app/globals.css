@@ -4,7 +4,7 @@
 
 :root { color-scheme: light; }
 * { box-sizing: border-box; }
-body { @apply bg-sand text-ink antialiased; }
+body { @apply bg-sand text-ink antialiased; background-image: radial-gradient(circle at top right, rgba(215,240,74,.16), transparent 26rem); }
 button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 
 @media print {
@@ -16,9 +16,12 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 }
 
 @layer components {
-  .card { @apply rounded-2xl border border-black/5 bg-white shadow-card; }
-  .btn-primary { @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-forest px-5 py-3 font-bold text-white transition hover:bg-forest/90 active:scale-[.98] disabled:opacity-50; }
-  .btn-secondary { @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-black/10 bg-white px-4 py-3 font-semibold transition hover:bg-black/[.03] active:scale-[.98]; }
-  .field { @apply min-h-12 w-full rounded-xl border border-black/10 bg-white px-3.5 py-3 text-base outline-none transition placeholder:text-black/35 focus:border-forest focus:ring-2 focus:ring-forest/10; }
+  .card { @apply rounded-2xl border border-black/[.07] bg-white shadow-card; }
+  .btn-primary { @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-forest px-5 py-3 font-bold text-white shadow-sm transition duration-150 hover:-translate-y-px hover:bg-forest/90 hover:shadow-md active:translate-y-0 active:scale-[.98] disabled:transform-none disabled:opacity-50; }
+  .btn-secondary { @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-black/10 bg-white px-4 py-3 font-semibold shadow-sm transition duration-150 hover:-translate-y-px hover:bg-black/[.03] hover:shadow-md active:translate-y-0 active:scale-[.98]; }
+  .field { @apply min-h-12 w-full rounded-xl border border-black/10 bg-white px-3.5 py-3 text-base shadow-sm outline-none transition placeholder:text-black/35 hover:border-black/20 focus:border-forest focus:ring-4 focus:ring-forest/10; }
   .label { @apply mb-1.5 block text-sm font-bold text-black/65; }
+  .eyebrow { @apply text-xs font-black uppercase tracking-[.16em] text-forest; }
+  .section-title { @apply text-lg font-black tracking-tight; }
+  .surface-muted { @apply rounded-2xl border border-black/[.06] bg-sand/70; }
 }
