@@ -6,6 +6,16 @@
 * { box-sizing: border-box; }
 body { @apply bg-sand text-ink antialiased; background-image: radial-gradient(circle at top right, rgba(215,240,74,.16), transparent 26rem); }
 button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+html.dark { color-scheme: dark; }
+html.dark body { background-color: #101512; background-image: radial-gradient(circle at top right, rgba(215,240,74,.1), transparent 26rem); color: #f4f8f2; }
+html.dark .card, html.dark [class*="bg-white"] { background-color: #1a211d !important; }
+html.dark [class*="bg-sand"] { background-color: #141b17 !important; }
+html.dark [class*="bg-black/"] { background-color: rgba(255,255,255,.06) !important; }
+html.dark [class*="text-ink"], html.dark [class*="text-black"] { color: #edf4ed !important; }
+html.dark [class*="border-black"] { border-color: rgba(255,255,255,.12) !important; }
+html.dark .field { background-color: #111713 !important; color: #f4f8f2; }
+html.dark option { background: #111713; color: #f4f8f2; }
+html.dark .bg-ink { background-color: #080c09 !important; }
 
 @media print {
   body { background: white !important; color: black !important; }
