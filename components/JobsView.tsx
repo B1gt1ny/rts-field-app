@@ -6,7 +6,7 @@ import { BanknotesIcon, BellAlertIcon, CalendarDaysIcon, ExclamationTriangleIcon
 import { JobCard } from "./JobCard";
 import { priorities, sources, statuses, type Employee, type Job, type JobSource, type JobStatus } from "@/lib/types";
 import { authFetch } from "@/lib/client-auth";
-import { intakeCompleteness } from "@/lib/job-readiness";
+import { hasOpenParts, intakeCompleteness } from "@/lib/job-readiness";
 import { closedJobStatuses } from "@/lib/field-activity";
 
 type Preset = { status?: JobStatus | JobStatus[]; source?: JobSource; today?: boolean };
@@ -175,7 +175,7 @@ function matchesQuickFilter(job: Job, quickFilter: QuickFilter, today: string) {
   if (!quickFilter) return true;
   if (quickFilter === "overdue") return isOpen(job) && Boolean(job.dueDate) && job.dueDate < today;
   if (quickFilter === "unscheduled") return isOpen(job) && !job.dueDate;
-  if (quickFilter === "parts") return job.status === "Waiting on Parts" || Boolean(job.partsNeeded?.trim()) || (job.partsItems || []).some((part) => ["Needed", "Ordered", "Picked up"].includes(part.status));
+  if (quickFilter === "parts") return job.status === "Waiting on Parts" || hasOpenParts(job);
   if (quickFilter === "follow-up") return (job.activityLog || []).some((entry) => entry.notify && !entry.resolvedAt);
   if (quickFilter === "billing") return ["Complete", "Billed"].includes(job.status) && !["Paid", "Sent", "Sent to Billing"].includes(job.invoiceStatus || "");
   if (quickFilter === "priority") return job.priority === "High" || job.priority === "Urgent";

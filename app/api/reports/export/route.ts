@@ -3,7 +3,7 @@ import { requireRole } from "@/lib/auth";
 import { factoryCostGrandTotal } from "@/lib/factory-costs";
 import { getJobs } from "@/lib/jobs";
 import { isReceiptBackupMissing } from "@/lib/receipt-backup";
-import { billingBlockers, openParts, readinessScore } from "@/lib/job-readiness";
+import { billingBlockers, hasOpenParts, openParts, readinessScore } from "@/lib/job-readiness";
 import type { Job } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -55,7 +55,7 @@ function customerSummaryRows(jobs: Job[]) {
     const sorted = [...customerJobs].sort((a, b) => (b.dueDate || "").localeCompare(a.dueDate || ""));
     const latest = sorted[0];
     const activeJobs = sorted.filter((job) => !["Complete", "Billed", "Paid"].includes(job.status));
-    const openPartsJobs = sorted.filter((job) => openParts(job).length || job.status === "Waiting on Parts" || job.partsNeeded.trim());
+    const openPartsJobs = sorted.filter((job) => hasOpenParts(job) || job.status === "Waiting on Parts");
     const followUps = sorted.reduce((total, job) => total + (job.activityLog || []).filter((entry) => entry.notify && !entry.resolvedAt).length, 0);
     const billingAttention = sorted.filter((job) => ["Complete", "Billed"].includes(job.status) && !["Paid", "Sent", "Sent to Billing"].includes(job.invoiceStatus || ""));
     return {
@@ -128,7 +128,7 @@ function partsRunRows(jobs: Job[]) {
       assignedCrew: job.assignedCrew,
     }));
     if (structured.length) return structured;
-    if (job.status === "Waiting on Parts" || job.partsNeeded.trim()) {
+    if (job.status === "Waiting on Parts" || hasOpenParts(job)) {
       return [{
         jobId: job.jobId,
         customerName: job.customerName,

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BanknotesIcon, BellAlertIcon, CalendarDaysIcon, MapPinIcon, WrenchScrewdriverIcon, UserGroupIcon } from "@heroicons/react/24/outline";
 import type { Job } from "@/lib/types";
+import { hasOpenParts } from "@/lib/job-readiness";
 import { PriorityBadge, StatusBadge } from "./StatusBadge";
 
 export function JobCard({ job }: { job: Job }) {
@@ -25,7 +26,7 @@ export function JobCard({ job }: { job: Job }) {
 }
 
 function cardFlags(job: Job) {
-  const openParts = job.status === "Waiting on Parts" || Boolean(job.partsNeeded?.trim()) || (job.partsItems || []).some((part) => ["Needed", "Ordered", "Picked up"].includes(part.status));
+  const openParts = job.status === "Waiting on Parts" || hasOpenParts(job);
   const followUps = (job.activityLog || []).filter((entry) => entry.notify && !entry.resolvedAt).length;
   const billing = ["Complete", "Billed"].includes(job.status) && !["Paid", "Sent", "Sent to Billing"].includes(job.invoiceStatus || "");
   const flags: Array<{ label: string; icon: React.ReactNode; className: string }> = [];
