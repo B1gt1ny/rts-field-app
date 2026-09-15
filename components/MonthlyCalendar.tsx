@@ -24,22 +24,22 @@ export function MonthlyCalendar({ jobs, today = new Date() }: { jobs: Job[]; tod
   const upcomingJobs = activeJobs.filter((job) => job.dueDate && job.dueDate >= todayKey).sort((a, b) => a.dueDate.localeCompare(b.dueDate)).slice(0, 5);
   const unscheduled = activeJobs.filter((job) => !job.dueDate).length;
 
-  return <section className="card mb-8 p-4 sm:p-6">
-    <div className="mb-4 flex items-start justify-between gap-3">
+  return <section className="-mx-4 mb-8 overflow-hidden bg-white sm:-mx-4 lg:-mx-8">
+    <div className="mb-4 flex items-start justify-between gap-3 px-4 pt-4 sm:px-6 sm:pt-6 lg:px-8">
       <div>
         <div className="flex items-center gap-2"><CalendarDaysIcon className="size-5 text-forest" /><h2 className="text-xl font-black">Monthly field calendar</h2></div>
         <p className="mt-1 text-sm text-black/45">Quick schedule view from job due dates. Google-linked jobs are marked.</p>
       </div>
       <a href="https://calendar.google.com" target="_blank" className="hidden min-h-10 items-center rounded-xl border border-black/10 bg-white px-3 text-sm font-black text-forest sm:inline-flex">Open Google Calendar</a>
     </div>
-    <div className="mb-3 flex items-center justify-between gap-3">
+    <div className="mb-3 flex items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
       <p className="text-lg font-black">{today.toLocaleDateString("en-US", { month: "long", year: "numeric" })}</p>
       <div className="flex flex-wrap justify-end gap-2 text-xs font-black">
         <span className="rounded-full bg-emerald-100 px-3 py-1 text-emerald-900">{linked} Google-linked</span>
         <Link href="/schedule" className={`rounded-full px-3 py-1 ${unscheduled ? "bg-orange-100 text-orange-900" : "bg-black/5 text-black/45"}`}>{unscheduled} unscheduled</Link>
       </div>
     </div>
-    <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-black uppercase tracking-wide text-black/35">
+    <div className="grid grid-cols-7 gap-px px-0 text-center text-[10px] font-black uppercase tracking-wide text-black/35">
       {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => <div key={day} className="py-1">{day}</div>)}
     </div>
     <div className="grid grid-cols-7 gap-px">
@@ -54,7 +54,7 @@ export function MonthlyCalendar({ jobs, today = new Date() }: { jobs: Job[]; tod
         </div>;
       })}
     </div>
-    <div className="mt-4 grid gap-3 lg:grid-cols-[1.2fr_.8fr]">
+    <div className="mt-4 grid gap-3 px-4 sm:px-6 lg:grid-cols-[1.2fr_.8fr] lg:px-8">
       <div className="rounded-2xl bg-sand p-4">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div><h3 className="font-black">Next scheduled work</h3><p className="text-xs font-semibold text-black/45">Active jobs coming up from today forward</p></div>
@@ -80,7 +80,7 @@ export function MonthlyCalendar({ jobs, today = new Date() }: { jobs: Job[]; tod
         </div>
       </div>
     </div>
-    <a href="https://calendar.google.com" target="_blank" className="mt-4 inline-flex min-h-12 w-full items-center justify-center rounded-xl border border-black/10 bg-white px-4 py-3 font-black text-forest sm:hidden">Open Google Calendar</a>
+    <a href="https://calendar.google.com" target="_blank" className="mx-4 mb-4 mt-4 inline-flex min-h-12 w-[calc(100%-2rem)] items-center justify-center rounded-xl border border-black/10 bg-white px-4 py-3 font-black text-forest sm:hidden">Open Google Calendar</a>
   </section>;
 }
 
