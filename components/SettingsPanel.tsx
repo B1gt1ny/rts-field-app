@@ -20,6 +20,8 @@ type PlatformStatus = {
 type SetupStatus = {
   companyCamUserEmail?: boolean;
   googleCalendarId?: string;
+  googleCalendarConfigured?: boolean;
+  googleCalendarError?: string;
   authSetupCode?: boolean;
 };
 type AccessUser = { id: string; email: string; role: UserRole; employeeId?: string; employeeName?: string; createdAt?: string; lastSignInAt?: string };
@@ -458,7 +460,7 @@ export function SettingsPanel() {
             <h3 className="font-black">{name}</h3>
             <p className="mt-1 text-xs font-black uppercase tracking-wide text-forest">{stage}</p>
             <p className="mt-1 text-sm text-black/55">{description}</p>
-            <p className="mt-3 rounded-xl bg-white p-3 text-xs font-bold text-black/45">{action}</p>
+            <p className={`mt-3 rounded-xl p-3 text-xs font-bold ${key === "googleCalendar" && setupStatus.googleCalendarError ? "bg-red-50 text-red-800" : "bg-white text-black/45"}`}>{key === "googleCalendar" && setupStatus.googleCalendarError ? setupStatus.googleCalendarError : action}</p>
             <p className="mt-2 rounded-xl bg-white/70 p-3 text-xs font-semibold text-black/45">{safety}</p>
             <Link href={appPath} className="mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-ink px-3 py-2 text-xs font-black text-white">Open workflow</Link>
           </div>;
@@ -798,8 +800,10 @@ function buildIntegrationNextSteps(integrations: IntegrationStatus, setupStatus:
       title: "Google Calendar scheduling",
       done: Boolean(integrations.googleCalendar),
       detail: integrations.googleCalendar
-        ? `Google Calendar credentials are present. Target calendar: ${setupStatus.googleCalendarId || "primary"}.`
-        : "Add Google OAuth credentials in Vercel. Until then, use the safe Google quick-add buttons on real jobs.",
+        ? `Google Calendar connection verified. Target calendar: ${setupStatus.googleCalendarId || "primary"}.`
+        : setupStatus.googleCalendarConfigured
+          ? setupStatus.googleCalendarError || "Google authorization failed. Reconnect the account and replace the refresh token in Vercel."
+          : "Add Google OAuth credentials in Vercel. Until then, use the safe Google quick-add buttons on real jobs.",
       href: "/schedule",
     },
     {

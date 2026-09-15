@@ -22,6 +22,20 @@ export function isGoogleCalendarConfigured() {
   return Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.env.GOOGLE_REFRESH_TOKEN);
 }
 
+export async function googleCalendarConnectionStatus() {
+  if (!isGoogleCalendarConfigured()) return { configured: false, connected: false, error: "Google Calendar credentials are not configured." };
+  try {
+    await accessToken();
+    return { configured: true, connected: true, error: "" };
+  } catch {
+    return {
+      configured: true,
+      connected: false,
+      error: "Google authorization failed. Reconnect the Google account and replace the refresh token in Vercel.",
+    };
+  }
+}
+
 export async function listGoogleCalendarEvents(days = 30): Promise<CalendarIntakeEvent[]> {
   const token = await accessToken();
   if (!token) throw new Error("Google Calendar is not connected.");
