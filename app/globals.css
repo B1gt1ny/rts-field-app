@@ -7,15 +7,19 @@
 body { @apply bg-sand text-ink antialiased; background-image: radial-gradient(circle at top right, rgba(215,240,74,.16), transparent 26rem); }
 button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 html.dark { color-scheme: dark; }
-html.dark body { background-color: #101512; background-image: radial-gradient(circle at top right, rgba(215,240,74,.1), transparent 26rem); color: #f4f8f2; }
-html.dark .card, html.dark [class*="bg-white"] { background-color: #1a211d !important; }
-html.dark [class*="bg-sand"] { background-color: #141b17 !important; }
-html.dark [class*="bg-black/"] { background-color: rgba(255,255,255,.06) !important; }
+html.dark body { background-color: #101512; background-image: radial-gradient(circle at top right, rgba(215,240,74,.08), transparent 26rem); color: #f4f8f2; }
+html.dark .card, html.dark [class*="bg-white"] { background-color: #1d2721 !important; }
+html.dark [class*="bg-sand"] { background-color: #161f1a !important; }
+html.dark [class*="bg-black/"] { background-color: rgba(255,255,255,.075) !important; }
 html.dark [class*="text-ink"], html.dark [class*="text-black"] { color: #edf4ed !important; }
-html.dark [class*="border-black"] { border-color: rgba(255,255,255,.12) !important; }
+html.dark [class*="border-black"] { border-color: #365043 !important; }
 html.dark .field { background-color: #111713 !important; color: #f4f8f2; }
 html.dark option { background: #111713; color: #f4f8f2; }
 html.dark .bg-ink { background-color: #080c09 !important; }
+html.dark .bg-forest { background-color: #176b4a !important; }
+html.dark .bg-lime.text-ink, html.dark [class*="bg-lime/"][class*="text-ink"] { color: #08120c !important; text-shadow: none; }
+html.dark .bg-forest.text-white, html.dark .btn-primary, html.dark [class*="bg-forest"][class*="text-white"] { text-shadow: 0 1px 1px rgba(0,0,0,.9); }
+html.dark .action-contrast { background-color: #176b4a !important; border-color: #0b3928 !important; color: #fff !important; text-shadow: 0 1px 1px rgba(0,0,0,.9); }
 
 @media print {
   body { background: white !important; color: black !important; }
