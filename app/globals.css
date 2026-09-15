@@ -6,6 +6,10 @@
 * { box-sizing: border-box; }
 body { @apply bg-sand text-ink antialiased; background-image: radial-gradient(circle at top right, rgba(215,240,74,.16), transparent 26rem); }
 button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+:focus-visible { outline: 3px solid #5b9b72; outline-offset: 3px; }
+.skip-link { position: fixed; z-index: 100; top: .75rem; left: .75rem; transform: translateY(-180%); border-radius: .75rem; background: #176b4a; padding: .75rem 1rem; color: white; font-weight: 800; transition: transform .15s ease; }
+.skip-link:focus { transform: translateY(0); }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; } }
 html.dark { color-scheme: dark; }
 html.dark body { background-color: #090a0a; background-image: radial-gradient(circle at top right, rgba(215,240,74,.055), transparent 26rem); color: #f4f8f2; }
 html.dark .card, html.dark [class*="bg-white"] { background-color: #2c302e !important; }
