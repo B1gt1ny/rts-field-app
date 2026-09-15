@@ -156,6 +156,17 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
       activityLog: [activity, ...(job.activityLog || [])].slice(0, 50),
     });
   }
+  const workspaceTabs: Array<{ id: WorkspaceSectionId; title: string; summary: string }> = [
+    { id: "overview", title: "Overview", summary: `${job.jobId} · ${job.status}` },
+    { id: "checklist", title: "Checklist", summary: `${complete}/${checklist.total}` },
+    { id: "photos", title: "Photos", summary: `${photoTotal(job)} saved` },
+    { id: "parts", title: "Parts", summary: `${job.partsItems?.length || 0} tracked` },
+    { id: "documents", title: "Documents", summary: `${(job.workOrderFiles || []).length + (job.receipts || []).length} files` },
+    { id: "notes", title: "Notes", summary: `${job.activityLog?.length || 0} updates` },
+    { id: "time", title: "Time", summary: `${job.timeEntries?.length || 0} entries` },
+    { id: "closeout", title: "Closeout", summary: `${readinessScore(job)}% ready` },
+    { id: "history", title: "History", summary: `${job.activityLog?.length || 0} records` },
+  ];
   return <>
     <div className="mb-6 flex items-start justify-between gap-3">
       <div>
@@ -178,7 +189,9 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
     {canManageJob && <ManagerOperationalSummary job={job} />}
     <CorrectionSummary job={job} />
     {detailMessage && <p role="alert" className="mb-5 rounded-xl border border-red-200 bg-red-50 p-4 font-bold text-red-700">{detailMessage}</p>}
-    <div className="space-y-3">
+    <section className="card overflow-hidden">
+      <WorkspaceNavigation tabs={workspaceTabs} activeSection={openSection} onSelect={setOpenSection} />
+      <div className="p-3 sm:p-5">
       <WorkspaceSection id="overview" title="Overview" summary={`${job.jobId} · ${job.status} · ${job.assignedCrew || "Unassigned"}`} openSection={openSection} setOpenSection={setOpenSection}>
         <OverviewPanel job={job} companyCam={companyCam} />
         {canManageJob && <IntakeCompletenessPanel job={job} />}
@@ -227,7 +240,8 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
       <WorkspaceSection id="history" title="History" summary={`${job.activityLog?.length || 0} records`} openSection={openSection} setOpenSection={setOpenSection}>
         <OperationsPanel job={job} setJob={setJob} mode="history" />
       </WorkspaceSection>
-    </div>
+      </div>
+    </section>
   </>;
 }
 
@@ -354,17 +368,28 @@ function correctionHref(category: CorrectionCategory) {
   return "#complete-job";
 }
 
-function WorkspaceSection({ id, title, summary, openSection, setOpenSection, children }: { id: WorkspaceSectionId; title: string; summary: string; openSection: WorkspaceSectionId; setOpenSection: (section: WorkspaceSectionId) => void; children: React.ReactNode }) {
+function WorkspaceNavigation({ tabs, activeSection, onSelect }: { tabs: Array<{ id: WorkspaceSectionId; title: string; summary: string }>; activeSection: WorkspaceSectionId; onSelect: (section: WorkspaceSectionId) => void }) {
+  return <div className="border-b border-black/[.06] bg-sand/65 p-3 sm:p-4">
+    <div className="mb-3 flex items-center justify-between gap-3 px-1">
+      <div><p className="eyebrow">Job workspace</p><p className="mt-1 text-sm font-semibold text-black/45">Choose an area without losing your place in the job.</p></div>
+      <span className="hidden rounded-full bg-white px-3 py-1.5 text-xs font-black text-forest shadow-sm sm:inline-flex">{tabs.find((tab) => tab.id === activeSection)?.summary}</span>
+    </div>
+    <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:px-0" role="tablist" aria-label="Job workspace sections">
+      {tabs.map((tab) => {
+        const active = tab.id === activeSection;
+        return <button key={tab.id} id={`${tab.id}-tab`} type="button" role="tab" aria-selected={active} aria-controls={`${tab.id}-workspace`} onClick={() => onSelect(tab.id)} className={`min-h-16 min-w-24 shrink-0 rounded-2xl border px-3 py-2 text-left shadow-sm transition duration-150 hover:-translate-y-px active:translate-y-0 active:scale-[.98] ${active ? "border-forest bg-forest text-white shadow-forest/15" : "border-black/10 bg-white text-ink hover:border-forest/20"}`}>
+          <span className="block text-sm font-black">{tab.title}</span>
+          <span className={`mt-0.5 block text-[11px] font-bold ${active ? "text-white/65" : "text-black/40"}`}>{tab.summary}</span>
+        </button>;
+      })}
+    </div>
+  </div>;
+}
+
+function WorkspaceSection({ id, title, summary, openSection, setOpenSection: _setOpenSection, children }: { id: WorkspaceSectionId; title: string; summary: string; openSection: WorkspaceSectionId; setOpenSection: (section: WorkspaceSectionId) => void; children: React.ReactNode }) {
   const open = openSection === id;
-  return <section id={`${id}-workspace`} className="scroll-mt-24">
-    <button type="button" onClick={() => setOpenSection(id)} className={`flex min-h-16 w-full items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left shadow-sm transition duration-150 hover:-translate-y-px ${open ? "border-forest/20 bg-forest/5 shadow-forest/5" : "border-black/10 bg-white hover:border-black/20"}`}>
-      <span>
-        <span className="block text-lg font-black">{title}</span>
-        <span className="mt-0.5 block text-xs font-bold text-black/45">{summary}</span>
-      </span>
-      <span className={`rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-wide ${open ? "bg-forest text-white" : "bg-sand/90 text-black/45"}`}>{open ? "Open" : "View"}</span>
-    </button>
-    {open && <div className="mt-3 space-y-5">{children}</div>}
+  return <section id={`${id}-workspace`} role="tabpanel" aria-labelledby={`${id}-tab`} hidden={!open} className="scroll-mt-24">
+    {open && <div className="space-y-5"><div className="flex items-center justify-between gap-3 px-1"><h2 className="text-xl font-black tracking-tight">{title}</h2><span className="rounded-full bg-sand/90 px-3 py-1 text-xs font-black text-black/45">{summary}</span></div>{children}</div>}
   </section>;
 }
 
