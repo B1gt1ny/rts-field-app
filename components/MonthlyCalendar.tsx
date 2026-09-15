@@ -8,14 +8,19 @@ export function MonthlyCalendar({ jobs, today = new Date() }: { jobs: Job[]; tod
   const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
   const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
   const todayKey = today.toLocaleDateString("en-CA");
-  const leadingBlankDays = monthStart.getDay();
-  const days = Array.from({ length: monthEnd.getDate() }, (_, index) => {
-    const date = new Date(today.getFullYear(), today.getMonth(), index + 1);
+  const calendarStart = new Date(monthStart);
+  calendarStart.setDate(monthStart.getDate() - monthStart.getDay());
+  const calendarEnd = new Date(monthEnd);
+  calendarEnd.setDate(monthEnd.getDate() + (6 - monthEnd.getDay()));
+  const dayCount = Math.round((calendarEnd.getTime() - calendarStart.getTime()) / 86400000) + 1;
+  const activeJobs = jobs.filter((job) => !closedStatuses.includes(job.status));
+  const days = Array.from({ length: dayCount }, (_, index) => {
+    const date = new Date(calendarStart);
+    date.setDate(calendarStart.getDate() + index);
     const key = date.toLocaleDateString("en-CA");
-    return { date, key, jobs: jobs.filter((job) => job.dueDate === key) };
+    return { date, key, isCurrentMonth: date.getMonth() === today.getMonth(), jobs: activeJobs.filter((job) => job.dueDate === key).sort(compareScheduledJobs) };
   });
   const linked = jobs.filter((job) => job.googleCalendarEventUrl).length;
-  const activeJobs = jobs.filter((job) => !closedStatuses.includes(job.status));
   const upcomingJobs = activeJobs.filter((job) => job.dueDate && job.dueDate >= todayKey).sort((a, b) => a.dueDate.localeCompare(b.dueDate)).slice(0, 5);
   const unscheduled = activeJobs.filter((job) => !job.dueDate).length;
 
@@ -37,15 +42,14 @@ export function MonthlyCalendar({ jobs, today = new Date() }: { jobs: Job[]; tod
     <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-black uppercase tracking-wide text-black/35">
       {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => <div key={day} className="py-1">{day}</div>)}
     </div>
-    <div className="grid grid-cols-7 gap-1">
-      {Array.from({ length: leadingBlankDays }, (_, index) => <div key={`blank-${index}`} className="min-h-20 rounded-xl bg-black/[.02]" />)}
-      {days.map(({ date, key, jobs: dayJobs }) => {
+    <div className="grid grid-cols-7 gap-px">
+      {days.map(({ date, key, isCurrentMonth, jobs: dayJobs }) => {
         const isToday = key === todayKey;
-        return <div key={key} className={`min-h-20 rounded-xl border p-1.5 text-left ${isToday ? "border-forest bg-forest/5" : "border-black/5 bg-sand"}`}>
-          <p className={`mb-1 text-xs font-black ${isToday ? "text-forest" : "text-black/45"}`}>{date.getDate()}</p>
-          <div className="space-y-1">
-            {dayJobs.slice(0, 2).map((job) => <Link key={job.jobId} href={`/jobs/${job.jobId}`} className={`block truncate rounded-md px-1.5 py-1 text-[10px] font-black ${job.googleCalendarEventUrl ? "bg-emerald-100 text-emerald-900" : "bg-white text-ink"}`}>{job.googleCalendarEventUrl ? "G " : ""}{job.customerName}</Link>)}
-            {dayJobs.length > 2 && <Link href={`/jobs?date=${key}`} className="block rounded-md bg-black/5 px-1.5 py-1 text-[10px] font-black text-black/45">+{dayJobs.length - 2} more</Link>}
+        return <div key={key} className={`min-w-0 min-h-20 overflow-hidden border p-1 text-left sm:min-h-24 sm:p-1.5 ${isToday ? "border-forest bg-forest/5" : isCurrentMonth ? "border-black/5 bg-white" : "border-black/5 bg-black/[.025]"}`}>
+          <p className={`mb-1 text-[10px] font-black sm:text-xs ${isToday ? "text-forest" : isCurrentMonth ? "text-black/45" : "text-black/25"}`}>{date.getDate()}</p>
+          <div className="space-y-0.5">
+            {dayJobs.slice(0, 2).map((job) => <Link key={job.jobId} href={`/jobs/${job.jobId}`} className="block min-w-0 max-w-full truncate rounded px-1 py-0.5 text-[9px] font-black leading-tight text-white shadow-sm hover:brightness-95 sm:text-[10px]" style={calendarCrewStyle(job)} title={`${job.customerName} · ${job.assignedCrew || "Unassigned"} · ${job.schedulePlan || "Confirmed"}`}>{job.customerName}</Link>)}
+            {dayJobs.length > 2 && <Link href={`/schedule`} className="block rounded bg-black/5 px-1 py-0.5 text-[9px] font-black text-black/45 sm:text-[10px]">+{dayJobs.length - 2} more</Link>}
           </div>
         </div>;
       })}
@@ -78,4 +82,18 @@ export function MonthlyCalendar({ jobs, today = new Date() }: { jobs: Job[]; tod
     </div>
     <a href="https://calendar.google.com" target="_blank" className="mt-4 inline-flex min-h-12 w-full items-center justify-center rounded-xl border border-black/10 bg-white px-4 py-3 font-black text-forest sm:hidden">Open Google Calendar</a>
   </section>;
+}
+
+function calendarCrewStyle(job: Job) {
+  const colors = ["#0f766e", "#2563eb", "#7c3aed", "#c2410c", "#be123c", "#0369a1", "#4d7c0f"];
+  const label = job.assignedCrew?.trim() && job.assignedCrew !== "Unassigned" ? job.assignedCrew : "Unassigned";
+  const hash = Array.from(label).reduce((total, character) => total + character.charCodeAt(0), 0);
+  const color = label === "Unassigned" ? "#6b7280" : colors[hash % colors.length];
+  return job.schedulePlan === "Tentative"
+    ? { backgroundColor: color, backgroundImage: "repeating-linear-gradient(135deg, rgba(255,255,255,.35) 0 4px, transparent 4px 8px)" }
+    : { backgroundColor: color };
+}
+
+function compareScheduledJobs(a: Job, b: Job) {
+  return `${a.dueDate}T${a.scheduledTime || "99:99"}`.localeCompare(`${b.dueDate}T${b.scheduledTime || "99:99"}`);
 }
