@@ -23,6 +23,7 @@ type CompanyCamState = {
 };
 
 type WorkspaceSectionId = "overview" | "checklist" | "photos" | "parts" | "documents" | "notes" | "time" | "closeout" | "history";
+type FactoryCostSectionId = "travel" | "labor" | "expenses" | "notes" | "total";
 
 export function JobDetail({ initialJob }: { initialJob: Job }) {
   const user = useAuthUser();
@@ -911,7 +912,7 @@ function CommunicationHandoffPanel({ job, saving, onSave }: { job: Job; saving: 
   }
 
   return <section id="communication-handoff" className="card mb-5 p-4 sm:p-6 print:hidden">
-    <div className="mb-4 flex items-start gap-3">
+    <div className="m-4 mb-4 flex items-start gap-3 sm:m-6 sm:mb-4">
       <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-lime text-ink"><ChatBubbleLeftRightIcon className="size-5" /></span>
       <div>
         <p className="text-xs font-black uppercase tracking-widest text-forest">Communication handoff</p>
@@ -1840,6 +1841,7 @@ function BillingHandoffPanel({ job, saving, onSave }: { job: Job; saving: boolea
 
 function FactoryCostTrackerPanel({ job, saving, onSave }: { job: Job; saving: boolean; onSave: (patch: Partial<Job>) => Promise<Job | undefined> }) {
   const [draft, setDraft] = useState<FactoryCostTracker>(job.factoryCost || defaultFactoryCost());
+  const [activeSection, setActiveSection] = useState<FactoryCostSectionId>("travel");
   const hasSavedCostWork = hasFactoryCostWork(job.factoryCost);
 
   useEffect(() => {
@@ -1874,6 +1876,15 @@ function FactoryCostTrackerPanel({ job, saving, onSave }: { job: Job; saving: bo
     { key: "materialsTotal", label: "Materials receipts total", placeholder: "0.00" },
     { key: "otherReceiptsTotal", label: "Other receipts total", placeholder: "0.00" },
   ];
+  const sections: Array<{ id: FactoryCostSectionId; title: string; summary: string; keys?: Array<keyof FactoryCostTracker> }> = [
+    { id: "travel", title: "Travel", summary: `${draft.miles || 0} mi · $${totals.mileage.toFixed(2)}`, keys: ["tripCount", "miles", "mileageRate", "driveTimeHours", "hourlyRate"] },
+    { id: "labor", title: "Labor", summary: `$${(totals.driveTime + totals.work + totals.helper).toFixed(2)}`, keys: ["workHours", "workRate", "helperHours", "helperRate", "perDiemDays", "perDiemRate"] },
+    { id: "expenses", title: "Expenses", summary: `$${(totals.hotel + totals.meals + totals.materials + totals.otherReceipts).toFixed(2)}`, keys: ["hotelTotal", "mealTotal", "materialsTotal", "otherReceiptsTotal"] },
+    { id: "notes", title: "Notes", summary: draft.notes?.trim() ? "Added" : "Optional" },
+    { id: "total", title: "Total", summary: `$${totals.grandTotal.toFixed(2)}` },
+  ];
+  const active = sections.find((section) => section.id === activeSection) || sections[0];
+  const visibleFields = active.keys ? fields.filter((field) => active.keys?.includes(field.key)) : [];
 
   async function saveTracker() {
     const saved = await onSave({
@@ -1883,7 +1894,7 @@ function FactoryCostTrackerPanel({ job, saving, onSave }: { job: Job; saving: bo
     if (saved?.factoryCost) setDraft(saved.factoryCost);
   }
 
-  return <section id="factory-costs" className="card p-4 sm:p-6">
+  return <section id="factory-costs" className="card overflow-hidden">
     <div className="mb-4 flex items-start gap-3">
       <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-blue-100 text-blue-800"><BanknotesIcon className="size-5" /></span>
       <div>
@@ -1891,23 +1902,38 @@ function FactoryCostTrackerPanel({ job, saving, onSave }: { job: Job; saving: bo
         <p className="text-sm text-black/50">Track mileage, hotel receipts, per diem, labor/helper time, drive time, materials, and the factory job total.</p>
       </div>
     </div>
-    <div className="mb-4 grid gap-3 sm:grid-cols-4">
+    <div className="mx-4 mb-4 grid gap-2 sm:mx-6 sm:grid-cols-4">
       <MiniMetric label="Mileage" value={`$${totals.mileage.toFixed(2)}`} icon={<MapPinIcon />} />
       <MiniMetric label="Labor" value={`$${(totals.driveTime + totals.work + totals.helper).toFixed(2)}`} icon={<ClockIcon />} />
       <MiniMetric label="Receipts" value={`$${(totals.hotel + totals.meals + totals.materials + totals.otherReceipts).toFixed(2)}`} icon={<ReceiptPercentIcon />} />
       <MiniMetric label="Grand total" value={`$${totals.grandTotal.toFixed(2)}`} icon={<BanknotesIcon />} />
     </div>
-    <div className="grid gap-3 sm:grid-cols-2">
-      {fields.map((field) => <label key={field.key}>
+    <div className="border-y border-black/[.06] bg-sand/65 p-3 sm:p-4">
+      <p className="eyebrow mb-3 px-1">Cost workspace</p>
+      <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:px-0" role="tablist" aria-label="Factory cost sections">
+        {sections.map((section) => {
+          const selected = section.id === activeSection;
+          return <button key={section.id} type="button" role="tab" aria-selected={selected} onClick={() => setActiveSection(section.id)} className={`min-h-16 min-w-24 shrink-0 rounded-2xl border px-3 py-2 text-left shadow-sm transition duration-150 hover:-translate-y-px active:translate-y-0 active:scale-[.98] ${selected ? "border-forest bg-forest text-white shadow-forest/15" : "border-black/10 bg-white text-ink hover:border-forest/20"}`}>
+            <span className="block text-sm font-black">{section.title}</span><span className={`mt-0.5 block text-[11px] font-bold ${selected ? "text-white/65" : "text-black/40"}`}>{section.summary}</span>
+          </button>;
+        })}
+      </div>
+    </div>
+    <div className="p-4 sm:p-6">
+      <div className="mb-4 flex items-center justify-between gap-3"><div><h3 className="text-xl font-black tracking-tight">{active.title}</h3><p className="mt-1 text-sm font-semibold text-black/45">{activeSection === "travel" ? "Mileage and drive-time billing." : activeSection === "labor" ? "Work, helper, and per diem billing." : activeSection === "expenses" ? "Receipt totals by expense type." : activeSection === "notes" ? "Keep the supporting details with this job." : "Review the calculated factory total before saving."}</p></div><span className="rounded-full bg-sand/90 px-3 py-1 text-xs font-black text-forest">{active.summary}</span></div>
+      {visibleFields.length > 0 && <div className="grid gap-3 sm:grid-cols-2">
+      {visibleFields.map((field) => <label key={field.key}>
         <span className="label">{field.label}</span>
         <input className="field" inputMode="decimal" value={draft[field.key] || ""} onChange={(event) => setDraft((old) => ({ ...old, [field.key]: event.target.value }))} placeholder={field.placeholder} />
       </label>)}
-      <label className="sm:col-span-2">
+      </div>}
+      {activeSection === "notes" && <label>
         <span className="label">Cost notes</span>
         <textarea className="field min-h-24 resize-y" value={draft.notes || ""} onChange={(event) => setDraft((old) => ({ ...old, notes: event.target.value }))} placeholder="Hotel name, receipt notes, material notes, helper details..." />
-      </label>
+      </label>}
+      {activeSection === "total" && <div className="grid gap-3 sm:grid-cols-2"><div className="surface-muted p-4"><p className="text-xs font-black uppercase tracking-wide text-black/45">Travel</p><p className="mt-1 text-2xl font-black">${(totals.mileage + totals.driveTime).toFixed(2)}</p></div><div className="surface-muted p-4"><p className="text-xs font-black uppercase tracking-wide text-black/45">Labor & per diem</p><p className="mt-1 text-2xl font-black">${(totals.work + totals.helper + totals.perDiem).toFixed(2)}</p></div><div className="surface-muted p-4"><p className="text-xs font-black uppercase tracking-wide text-black/45">Receipts</p><p className="mt-1 text-2xl font-black">${(totals.hotel + totals.meals + totals.materials + totals.otherReceipts).toFixed(2)}</p></div><div className="rounded-2xl bg-ink p-4 text-white"><p className="text-xs font-black uppercase tracking-wide text-lime">Factory total</p><p className="mt-1 text-3xl font-black">${totals.grandTotal.toFixed(2)}</p></div></div>}
+      <button type="button" disabled={saving} onClick={saveTracker} className="btn-primary mt-5 w-full">{saving ? "Saving…" : "Save Factory Cost Tracker"}</button>
     </div>
-    <button type="button" disabled={saving} onClick={saveTracker} className="mt-4 min-h-12 w-full rounded-xl bg-forest px-4 py-3 font-black text-white disabled:opacity-50">{saving ? "Saving…" : "Save Factory Cost Tracker"}</button>
   </section>;
 }
 
