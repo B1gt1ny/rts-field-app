@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { ArrowRightIcon, CalendarDaysIcon, CheckCircleIcon, ClipboardDocumentListIcon, ClockIcon, ExclamationTriangleIcon, PlusIcon, WrenchScrewdriverIcon } from "@heroicons/react/24/outline";
+import { ArrowRightIcon, PlusIcon } from "@heroicons/react/24/outline";
 import { getJobs } from "@/lib/jobs";
 import { MonthlyCalendar } from "@/components/MonthlyCalendar";
+import { DashboardSnapshotTabs } from "@/components/DashboardSnapshotTabs";
 import { filterServerJobsForUser, getServerUser } from "@/lib/server-auth";
 import { buildJobReminders, formatReminderDate, reminderTone } from "@/lib/reminders";
 import { getUserRole, isDatabaseConfigured } from "@/lib/auth";
@@ -45,19 +46,9 @@ export default async function Dashboard() {
         : <Link href="/jobs/new" className="btn-primary sm:self-auto">New Job <PlusIcon className="size-5" /></Link>}
     </div>
 
-    <section className="card p-3 sm:p-4">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <h2 className="text-lg font-black">Business Snapshot</h2>
-        <span className="text-xs font-black uppercase tracking-wide text-black/35">{activeJobs.length} active</span>
-      </div>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-        <SnapshotMetric label="Due today" value={todaysJobs.length} href="/today" icon={<ClockIcon />} tone="bg-lime text-ink" />
-        <SnapshotMetric label="Active jobs" value={activeJobs.length} href="/jobs" icon={<WrenchScrewdriverIcon />} tone="bg-blue-100 text-blue-900" />
-        <SnapshotMetric label="Waiting parts" value={waitingJobs.length} href="/waiting-on-parts" icon={<ExclamationTriangleIcon />} tone="bg-orange-100 text-orange-900" />
-        <SnapshotMetric label="Needs review" value={reviewJobs.length} href="/ready-check" icon={<CheckCircleIcon />} tone="bg-cyan-100 text-cyan-900" />
-        <SnapshotMetric label="Ready billing" value={billingJobs.length} href="/billing" icon={<ClipboardDocumentListIcon />} tone="bg-emerald-100 text-emerald-900" />
-      </div>
-    </section>
+    <MonthlyCalendar jobs={jobs} today={now} />
+
+    <DashboardSnapshotTabs dueToday={todaysJobs.length} active={activeJobs.length} waitingParts={waitingJobs.length} needsReview={reviewJobs.length} readyBilling={billingJobs.length} />
 
     <section className="card overflow-hidden">
       <SectionHeader title="Urgent Attention" detail="Business-level exceptions across jobs, parts, paperwork, review, billing, and follow-ups." actionHref="/command" actionLabel={isEmployee ? undefined : "Manage"} />
@@ -95,8 +86,6 @@ export default async function Dashboard() {
         </Link>) : <EmptyRow message="No overdue or due-today follow-ups." />}
       </div>
     </section>
-
-    <MonthlyCalendar jobs={jobs} today={now} />
 
     {recentActivity.length > 0 && <section className="card overflow-hidden">
       <SectionHeader title="Recent Activity" detail="Latest job history so the owner can see what changed." />
@@ -193,14 +182,6 @@ function SectionHeader({ title, detail, actionHref, actionLabel }: { title: stri
     </div>
     {actionHref && actionLabel && <Link href={actionHref} className="shrink-0 text-sm font-extrabold text-forest">{actionLabel}</Link>}
   </div>;
-}
-
-function SnapshotMetric({ label, value, href, icon, tone }: { label: string; value: number; href: string; icon: React.ReactNode; tone: string }) {
-  return <Link href={href} className="rounded-2xl border border-black/10 bg-white p-3 active:scale-[.99]">
-    <div className={`mb-2 grid size-9 place-items-center rounded-xl ${tone} [&>svg]:size-5`}>{icon}</div>
-    <p className="text-2xl font-black">{value}</p>
-    <p className="mt-0.5 text-[11px] font-black uppercase tracking-wide text-black/45">{label}</p>
-  </Link>;
 }
 
 function AttentionRow({ item }: { item: { job: Job; reason: string; tone: string } }) {
