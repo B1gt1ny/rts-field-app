@@ -158,8 +158,8 @@ function MonthlySchedule({ jobs, unscheduledJobs, today, onSchedule, canEditSche
     }
   }
 
-  return <section className="card overflow-hidden">
-    <div className="border-b border-black/5 bg-sand p-4 sm:p-5">
+  return <section className="-mx-4 overflow-hidden bg-white sm:-mx-4 lg:-mx-8">
+    <div className="border-b border-black/5 bg-sand px-4 py-4 sm:px-5 sm:py-5 lg:px-8">
       <div className="flex items-center justify-between gap-2">
         <div>
           <h2 className="text-xl font-black">{visibleMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })}</h2>
@@ -177,7 +177,7 @@ function MonthlySchedule({ jobs, unscheduledJobs, today, onSchedule, canEditSche
         <CalendarFilter label="Status" value={statusFilter} options={statuses} onChange={setStatusFilter} />
       </div>
     </div>
-    <div className="p-1.5 sm:p-3">
+    <div>
       <div className="min-w-0">
         <div className="grid grid-cols-7 gap-px text-center text-[9px] font-black uppercase tracking-wide text-black/35 sm:text-[10px]">
           {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => <div key={day} className="py-1">{day}</div>)}
