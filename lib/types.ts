@@ -3,12 +3,13 @@ export const jobTypeOptions = ["Trim out", "Service", "Warranty", "Setup", "Skir
 export const priorities = ["Low", "Normal", "High", "Urgent"] as const;
 export const sources = ["Dealer", "Factory", "Individual"] as const;
 export const checklistLabels = [
-  "Work order", "Scope reviewed", "Parts picked up", "Before photos taken",
+  "Paperwork picked up", "Scope reviewed", "Materials checked", "Before photos taken",
   "Serial/VIN tag photo taken", "Work completed", "After photos taken",
   "Completion notes added", "Customer/source notified", "Invoice created",
 ] as const;
 
 export type JobStatus = typeof statuses[number];
+export type SchedulePlan = "Confirmed" | "Tentative";
 export type Priority = typeof priorities[number];
 export type JobSource = typeof sources[number];
 export type ChecklistItem = { id: string; label: string; complete: boolean };
@@ -193,6 +194,7 @@ export interface Job {
   fullCrew?: boolean;
   dueDate: string;
   scheduledTime?: string;
+  schedulePlan?: SchedulePlan;
   scopeNotes: string;
   partsNeeded: string;
   paperworkPickedUp: boolean;
@@ -258,7 +260,7 @@ export function defaultFactoryCost(): FactoryCostTracker {
 export const emptyJob: Job = {
   jobId: "", source: "Dealer", dealerName: "", factoryWorkOrderNumber: "", serialUnitNumber: "", returnVisitRequired: false, customerName: "",
   phone: "", address: "", city: "", homeSize: "Single-wide", jobType: "Setup",
-  priority: "Normal", status: "New", assignedCrew: "Unassigned", assignedEmployeeIds: [], fullCrew: false, dueDate: "", scheduledTime: "", scopeNotes: "",
+  priority: "Normal", status: "New", assignedCrew: "Unassigned", assignedEmployeeIds: [], fullCrew: false, dueDate: "", scheduledTime: "", schedulePlan: "Confirmed", scopeNotes: "",
   partsNeeded: "", paperworkPickedUp: false, paperworkPickedUpBy: "", paperworkPickupDate: "",
   beforePhotos: [], damagePhotos: [], serialTagPhotos: [], afterPhotos: [], completionNotes: "",
   invoiceStatus: "Not started", checklist: makeChecklist(),
