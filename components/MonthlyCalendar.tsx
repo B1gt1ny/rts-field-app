@@ -30,7 +30,7 @@ export function MonthlyCalendar({ jobs, today = new Date() }: { jobs: Job[]; tod
         <div className="flex items-center gap-2"><CalendarDaysIcon className="size-5 text-forest" /><h2 className="text-xl font-black">Monthly field calendar</h2></div>
         <p className="mt-1 text-sm text-black/45">Quick schedule view from job due dates. Google-linked jobs are marked.</p>
       </div>
-      <a href="https://calendar.google.com" target="_blank" className="hidden min-h-10 items-center rounded-xl border border-black/10 bg-white px-3 text-sm font-black text-forest sm:inline-flex">Open Google Calendar</a>
+      <a href="https://calendar.google.com" target="_blank" className="action-contrast hidden min-h-10 items-center rounded-xl border px-3 text-sm font-black sm:inline-flex">Open Google Calendar</a>
     </div>
     <div className="mb-3 flex items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
       <p className="text-lg font-black">{today.toLocaleDateString("en-US", { month: "long", year: "numeric" })}</p>
@@ -75,12 +75,12 @@ export function MonthlyCalendar({ jobs, today = new Date() }: { jobs: Job[]; tod
         <h3 className="mt-1 text-2xl font-black">{linked ? `${linked} linked` : "Not linked yet"}</h3>
         <p className="mt-1 text-sm text-white/55">Jobs only go to Google Calendar when you choose “Add this job to my Google Calendar” on a real job.</p>
         <div className="mt-4 grid gap-2">
-          <a href="https://calendar.google.com" target="_blank" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-lime px-4 py-3 text-sm font-black text-ink">Open Google Calendar</a>
+          <a href="https://calendar.google.com" target="_blank" className="action-contrast inline-flex min-h-11 items-center justify-center rounded-xl border px-4 py-3 text-sm font-black">Open Google Calendar</a>
           <Link href="/settings" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-white/10 px-4 py-3 text-sm font-black text-white">Calendar settings</Link>
         </div>
       </div>
     </div>
-    <a href="https://calendar.google.com" target="_blank" className="mx-4 mb-4 mt-4 inline-flex min-h-12 w-[calc(100%-2rem)] items-center justify-center rounded-xl border border-black/10 bg-white px-4 py-3 font-black text-forest sm:hidden">Open Google Calendar</a>
+    <a href="https://calendar.google.com" target="_blank" className="action-contrast mx-4 mb-4 mt-4 inline-flex min-h-12 w-[calc(100%-2rem)] items-center justify-center rounded-xl border px-4 py-3 font-black sm:hidden">Open Google Calendar</a>
   </section>;
 }
 
