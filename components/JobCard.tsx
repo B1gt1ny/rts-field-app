@@ -7,14 +7,14 @@ import { PriorityBadge, StatusBadge } from "./StatusBadge";
 export function JobCard({ job }: { job: Job }) {
   const date = job.dueDate ? new Date(`${job.dueDate}T12:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "No date";
   const flags = cardFlags(job);
-  return <Link href={`/jobs/${job.jobId}`} className="card block p-4 transition hover:-translate-y-0.5 hover:border-forest/20 hover:shadow-lg">
+  return <Link href={`/jobs/${job.jobId}`} className="card block p-4 transition duration-150 hover:-translate-y-0.5 hover:border-forest/25 hover:shadow-lg focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-forest/10">
     <div className="mb-3 flex items-start justify-between gap-3">
       <div><div className="mb-1 flex items-center gap-2"><span className="text-xs font-extrabold tracking-wide text-forest">{job.jobId}</span><span className="text-black/20">•</span><span className="text-xs font-bold text-black/45">{job.source}</span></div><h3 className="text-lg font-extrabold leading-tight">{job.customerName}</h3></div>
       <StatusBadge status={job.status} />
     </div>
     <p className="mb-3 line-clamp-2 text-sm leading-relaxed text-black/55">{job.jobType} — {job.scopeNotes}</p>
     {flags.length > 0 && <div className="mb-3 flex flex-wrap gap-2">
-      {flags.map((flag) => <span key={flag.label} className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-black ${flag.className}`}>{flag.icon}{flag.label}</span>)}
+      {flags.map((flag) => <span key={flag.label} className={`inline-flex items-center gap-1 rounded-full border border-current/10 px-2.5 py-1 text-[11px] font-black ${flag.className}`}>{flag.icon}{flag.label}</span>)}
     </div>}
     <div className="grid grid-cols-2 gap-x-3 gap-y-2 border-t border-black/5 pt-3 text-xs font-semibold text-black/50">
       <span className="flex items-center gap-1.5"><MapPinIcon className="size-4 text-forest" />{job.city}</span>

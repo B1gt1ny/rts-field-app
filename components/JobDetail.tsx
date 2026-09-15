@@ -157,14 +157,14 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
     });
   }
   return <>
-    <div className="mb-5 flex items-start justify-between gap-3">
+    <div className="mb-6 flex items-start justify-between gap-3">
       <div>
-        <p className="mb-1 text-sm font-extrabold uppercase tracking-widest text-forest">{job.jobId} · {job.source}</p>
+        <p className="eyebrow mb-2">{job.jobId} · {job.source}</p>
         <h1 className="text-3xl font-black tracking-tight">{job.customerName}</h1>
         <div className="mt-2 flex flex-wrap items-center gap-2"><StatusBadge status={job.status} />{hasActiveCorrections(job) && <NeedsCorrectionBadge />}<PriorityBadge priority={job.priority} /></div>
         <div className="mt-3 flex flex-wrap gap-2 text-xs font-black text-black/45">
-          <span className="rounded-full bg-sand px-3 py-1">{formatJobDate(job.dueDate)}</span>
-          <span className="rounded-full bg-sand px-3 py-1">{job.assignedCrew || "Unassigned"}</span>
+          <span className="rounded-full border border-black/[.06] bg-sand/80 px-3 py-1">{formatJobDate(job.dueDate)}</span>
+          <span className="rounded-full border border-black/[.06] bg-sand/80 px-3 py-1">{job.assignedCrew || "Unassigned"}</span>
         </div>
       </div>
       {canManageJob && <div className="flex gap-2 print:hidden">
@@ -192,7 +192,7 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
       <WorkspaceSection id="photos" title="Photos" summary={`${photoTotal(job)} saved`} openSection={openSection} setOpenSection={setOpenSection}>
         <PhotoUploadPanel job={job} saving={saving} onSave={saveJobPatch} />
         {canManageJob && <details id="companycam" className="scroll-mt-24">
-          <summary className="cursor-pointer rounded-xl border border-black/10 bg-white px-4 py-3 text-lg font-black">More actions / CompanyCam fallback</summary>
+          <summary className="cursor-pointer rounded-xl border border-black/10 bg-white px-4 py-3 text-lg font-black shadow-sm">More actions / CompanyCam fallback</summary>
           <div className="mt-4">
             <CompanyCamPanel job={job} status={companyCam} setStatus={setCompanyCam} onJobSynced={setJob} />
           </div>
@@ -357,12 +357,12 @@ function correctionHref(category: CorrectionCategory) {
 function WorkspaceSection({ id, title, summary, openSection, setOpenSection, children }: { id: WorkspaceSectionId; title: string; summary: string; openSection: WorkspaceSectionId; setOpenSection: (section: WorkspaceSectionId) => void; children: React.ReactNode }) {
   const open = openSection === id;
   return <section id={`${id}-workspace`} className="scroll-mt-24">
-    <button type="button" onClick={() => setOpenSection(id)} className={`flex min-h-16 w-full items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left ${open ? "border-forest/20 bg-forest/5" : "border-black/10 bg-white"}`}>
+    <button type="button" onClick={() => setOpenSection(id)} className={`flex min-h-16 w-full items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left shadow-sm transition duration-150 hover:-translate-y-px ${open ? "border-forest/20 bg-forest/5 shadow-forest/5" : "border-black/10 bg-white hover:border-black/20"}`}>
       <span>
         <span className="block text-lg font-black">{title}</span>
         <span className="mt-0.5 block text-xs font-bold text-black/45">{summary}</span>
       </span>
-      <span className={`rounded-full px-3 py-1 text-xs font-black uppercase tracking-wide ${open ? "bg-forest text-white" : "bg-sand text-black/45"}`}>{open ? "Open" : "View"}</span>
+      <span className={`rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-wide ${open ? "bg-forest text-white" : "bg-sand/90 text-black/45"}`}>{open ? "Open" : "View"}</span>
     </button>
     {open && <div className="mt-3 space-y-5">{children}</div>}
   </section>;
