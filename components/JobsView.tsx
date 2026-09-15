@@ -100,13 +100,13 @@ export function JobsView({ title, description, preset = {} }: { title: string; d
         <h2 className="mt-1 text-2xl font-black">Find the job that needs you next</h2>
         <p className="mt-1 text-sm text-white/55">One-tap manager filters for overdue work, unscheduled jobs, parts, follow-ups, billing, and high priority work.</p>
       </div>
-      <div className="grid grid-cols-2 gap-2 bg-white/70 p-3 sm:grid-cols-3 lg:grid-cols-6">
-        <QuickFilterButton label="Overdue" value="overdue" count={counts.overdue} active={quickFilter === "overdue"} onClick={setQuickFilter} icon={<ExclamationTriangleIcon />} />
-        <QuickFilterButton label="Unscheduled" value="unscheduled" count={counts.unscheduled} active={quickFilter === "unscheduled"} onClick={setQuickFilter} icon={<CalendarDaysIcon />} />
-        <QuickFilterButton label="Parts" value="parts" count={counts.parts} active={quickFilter === "parts"} onClick={setQuickFilter} icon={<WrenchScrewdriverIcon />} />
-        <QuickFilterButton label="Follow-up" value="follow-up" count={counts.followUp} active={quickFilter === "follow-up"} onClick={setQuickFilter} icon={<BellAlertIcon />} />
-        <QuickFilterButton label="Billing" value="billing" count={counts.billing} active={quickFilter === "billing"} onClick={setQuickFilter} icon={<BanknotesIcon />} />
-        <QuickFilterButton label="High priority" value="priority" count={counts.priority} active={quickFilter === "priority"} onClick={setQuickFilter} icon={<ExclamationTriangleIcon />} />
+      <div className="flex gap-2 overflow-x-auto bg-white/70 p-3" role="tablist" aria-label="Job command filters">
+        <QuickFilterTab label="Overdue" value="overdue" count={counts.overdue} active={quickFilter === "overdue"} onClick={setQuickFilter} icon={<ExclamationTriangleIcon />} />
+        <QuickFilterTab label="Unscheduled" value="unscheduled" count={counts.unscheduled} active={quickFilter === "unscheduled"} onClick={setQuickFilter} icon={<CalendarDaysIcon />} />
+        <QuickFilterTab label="Parts" value="parts" count={counts.parts} active={quickFilter === "parts"} onClick={setQuickFilter} icon={<WrenchScrewdriverIcon />} />
+        <QuickFilterTab label="Follow-up" value="follow-up" count={counts.followUp} active={quickFilter === "follow-up"} onClick={setQuickFilter} icon={<BellAlertIcon />} />
+        <QuickFilterTab label="Billing" value="billing" count={counts.billing} active={quickFilter === "billing"} onClick={setQuickFilter} icon={<BanknotesIcon />} />
+        <QuickFilterTab label="High priority" value="priority" count={counts.priority} active={quickFilter === "priority"} onClick={setQuickFilter} icon={<ExclamationTriangleIcon />} />
       </div>
     </section>
     <section className="card mb-5 overflow-hidden">
@@ -155,11 +155,9 @@ export function JobsView({ title, description, preset = {} }: { title: string; d
   </>;
 }
 
-function QuickFilterButton({ label, value, count, active, onClick, icon }: { label: string; value: QuickFilter; count: number; active: boolean; onClick: (value: QuickFilter) => void; icon: React.ReactNode }) {
-  return <button type="button" onClick={() => onClick(active ? "" : value)} className={`min-h-24 rounded-2xl border p-3 text-left shadow-sm transition duration-150 hover:-translate-y-px active:translate-y-0 active:scale-[.98] ${active ? "border-forest bg-forest text-white shadow-forest/15" : "border-black/10 bg-sand/70 text-ink hover:border-forest/20 hover:bg-white"}`}>
-    <div className={`mb-2 grid size-9 place-items-center rounded-xl ${active ? "bg-white/15" : "bg-white text-forest"} [&>svg]:size-5`}>{icon}</div>
-    <p className="text-2xl font-black">{count}</p>
-    <p className={`text-xs font-black uppercase tracking-wide ${active ? "text-white/70" : "text-black/45"}`}>{label}</p>
+function QuickFilterTab({ label, value, count, active, onClick, icon }: { label: string; value: QuickFilter; count: number; active: boolean; onClick: (value: QuickFilter) => void; icon: React.ReactNode }) {
+  return <button type="button" role="tab" aria-selected={active} onClick={() => onClick(active ? "" : value)} className={`inline-flex min-h-12 shrink-0 items-center gap-2 rounded-xl border px-3 text-sm font-black transition active:scale-[.98] ${active ? "border-forest bg-forest text-white shadow-forest/15" : "border-black/10 bg-sand/70 text-ink hover:border-forest/20 hover:bg-white"}`}>
+    <span className={`grid size-7 place-items-center rounded-lg ${active ? "bg-white/15" : "bg-white text-forest"} [&>svg]:size-4`}>{icon}</span><span>{label}</span><span className={`rounded-full px-2 py-0.5 text-xs ${active ? "bg-white/15" : "bg-black/5 text-black/50"}`}>{count}</span>
   </button>;
 }
 
