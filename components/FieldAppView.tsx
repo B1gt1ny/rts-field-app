@@ -510,7 +510,7 @@ function CurrentJobPanel({ job, employeeName, today, saving, permissions, onStar
     </div>
     <div className="space-y-3 p-4">
       <CurrentJobInfo job={job} />
-      {job.phone && <p className="rounded-xl bg-blue-50 p-3 text-sm font-black text-blue-900">Contact customer with ETA before arrival</p>}
+      {job.phone && <p className="attention-tile rounded-xl border p-3 text-sm font-black text-black">Contact customer with ETA before arrival</p>}
       <FieldWorkflowGuide />
       {action.kind === "arrive"
         ? <button type="button" disabled={saving} onClick={() => onArrive(job)} className="btn-primary block w-full">{saving ? "Saving..." : action.label}</button>
