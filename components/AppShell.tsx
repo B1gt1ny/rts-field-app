@@ -14,8 +14,7 @@ const adminPrimaryNavigation = [
 ];
 const employeeNavigation = [
   { href: "/today-command", label: "Today", icon: BellAlertIcon },
-  { href: "/field", label: "Field", icon: UserCircleIcon },
-  { href: "/jobs", label: "Jobs", icon: BriefcaseIcon },
+  { href: "/field", label: "My Work", icon: UserCircleIcon },
   { href: "/schedule", label: "Schedule", icon: CalendarDaysIcon },
   { href: "/account", label: "Account", icon: UserCircleIcon },
 ];

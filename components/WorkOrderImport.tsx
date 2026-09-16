@@ -46,8 +46,8 @@ export function WorkOrderImport() {
   const review = useMemo(() => reviewDraft(draft, Boolean(file || workOrderText.trim())), [draft, file, workOrderText]);
 
   useEffect(() => {
-    fetch("/api/settings/status")
-      .then((response) => response.json())
+    authFetch("/api/settings/status")
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error("Status unavailable")))
       .then((status) => setExtractionReady(Boolean(status.integrations?.openAiExtraction)))
       .catch(() => setExtractionReady(false));
   }, []);

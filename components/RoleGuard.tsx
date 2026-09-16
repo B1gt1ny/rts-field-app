@@ -13,7 +13,7 @@ export function RoleGuard({ allowed, children }: { allowed: UserRole[]; children
       <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-orange-100 text-orange-800"><ShieldExclamationIcon className="size-8" /></span>
       <h1 className="mt-4 text-2xl font-black">Access denied</h1>
       <p className="mt-2 text-sm text-black/50">Your current role is {user.role}. This area is for {allowed.join(" or ")} users.</p>
-      <Link href={user.role === "Employee" ? "/field" : "/"} className="btn-primary mt-5">Go Back</Link>
+      <Link href={user.role === "Employee" ? "/today-command" : "/"} className="btn-primary mt-5">Go Back</Link>
     </section>
   </div>;
 }

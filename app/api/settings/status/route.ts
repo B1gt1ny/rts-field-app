@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
-import { isAuthConfigured, isDatabaseConfigured } from "@/lib/auth";
+import { isAuthConfigured, isDatabaseConfigured, requireRole } from "@/lib/auth";
 import { isCompanyCamConfigured } from "@/lib/integrations/companycam";
 import { googleCalendarConnectionStatus } from "@/lib/integrations/google-calendar";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const access = await requireRole(request, ["Admin", "Manager"]);
+  if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
   const storageBucket = process.env.SUPABASE_STORAGE_BUCKET || "job-files";
   const googleCalendar = await googleCalendarConnectionStatus();
   return NextResponse.json({

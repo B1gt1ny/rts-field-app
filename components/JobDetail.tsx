@@ -1739,8 +1739,8 @@ function FactoryCostTrackerPanel({ job, saving, onSave }: { job: Job; saving: bo
   useEffect(() => {
     if (job.source !== "Factory" || hasSavedCostWork) return;
     let active = true;
-    fetch("/api/settings")
-      .then((response) => response.json())
+    authFetch("/api/settings")
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error("Settings unavailable")))
       .then((settings: Partial<BusinessSettings>) => {
         if (active && settings.factoryCostDefaults) setDraft((old) => ({ ...old, ...settings.factoryCostDefaults }));
       })

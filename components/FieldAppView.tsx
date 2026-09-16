@@ -74,7 +74,7 @@ export function FieldAppView() {
     Promise.all([
       authFetch("/api/jobs").then((response) => response.json()),
       fetch("/api/employees").then((response) => response.json()),
-      fetch("/api/settings").then((response) => response.json()).catch(() => null),
+      authFetch("/api/settings").then((response) => response.ok ? response.json() : null).catch(() => null),
     ]).then(([jobData, employeeData, settings]) => {
       setJobs(Array.isArray(jobData) ? jobData : []);
       const businessSettings = settings as Partial<BusinessSettings> | null;
@@ -87,10 +87,10 @@ export function FieldAppView() {
         mileageRate: businessSettings?.factoryCostDefaults?.mileageRate || "0.85",
         hourlyRate: businessSettings?.factoryCostDefaults?.hourlyRate || "20",
       });
-      setRequireBeforePhotosForReview(false);
-      setRequireSerialTagPhotoForReview(false);
-      setRequireDamagePhotosForReview(false);
-      setRequireAfterPhotosForReview(false);
+      setRequireBeforePhotosForReview(businessSettings?.requireBeforePhotosForReview ?? false);
+      setRequireSerialTagPhotoForReview(businessSettings?.requireSerialTagPhotoForReview ?? false);
+      setRequireDamagePhotosForReview(businessSettings?.requireDamagePhotosForReview ?? false);
+      setRequireAfterPhotosForReview(businessSettings?.requireAfterPhotosForReview ?? false);
       setRequireCompletionNotesForReview(businessSettings?.requireCompletionNotesForReview ?? true);
       setRequireWorkCompleteForReview(businessSettings?.requireWorkCompleteForReview ?? true);
       setRequirePartsClosedForReview(false);

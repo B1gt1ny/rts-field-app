@@ -123,7 +123,7 @@ export function SettingsPanel() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/settings/status").then((response) => response.json()).then((data) => {
+    authFetch("/api/settings/status").then((response) => response.ok ? response.json() : Promise.reject(new Error("Status unavailable"))).then((data) => {
       setIntegrations(data.integrations || {});
       setPlatform(data.platform || {});
       setSetupStatus(data.setup || {});
@@ -133,8 +133,8 @@ export function SettingsPanel() {
       setSetupStatus({});
     });
     Promise.all([
-      fetch("/api/settings").then((response) => response.json()),
-      fetch("/api/merch-requests").then((response) => response.json()),
+      authFetch("/api/settings").then((response) => response.ok ? response.json() : Promise.reject(new Error("Settings unavailable"))),
+      authFetch("/api/merch-requests").then((response) => response.ok ? response.json() : Promise.reject(new Error("Merchandise requests unavailable"))),
       fetch("/api/employees").then((response) => response.json()).catch(() => []),
     ]).then(([settings, merchRequests, employeeData]) => {
       setCompany({ ...defaultCompany, ...settings });

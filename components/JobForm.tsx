@@ -45,7 +45,7 @@ export function JobForm({ initialJob }: { initialJob?: Job }) {
     } catch { setImportPreview(null); setImportFile(null); }
   }, [initialJob]);
   useEffect(() => {
-    fetch("/api/settings").then((response) => response.json()).then((settings: BusinessSettings) => setOptions({
+    authFetch("/api/settings").then((response) => response.ok ? response.json() : Promise.reject(new Error("Settings unavailable"))).then((settings: BusinessSettings) => setOptions({
       jobTypeOptions: settings.jobTypeOptions?.length ? settings.jobTypeOptions : defaultOptions.jobTypeOptions,
       statusOptions: settings.statusOptions?.length ? settings.statusOptions : defaultOptions.statusOptions,
       priorityOptions: settings.priorityOptions?.length ? settings.priorityOptions : defaultOptions.priorityOptions,

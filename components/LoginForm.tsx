@@ -15,19 +15,24 @@ export function LoginForm() {
     event.preventDefault();
     setLoading(true);
     setMessage("");
-    const response = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ email, password }),
-    });
-    const result = await response.json();
-    if (!response.ok) {
-      setMessage(result.error || "Login failed.");
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email, password }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setMessage(result.error || "Login failed. Please try again.");
+        return;
+      }
+      router.replace(result.user?.role === "Employee" ? "/today-command" : "/");
+    } catch {
+      setMessage("Connection problem. Check your signal and try again.");
+    } finally {
       setLoading(false);
-      return;
     }
-    router.replace(result.user?.role === "Employee" ? "/field" : "/");
   }
 
   return <div className="grid min-h-screen place-items-center bg-sand p-4">
