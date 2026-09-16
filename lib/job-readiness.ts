@@ -39,16 +39,11 @@ function readinessEvidence(job: Job) {
   const jobComplete = ["Complete", "Billed", "Paid"].includes(job.status);
   const fieldWorkComplete = ["Needs Inspection", "Complete", "Billed", "Paid"].includes(job.status);
   const completionNotes = Boolean(job.completionNotes?.trim());
-  const afterPhotoCount = (job.afterPhotos || []).length;
-  const serialPhotoCount = (job.serialTagPhotos || []).length;
-  const beforePhotosTaken = (job.beforePhotos || []).length > 0;
   const partsOpen = hasOpenParts(job);
   return {
     closeout: [
       { label: "Job complete", ok: jobComplete, detail: job.status },
       { label: "Completion notes", ok: completionNotes, detail: completionNotes ? "Added" : "Missing" },
-      { label: "After photos", ok: afterPhotoCount > 0, detail: `${afterPhotoCount} uploaded` },
-      { label: "Serial/VIN photo", ok: serialPhotoCount > 0, detail: `${serialPhotoCount} uploaded` },
       { label: "Paperwork", ok: paperworkReady, detail: paperworkReady ? "Collected or attached" : "Missing" },
       { label: "Completion sign-off", ok: completionSignoff, detail: completionSignoff ? "Signed" : "Missing" },
       { label: "Parts (optional)", ok: true, detail: partsOpen ? `${openParts(job).length || 1} still open — does not block billing` : "No open parts" },
@@ -58,10 +53,7 @@ function readinessEvidence(job: Job) {
     checklist: {
       "Work order": paperworkReady,
       "Paperwork picked up": paperworkReady,
-      "Before photos taken": beforePhotosTaken,
-      "Serial/VIN tag photo taken": serialPhotoCount > 0,
       "Work completed": fieldWorkComplete,
-      "After photos taken": afterPhotoCount > 0,
       "Completion notes added": completionNotes,
       "Customer/source notified": sourceNotified,
       "Invoice created": invoiceCreated,
@@ -81,7 +73,7 @@ export function readinessScore(job: Job) {
 
 export function checklistProgress(job: Job) {
   const { checklist } = readinessEvidence(job);
-  const items = (job.checklist || []).map((item) => ({
+  const items = (job.checklist || []).filter((item) => !["Before photos taken", "Serial/VIN tag photo taken", "After photos taken"].includes(item.label)).map((item) => ({
     ...item,
     label: item.label === "Paperwork picked up" ? "Work order" : item.label === "Materials checked" ? "Parts picked up" : item.label,
     optional: ["Materials checked", "Parts picked up"].includes(item.label),
@@ -114,7 +106,7 @@ export function correctionCategoryComplete(job: Job, category: CorrectionCategor
     const uploadedAt = Date.parse(file.uploadedAt);
     return Number.isFinite(uploadedAt) && uploadedAt > requestedAt;
   };
-  if (category === "Photos") return (job.workOrderFiles || []).some((file) => file.category === "After" && uploadedAfterRequest(file));
+  if (category === "Photos") return (job.workOrderFiles || []).some((file) => (file.fileType.startsWith("image/") || file.fileType.startsWith("video/")) && uploadedAfterRequest(file));
   if (category === "Paperwork") return (job.workOrderFiles || []).some((file) => ["Work Order", "Paperwork", "Signed Document"].includes(file.category || "") && uploadedAfterRequest(file));
   if (category === "Checklist") return (job.checklist || []).filter((item) => !/invoice created|materials checked|parts picked up/i.test(item.label)).every((item) => item.complete);
   if (category === "Notes") return Boolean(job.completionNotes?.trim());
@@ -160,7 +152,7 @@ export function correctionResolutionPatch(current: Job, next: Job): Partial<Job>
 }
 
 export function billingBlockers(job: Job) {
-  const closeoutBlockers = closeoutChecks(job).filter((check) => !check.ok && ["Job complete", "Completion notes", "After photos", "Paperwork", "Completion sign-off"].includes(check.label));
+  const closeoutBlockers = closeoutChecks(job).filter((check) => !check.ok && ["Job complete", "Completion notes", "Paperwork", "Completion sign-off"].includes(check.label));
   return [...closeoutBlockers, ...billingEvidenceChecks(job).filter((check) => !check.ok)];
 }
 
