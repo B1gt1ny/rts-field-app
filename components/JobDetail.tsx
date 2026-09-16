@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ArrowPathIcon, ArrowTopRightOnSquareIcon, BanknotesIcon, CalendarDaysIcon, CameraIcon, ChatBubbleLeftRightIcon, CheckCircleIcon, CheckIcon, ClipboardDocumentListIcon, ClockIcon, MapPinIcon, PencilSquareIcon, PhoneIcon, PrinterIcon, ReceiptPercentIcon, ShareIcon, UserGroupIcon, WrenchScrewdriverIcon } from "@heroicons/react/24/outline";
+import { ArrowPathIcon, ArrowTopRightOnSquareIcon, BanknotesIcon, CalendarDaysIcon, CameraIcon, ChatBubbleLeftRightIcon, CheckCircleIcon, CheckIcon, ClipboardDocumentListIcon, ClockIcon, MapPinIcon, PencilSquareIcon, PhoneIcon, PrinterIcon, ReceiptPercentIcon, ShareIcon, TrashIcon, UserGroupIcon, WrenchScrewdriverIcon } from "@heroicons/react/24/outline";
 import { defaultFactoryCost, makeChecklist, type BusinessSettings, type CustomerSurvey, type FactoryCostTracker, type FileCategory, type Job, type JobActivity, type PaperworkItem, type PartItem, type ReceiptItem, type SignoffItem, type TimeEntry, type WorkOrderFile } from "@/lib/types";
 import { PriorityBadge, StatusBadge } from "./StatusBadge";
 import { authFetch } from "@/lib/client-auth";
@@ -22,7 +22,7 @@ type CompanyCamState = {
   error?: string;
 };
 
-type WorkspaceSectionId = "overview" | "checklist" | "photos" | "parts" | "documents" | "notes" | "time" | "closeout" | "history";
+type WorkspaceSectionId = "overview" | "checklist" | "photos" | "parts" | "documents" | "notes" | "closeout" | "history";
 type FactoryCostSectionId = "travel" | "labor" | "expenses" | "notes" | "total";
 
 export function JobDetail({ initialJob }: { initialJob: Job }) {
@@ -160,11 +160,10 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
   const workspaceTabs: Array<{ id: WorkspaceSectionId; title: string; summary: string }> = [
     { id: "overview", title: "Overview", summary: `${job.jobId} · ${job.status}` },
     { id: "checklist", title: "Checklist", summary: `${complete}/${checklist.total}` },
-    { id: "photos", title: "Photos", summary: `${photoTotal(job)} saved` },
+    { id: "photos", title: "Photos", summary: `${groupJobPhotos(job).length} saved` },
     { id: "parts", title: "Parts", summary: `${job.partsItems?.length || 0} tracked` },
     { id: "documents", title: "Documents", summary: `${(job.workOrderFiles || []).length + (job.receipts || []).length} files` },
     { id: "notes", title: "Notes", summary: `${job.activityLog?.length || 0} updates` },
-    { id: "time", title: "Time", summary: `${job.timeEntries?.length || 0} entries` },
     { id: "closeout", title: "Closeout", summary: `${readinessScore(job)}% ready` },
     { id: "history", title: "History", summary: `${job.activityLog?.length || 0} records` },
   ];
@@ -186,8 +185,6 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
       </div>}
     </div>
     <JobWorkflowGuide job={job} canManageJob={canManageJob} />
-    <WorkSessionPanel job={job} saving={saving} canStart={!canManageJob} onStart={startWorkSession} />
-    {canManageJob && <ManagerOperationalSummary job={job} />}
     <CorrectionSummary job={job} />
     {detailMessage && <p role="alert" className="mb-5 rounded-xl border border-red-200 bg-red-50 p-4 font-bold text-red-700">{detailMessage}</p>}
     <section className="card overflow-hidden">
@@ -203,7 +200,7 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
       <WorkspaceSection id="checklist" title="Checklist" summary={`${complete} of ${checklist.total} complete`} openSection={openSection} setOpenSection={setOpenSection}>
         <ChecklistPanel job={job} saving={saving} complete={complete} percent={checklistPercent} onToggle={toggle} />
       </WorkspaceSection>
-      <WorkspaceSection id="photos" title="Photos" summary={`${photoTotal(job)} saved`} openSection={openSection} setOpenSection={setOpenSection}>
+      <WorkspaceSection id="photos" title="Photos" summary={`${groupJobPhotos(job).length} saved`} openSection={openSection} setOpenSection={setOpenSection}>
         <PhotoUploadPanel job={job} saving={saving} onSave={saveJobPatch} />
         {canManageJob && <details id="companycam" className="scroll-mt-24">
           <summary className="cursor-pointer rounded-xl border border-black/10 bg-white px-4 py-3 text-lg font-black shadow-sm">More actions / CompanyCam fallback</summary>
@@ -225,17 +222,14 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
         <OfflineDraftPanel job={job} saving={saving} onSave={saveJobPatch} />
         {job.completionNotes && <section className="card p-4 sm:p-6"><h2 className="mb-2 text-lg font-black">Completion notes</h2><p className="text-black/65">{job.completionNotes}</p></section>}
       </WorkspaceSection>
-      <WorkspaceSection id="time" title="Time" summary={`${job.timeEntries?.length || 0} entries`} openSection={openSection} setOpenSection={setOpenSection}>
-        <TimeLogPanel job={job} saving={saving} onSave={saveJobPatch} />
-        <FactoryCostTrackerPanel job={job} saving={saving} onSave={saveJobPatch} />
-      </WorkspaceSection>
       <WorkspaceSection id="closeout" title="Closeout" summary={`${readinessScore(job)}% billing ready`} openSection={openSection} setOpenSection={setOpenSection}>
         <GuidedCloseoutPanel job={job} canManageJob={canManageJob} />
         {canManageJob && <CloseoutQualityPanel job={job} />}
         {canManageJob && <ManagerCorrectionPanel job={job} saving={saving} onSave={saveJobPatch} />}
-        <CompleteJobFlow job={job} saving={saving} canManageJob={canManageJob} onFinishWork={finishWorkSession} onSave={saveJobPatch} />
+        <CompleteJobFlow job={job} saving={saving} canManageJob={canManageJob} onSave={saveJobPatch} />
         <SignoffPanel job={job} saving={saving} onSave={saveJobPatch} />
         <CustomerSurveyPanel job={job} saving={saving} onSave={saveJobPatch} />
+        {job.source === "Factory" && <FactoryCostTrackerPanel job={job} saving={saving} onSave={saveJobPatch} />}
         {canManageJob && <BillingHandoffPanel job={job} saving={saving} onSave={saveJobPatch} />}
       </WorkspaceSection>
       <WorkspaceSection id="history" title="History" summary={`${job.activityLog?.length || 0} records`} openSection={openSection} setOpenSection={setOpenSection}>
@@ -253,7 +247,7 @@ function sectionForAnchor(anchor: string): WorkspaceSectionId | undefined {
   if (["parts", "parts-needed"].includes(anchor)) return "parts";
   if (["documents", "paperwork", "receipts"].includes(anchor)) return "documents";
   if (["notes", "operations", "communication-handoff", "additional-issue"].includes(anchor)) return "notes";
-  if (["time", "time-log", "factory-costs"].includes(anchor)) return "time";
+  if (["time", "time-log", "factory-costs"].includes(anchor)) return "closeout";
   if (["closeout", "complete-job", "signoffs", "customer-survey", "billing-handoff"].includes(anchor)) return "closeout";
   if (anchor === "history") return "history";
   return undefined;
@@ -997,12 +991,11 @@ function AdditionalIssuePanel({ job, saving, onSave }: { job: Job; saving: boole
 }
 
 type PhotoBucket = "beforePhotos" | "damagePhotos" | "serialTagPhotos" | "afterPhotos";
-type NativePhotoCategory = Extract<FileCategory, "Before" | "Progress" | "After" | "Damage" | "Serial / Tags" | "Parts" | "Paperwork" | "Receipt">;
 type PhotoGalleryItem = {
   id: string;
-  category: NativePhotoCategory;
   url: string;
   fileName: string;
+  fileType?: string;
   fileSize?: number;
   uploadedAt?: string;
   caption?: string;
@@ -1010,7 +1003,7 @@ type PhotoGalleryItem = {
   source: "file" | "legacy";
 };
 
-const photoCategories: { category: NativePhotoCategory; label: string; help: string; legacyBucket?: PhotoBucket }[] = [
+const photoCategories: { category: FileCategory; label: string; help: string; legacyBucket?: PhotoBucket }[] = [
   { category: "Before", label: "Before", help: "Start-of-job proof", legacyBucket: "beforePhotos" },
   { category: "Progress", label: "Progress", help: "Work in progress" },
   { category: "After", label: "After", help: "Completion proof", legacyBucket: "afterPhotos" },
@@ -1022,30 +1015,23 @@ const photoCategories: { category: NativePhotoCategory; label: string; help: str
 ];
 
 function PhotoUploadPanel({ job, saving, onSave }: { job: Job; saving: boolean; onSave: (patch: Partial<Job>) => Promise<Job | undefined> }) {
-  const [selectedCategory, setSelectedCategory] = useState<NativePhotoCategory>("Before");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [caption, setCaption] = useState("");
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState("");
   const [message, setMessage] = useState("");
   const gallery = groupJobPhotos(job);
-  const proofChecks = [
-    { label: "Before photos", complete: (job.beforePhotos || []).length > 0, detail: `${(job.beforePhotos || []).length} uploaded` },
-    { label: "Serial/VIN tag", complete: (job.serialTagPhotos || []).length > 0, detail: `${(job.serialTagPhotos || []).length} uploaded` },
-    { label: "After photos", complete: (job.afterPhotos || []).length > 0, detail: `${(job.afterPhotos || []).length} uploaded` },
-    { label: "Damage photos", complete: (job.damagePhotos || []).length > 0 || !/damage|repair|warranty/i.test(`${job.jobType} ${job.scopeNotes}`), detail: `${(job.damagePhotos || []).length} uploaded` },
-  ];
-  const proofReady = proofChecks.filter((check) => check.complete).length;
-  const totalPhotos = photoTotal(job);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [editingId, setEditingId] = useState("");
 
   function chooseFiles(files: FileList | null) {
-    setSelectedFiles(Array.from(files || []).filter((file) => file.type.startsWith("image/")));
+    setSelectedFiles(Array.from(files || []).filter((file) => file.type.startsWith("image/") || file.type.startsWith("video/")));
     setMessage("");
   }
 
   async function uploadSelectedPhotos() {
     if (!selectedFiles.length) {
-      setMessage("Choose at least one photo first.");
+      setMessage("Choose at least one photo or video first.");
       return;
     }
     setUploading(true);
@@ -1055,36 +1041,22 @@ function PhotoUploadPanel({ job, saving, onSave }: { job: Job; saving: boolean; 
       for (let index = 0; index < selectedFiles.length; index += 1) {
         setUploadProgress(`Uploading ${index + 1} of ${selectedFiles.length}`);
         const prepared = await preparePhotoForUpload(selectedFiles[index]);
-        uploaded.push(await uploadStoredFile(prepared, job.jobId, selectedCategory, caption.trim()));
+        uploaded.push(await uploadStoredFile(prepared, job.jobId, "Other", caption.trim()));
       }
       const patch: Partial<Job> = {
         workOrderFiles: [...uploaded, ...(job.workOrderFiles || [])],
-        activityLog: addJobActivity(job, `${uploaded.length} ${uploaded.length === 1 ? "photo" : "photos"} uploaded to ${selectedCategory}.`, "Note"),
+        activityLog: addJobActivity(job, `${uploaded.length} job media item${uploaded.length === 1 ? "" : "s"} uploaded.`, "Note"),
       };
-      const legacyBucket = photoCategories.find((item) => item.category === selectedCategory)?.legacyBucket;
-      if (legacyBucket) {
-        const urls = uploaded.map((file) => file.storageUrl || file.dataUrl).filter(Boolean);
-        patch[legacyBucket] = [...(job[legacyBucket] || []), ...urls];
-      }
       await onSave(patch);
       setSelectedFiles([]);
       setCaption("");
-      setMessage(`${uploaded.length} ${uploaded.length === 1 ? "photo" : "photos"} uploaded to ${selectedCategory}.`);
+      setMessage(`${uploaded.length} job media item${uploaded.length === 1 ? "" : "s"} uploaded.`);
     } catch (caught) {
       setMessage(caught instanceof Error ? caught.message : "Photos could not be uploaded.");
     } finally {
       setUploading(false);
       setUploadProgress("");
     }
-  }
-
-  async function copyProofSummary() {
-    const summary = [
-      `${job.jobId} — ${job.customerName}`,
-      `Photo proof: ${proofReady}/${proofChecks.length} ready · ${totalPhotos} total photos`,
-      ...proofChecks.map((check) => `${check.complete ? "READY" : "NEEDED"}: ${check.label} (${check.detail})`),
-    ].filter(Boolean).join("\n");
-    await navigator.clipboard.writeText(summary).then(() => window.alert("Photo proof summary copied."), () => window.alert(summary));
   }
 
   async function updatePhotoCaption(fileId: string, nextCaption: string) {
@@ -1094,86 +1066,58 @@ function PhotoUploadPanel({ job, saving, onSave }: { job: Job; saving: boolean; 
     });
   }
 
+  async function deleteSelected() {
+    const selected = new Set(selectedIds);
+    if (!selected.size) return;
+    await onSave({
+      workOrderFiles: (job.workOrderFiles || []).filter((file) => !selected.has(file.id)),
+      activityLog: addJobActivity(job, `${selected.size} job media item${selected.size === 1 ? "" : "s"} removed from this job.`, "Note"),
+    });
+    setSelectedIds([]);
+  }
+  const jobLink = typeof window === "undefined" ? `/jobs/${job.jobId}#photos` : `${window.location.origin}/jobs/${job.jobId}#photos`;
+
   return <section id="photos" className="card p-4 sm:p-6">
     <div className="mb-4 flex items-start gap-3">
       <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-blue-100 text-blue-800"><CameraIcon className="size-5" /></span>
       <div>
-        <h2 className="text-lg font-black">Photos & documentation</h2>
-        <p className="text-sm text-black/50">Upload from phone camera or photo library. Photos stay on the job profile.</p>
-      </div>
-    </div>
-    <div className="mb-4 overflow-hidden rounded-2xl border border-black/10 bg-white">
-      <div className="flex flex-col gap-3 bg-sand p-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-xs font-black uppercase tracking-wide text-forest">Photo proof checklist</p>
-          <h3 className="mt-1 text-xl font-black">{proofReady}/{proofChecks.length} ready · {totalPhotos} total photos</h3>
-          <p className="mt-1 text-sm font-semibold text-black/45">Before, serial/VIN, and after photos protect closeout and billing.</p>
-        </div>
-        <button type="button" onClick={copyProofSummary} className="min-h-11 rounded-xl border border-black/10 bg-white px-4 py-2 text-sm font-black text-ink">Copy summary</button>
-      </div>
-      <div className="grid gap-2 p-3 sm:grid-cols-4">
-        {proofChecks.map((check) => <div key={check.label} className={`rounded-xl p-3 ${check.complete ? "bg-forest/5" : "bg-orange-50"}`}>
-          <p className={`text-[11px] font-black uppercase tracking-wide ${check.complete ? "text-forest" : "text-orange-800"}`}>{check.complete ? "Ready" : "Needed"}</p>
-          <p className="mt-1 font-black">{check.label}</p>
-          <p className="mt-1 text-xs font-semibold text-black/45">{check.detail}</p>
-        </div>)}
+        <h2 className="text-lg font-black">Job media library</h2>
+        <p className="text-sm text-black/50">Photos and videos stay with this job. Add an optional description; the description and timestamp appear on each item.</p>
       </div>
     </div>
     <div className="rounded-2xl border border-black/10 bg-sand p-3 sm:p-4">
-      <div className="mb-3 grid gap-2 sm:grid-cols-3">
-        <button type="button" disabled={saving || uploading} onClick={() => setSelectedCategory("Before")} className={`min-h-16 rounded-xl p-3 text-left disabled:opacity-50 ${selectedCategory === "Before" ? "bg-forest text-white" : "bg-white text-ink"}`}>
-          <p className="text-xs font-black uppercase tracking-wide opacity-70">1. Before</p>
-          <p className="mt-1 text-sm font-black">Start photos + serial/VIN</p>
-        </button>
-        <button type="button" disabled={saving || uploading} onClick={() => setSelectedCategory("Progress")} className={`min-h-16 rounded-xl p-3 text-left disabled:opacity-50 ${selectedCategory === "Progress" ? "bg-forest text-white" : "bg-white text-ink"}`}>
-          <p className="text-xs font-black uppercase tracking-wide opacity-70">2. During</p>
-          <p className="mt-1 text-sm font-black">Progress; use Damage if needed</p>
-        </button>
-        <button type="button" disabled={saving || uploading} onClick={() => setSelectedCategory("After")} className={`min-h-16 rounded-xl p-3 text-left disabled:opacity-50 ${selectedCategory === "After" ? "bg-forest text-white" : "bg-white text-ink"}`}>
-          <p className="text-xs font-black uppercase tracking-wide opacity-70">3. Completed</p>
-          <p className="mt-1 text-sm font-black">Finished work, clean area, no debris</p>
-        </button>
-      </div>
-      <div className="grid gap-3 lg:grid-cols-[1fr_1fr]">
-        <label className="block"><span className="label">Category</span><select className="field" value={selectedCategory} disabled={saving || uploading} onChange={(event) => setSelectedCategory(event.target.value as NativePhotoCategory)}>{photoCategories.map((item) => <option key={item.category} value={item.category}>{item.label}</option>)}</select></label>
-        <label className="block"><span className="label">Optional caption</span><input className="field" value={caption} disabled={saving || uploading} onChange={(event) => setCaption(event.target.value)} placeholder="Short note for this upload batch" /></label>
-      </div>
+      <label className="block"><span className="label">Description for selected media (optional)</span><input className="field" value={caption} disabled={saving || uploading} onChange={(event) => setCaption(event.target.value)} placeholder="What does this show?" /></label>
       <div className="mt-3 grid gap-2 sm:grid-cols-3">
         <label className={`flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-xl bg-forest px-4 py-3 text-center font-black text-white ${(saving || uploading) ? "opacity-50" : ""}`}>
           <CameraIcon className="size-5" /> Take Photo
           <input type="file" accept="image/*" capture="environment" className="hidden" disabled={saving || uploading} onChange={(event) => chooseFiles(event.target.files)} />
         </label>
         <label className={`flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-black/10 bg-white px-4 py-3 text-center font-black text-ink ${(saving || uploading) ? "opacity-50" : ""}`}>
-          <CameraIcon className="size-5" /> Upload Photos
-          <input type="file" accept="image/*" multiple className="hidden" disabled={saving || uploading} onChange={(event) => chooseFiles(event.target.files)} />
+          <CameraIcon className="size-5" /> Take Video
+          <input type="file" accept="video/*" capture="environment" className="hidden" disabled={saving || uploading} onChange={(event) => chooseFiles(event.target.files)} />
         </label>
-        <button type="button" disabled={saving || uploading || selectedFiles.length === 0} onClick={uploadSelectedPhotos} className="min-h-14 rounded-xl bg-lime px-4 py-3 font-black text-ink disabled:opacity-50">{uploading ? uploadProgress || "Uploading…" : `Upload ${selectedFiles.length || ""}`.trim()}</button>
+        <label className={`flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-center font-black text-ink ${(saving || uploading) ? "opacity-50" : ""}`}><ArrowTopRightOnSquareIcon className="size-5" /> Upload<input type="file" accept="image/*,video/*" multiple className="hidden" disabled={saving || uploading} onChange={(event) => chooseFiles(event.target.files)} /></label>
       </div>
+      {selectedFiles.length > 0 && <button type="button" disabled={saving || uploading} onClick={uploadSelectedPhotos} className="mt-3 min-h-12 w-full rounded-xl bg-lime px-4 py-3 font-black text-ink disabled:opacity-50">{uploading ? uploadProgress || "Uploading…" : `Save ${selectedFiles.length} selected item${selectedFiles.length === 1 ? "" : "s"}`}</button>}
       <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold text-black/45">
-        <span className="rounded-full bg-white px-3 py-1">{selectedFiles.length ? `${selectedFiles.length} selected` : "No photos selected"}</span>
+        <span className="rounded-full bg-white px-3 py-1">{selectedFiles.length ? `${selectedFiles.length} selected` : "No media selected"}</span>
         <span className="rounded-full bg-white px-3 py-1">Large photos are resized before upload</span>
       </div>
       {message && <p role="status" className="mt-3 rounded-xl bg-white p-3 text-sm font-bold text-forest">{message}</p>}
     </div>
-    <div className="mt-4 grid gap-3 lg:grid-cols-2">
-      {photoCategories.map((bucket) => {
-        const photos = gallery[bucket.category] || [];
-        return <div key={bucket.category} className="rounded-2xl border border-black/10 bg-white p-3">
-          <div className="mb-3 flex items-start justify-between gap-3">
-            <div><p className="font-black">{bucket.label}</p><p className="text-xs font-semibold text-black/45">{bucket.help}</p></div>
-            <span className="rounded-full bg-sand px-2.5 py-1 text-xs font-black text-forest">{photos.length}</span>
-          </div>
-          {photos.length > 0 ? <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{photos.map((photo, index) => <PhotoGalleryTile key={photo.id} photo={photo} label={`${bucket.label} ${index + 1}`} onCaptionSave={updatePhotoCaption} />)}</div> : <p className="rounded-xl bg-sand p-3 text-sm font-semibold text-black/45">No photos yet.</p>}
-        </div>;
-      })}
+    <div className="mt-4 rounded-2xl border border-black/10 bg-white p-3">
+      <div className="mb-3 flex items-center justify-between gap-3"><div><p className="font-black">All job media</p><p className="text-xs font-semibold text-black/45">Select items to edit, remove, or share the job media link.</p></div><span className="rounded-full bg-sand px-2.5 py-1 text-xs font-black text-forest">{gallery.length}</span></div>
+      {selectedIds.length > 0 && <div className="mb-3 grid gap-2 sm:grid-cols-4">{selectedIds.length === 1 && <button type="button" onClick={() => setEditingId(selectedIds[0])} className="min-h-11 rounded-xl bg-white px-3 py-2 text-sm font-black text-ink">Edit description</button>}<button type="button" onClick={deleteSelected} className="min-h-11 rounded-xl bg-red-50 px-3 py-2 text-sm font-black text-red-800"><TrashIcon className="mr-1 inline size-4" />Remove {selectedIds.length}</button><a href={`sms:?&body=${encodeURIComponent(`Job media: ${jobLink}`)}`} className="min-h-11 rounded-xl bg-sand px-3 py-2 text-center text-sm font-black text-ink">Text link</a><a href={`mailto:?subject=${encodeURIComponent(`${job.jobId} job media`)}&body=${encodeURIComponent(`Job media: ${jobLink}`)}`} className="min-h-11 rounded-xl bg-sand px-3 py-2 text-center text-sm font-black text-ink">Email link</a></div>}
+      {gallery.length ? <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">{gallery.map((photo, index) => <PhotoGalleryTile key={photo.id} photo={photo} label={`Job media ${index + 1}`} selected={selectedIds.includes(photo.id)} editRequested={editingId === photo.id} onEditHandled={() => setEditingId("")} onToggle={() => photo.source === "file" && setSelectedIds((old) => old.includes(photo.id) ? old.filter((id) => id !== photo.id) : [...old, photo.id])} onCaptionSave={updatePhotoCaption} />)}</div> : <p className="rounded-xl bg-sand p-3 text-sm font-semibold text-black/45">No job media yet.</p>}
     </div>
   </section>;
 }
 
-function PhotoGalleryTile({ photo, label, onCaptionSave }: { photo: PhotoGalleryItem; label: string; onCaptionSave: (fileId: string, caption: string) => Promise<void> }) {
+function PhotoGalleryTile({ photo, label, selected, editRequested, onEditHandled, onToggle, onCaptionSave }: { photo: PhotoGalleryItem; label: string; selected: boolean; editRequested: boolean; onEditHandled: () => void; onToggle: () => void; onCaptionSave: (fileId: string, caption: string) => Promise<void> }) {
   const [editing, setEditing] = useState(false);
   const [caption, setCaption] = useState(photo.caption || "");
   const [saving, setSaving] = useState(false);
+  useEffect(() => { if (editRequested && photo.source === "file") { setEditing(true); onEditHandled(); } }, [editRequested, onEditHandled, photo.source]);
   async function saveCaption() {
     if (photo.source !== "file") return;
     setSaving(true);
@@ -1181,10 +1125,12 @@ function PhotoGalleryTile({ photo, label, onCaptionSave }: { photo: PhotoGallery
     setSaving(false);
     setEditing(false);
   }
-  return <div className="overflow-hidden rounded-xl border border-black/10 bg-sand">
-    <a href={photo.url} target="_blank" className="block aspect-square bg-white">
-      <img src={photo.url} alt={label} loading="lazy" className="size-full object-cover" />
-    </a>
+  return <div className={`overflow-hidden rounded-xl border bg-sand ${selected ? "border-forest ring-2 ring-forest/30" : "border-black/10"}`}>
+    <div className="relative aspect-square bg-white">
+      {photo.fileType?.startsWith("video/") ? <video src={photo.url} controls className="size-full object-cover" /> : <a href={photo.url} target="_blank" className="block size-full"><img src={photo.url} alt={label} loading="lazy" className="size-full object-cover" /></a>}
+      <button type="button" disabled={photo.source !== "file"} onClick={onToggle} className="absolute left-2 top-2 rounded-lg bg-white/95 px-2 py-1 text-xs font-black text-ink disabled:opacity-40">{selected ? "Selected" : "Select"}</button>
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent px-2 pb-2 pt-8 text-white"><p className="line-clamp-2 text-xs font-black">{photo.caption || "No description"}</p><p className="mt-0.5 text-[10px] font-semibold text-white/75">{photo.uploadedAt ? new Date(photo.uploadedAt).toLocaleString() : "Saved job media"}</p></div>
+    </div>
     <div className="p-2">
       <p className="truncate text-xs font-black">{photo.fileName}</p>
       <p className="mt-0.5 text-[11px] font-semibold text-black/40">{photo.uploadedBy ? `${photo.uploadedBy} · ` : ""}{photo.fileSize ? `${(photo.fileSize / 1024).toFixed(0)} KB` : "Saved photo"}</p>
@@ -1202,22 +1148,19 @@ function PhotoGalleryTile({ photo, label, onCaptionSave }: { photo: PhotoGallery
   </div>;
 }
 
-function groupJobPhotos(job: Job): Record<NativePhotoCategory, PhotoGalleryItem[]> {
-  const groups = photoCategories.reduce((accumulator, item) => {
-    accumulator[item.category] = [];
-    return accumulator;
-  }, {} as Record<NativePhotoCategory, PhotoGalleryItem[]>);
+function groupJobPhotos(job: Job): PhotoGalleryItem[] {
+  const media: PhotoGalleryItem[] = [];
   const seen = new Set<string>();
   for (const file of job.workOrderFiles || []) {
-    if (!isNativePhotoCategory(file.category) || !file.fileType.startsWith("image/")) continue;
+    if (!file.fileType.startsWith("image/") && !file.fileType.startsWith("video/")) continue;
     const url = file.storageUrl || file.dataUrl;
     if (!url) continue;
     seen.add(url);
-    groups[file.category].push({
+    media.push({
       id: file.id,
-      category: file.category,
       url,
       fileName: file.fileName,
+      fileType: file.fileType,
       fileSize: file.fileSize,
       uploadedAt: file.uploadedAt,
       caption: file.caption,
@@ -1229,25 +1172,16 @@ function groupJobPhotos(job: Job): Record<NativePhotoCategory, PhotoGalleryItem[
     if (!bucket.legacyBucket) continue;
     for (const [index, url] of (job[bucket.legacyBucket] || []).entries()) {
       if (!url || seen.has(url)) continue;
-      groups[bucket.category].push({
+      media.push({
         id: `${bucket.legacyBucket}-${index}`,
-        category: bucket.category,
         url,
         fileName: `${bucket.label} photo`,
+        fileType: "image/*",
         source: "legacy",
       });
     }
   }
-  return groups;
-}
-
-function photoTotal(job: Job) {
-  const groups = groupJobPhotos(job);
-  return photoCategories.reduce((total, category) => total + groups[category.category].length, 0);
-}
-
-function isNativePhotoCategory(category: FileCategory | undefined): category is NativePhotoCategory {
-  return Boolean(category && photoCategories.some((item) => item.category === category));
+  return media.sort((a, b) => String(b.uploadedAt || "").localeCompare(String(a.uploadedAt || "")));
 }
 
 async function preparePhotoForUpload(file: File) {
@@ -1280,21 +1214,18 @@ type CloseoutRequirement = {
   blocking: boolean;
 };
 
-function closeoutRequirements(job: Job, stage: CloseoutStage = "current", options: { requireAfterPhotos?: boolean } = {}): CloseoutRequirement[] {
+function closeoutRequirements(job: Job, stage: CloseoutStage = "current"): CloseoutRequirement[] {
   const closeoutDue = isCloseoutDue(job, stage);
   const billingDue = stage === "billing";
   const started = hasStarted(job) || closeoutDue;
   const checklistItems = checklistProgress(job).items;
   const requiredChecklist = checklistItems.filter((item) => !item.optional && !/invoice created/i.test(item.label));
   const checklistComplete = requiredChecklist.every((item) => item.complete);
-  const beforeRequired = requiredChecklist.some((item) => /before photos/i.test(item.label));
-  const afterRequired = options.requireAfterPhotos ?? requiredChecklist.some((item) => /after photos/i.test(item.label));
   const paperwork = job.paperworkItems || defaultPaperwork(job);
   const paperworkReady = hasPaperwork(job, paperwork);
   const completionSignoffItem = paperwork.find((item) => /completion sign-?off/i.test(item.label));
   const signatureRequired = closeoutDue && Boolean(completionSignoffItem && completionSignoffItem.status !== "Not needed");
   const signatureReady = hasCompletionSignoff(job) || ["Collected", "Submitted", "Not needed"].includes(completionSignoffItem?.status || "");
-  const laborTimeEntries = (job.timeEntries || []).filter((entry) => entry.type !== "Note");
   const partsOpen = (job.partsItems || []).filter((part) => ["Needed", "Ordered", "Picked up"].includes(part.status));
   const receiptApplicable = receiptBackupApplies(job);
   const receiptReady = !receiptApplicable || !isReceiptBackupMissing(job);
@@ -1302,11 +1233,8 @@ function closeoutRequirements(job: Job, stage: CloseoutStage = "current", option
 
   return [
     requirement("Work checklist", checklistItems.length === 0 ? "not-required" : checklistComplete ? "complete" : "missing", checklistItems.length === 0 ? "No checklist on this job" : checklistComplete ? "Checklist complete" : `${requiredChecklist.filter((item) => !item.complete).length} checklist item${requiredChecklist.filter((item) => !item.complete).length === 1 ? "" : "s"} open`, "#checklist", stage !== "current" || started),
-    requirement("Before photos", !beforeRequired ? "not-required" : !started ? "not-due" : hasBeforePhotos(job) ? "complete" : "missing", !beforeRequired ? "Not required by this workflow" : !started ? "Not due yet" : hasBeforePhotos(job) ? `${photoCountFor(job, "Before")} saved` : "Before photos missing", "#photos", started),
-    requirement("After photos", !afterRequired ? "not-required" : !closeoutDue ? "not-due" : hasAfterPhotos(job) ? "complete" : "missing", !afterRequired ? "Not required by this workflow" : !closeoutDue ? "Not due yet" : hasAfterPhotos(job) ? `${photoCountFor(job, "After")} saved` : "After photos missing", "#photos", closeoutDue),
     requirement("Paperwork", !closeoutDue ? "not-due" : paperworkReady ? "complete" : "missing", !closeoutDue ? "Not due yet" : paperworkReady ? "Paperwork collected or attached" : "Paperwork or work order missing", "#paperwork", closeoutDue),
     requirement("Customer signature", !signatureRequired ? "not-required" : signatureReady ? "complete" : "missing", !signatureRequired ? "No required sign-off identified" : signatureReady ? "Completion sign-off saved" : "Completion sign-off missing", "#signoffs", signatureRequired),
-    requirement("Time entered", !started ? "not-due" : laborTimeEntries.length > 0 ? "complete" : "missing", !started ? "Not due yet" : laborTimeEntries.length > 0 ? `${laborTimeEntries.length} labor/time entr${laborTimeEntries.length === 1 ? "y" : "ies"}` : "No labor/time entry", "#time-log", started || stage !== "current"),
     requirement("Parts (optional)", partsOpen.length ? "not-required" : (job.partsItems || []).length ? "complete" : "not-required", partsOpen.length ? `${partsOpen.length} open part issue${partsOpen.length === 1 ? "" : "s"} — does not block closeout` : (job.partsItems || []).length ? "No open parts" : "No parts required", "#parts-needed", false),
     requirement("Receipt backup", !receiptApplicable ? "not-required" : receiptReady ? "complete" : "missing", !receiptApplicable ? "No receipt backup needed" : receiptReady ? "Receipt backup attached" : "Receipt dollars need backup", "#receipts", receiptApplicable),
     requirement("Completion notes", !closeoutDue ? "not-due" : job.completionNotes?.trim() ? "complete" : "missing", !closeoutDue ? "Not due yet" : job.completionNotes?.trim() ? "Completion note saved" : "Completion note missing", "#complete-job", closeoutDue),
@@ -1342,18 +1270,6 @@ function hasStarted(job: Job) {
   return ["In Progress", "Waiting on Parts", "Needs Inspection", "Complete", "Billed", "Paid"].includes(job.status) || (job.timeEntries || []).some((entry) => ["Arrived", "Work started"].includes(entry.type));
 }
 
-function photoCountFor(job: Job, category: NativePhotoCategory) {
-  return (groupJobPhotos(job)[category] || []).length;
-}
-
-function hasBeforePhotos(job: Job) {
-  return photoCountFor(job, "Before") > 0;
-}
-
-function hasAfterPhotos(job: Job) {
-  return photoCountFor(job, "After") > 0;
-}
-
 function hasPaperwork(job: Job, paperwork = job.paperworkItems || defaultPaperwork(job)) {
   const paperworkItems = paperwork.filter((item) => !/sign-?off|invoice/i.test(item.label));
   return Boolean(job.paperworkPickedUp || (job.workOrderFiles || []).some((file) => ["Work Order", "Paperwork", "Signed Document"].includes(file.category || "")) || paperworkItems.some((item) => ["Collected", "Submitted", "Not needed"].includes(item.status)));
@@ -1367,30 +1283,20 @@ function receiptBackupApplies(job: Job) {
   return isReceiptBackupMissing(job) || (job.receipts || []).some((receipt) => Boolean(receipt.amount || receipt.file)) || hasFactoryCostWork(job.factoryCost);
 }
 
-function CompleteJobFlow({ job, saving, canManageJob, onFinishWork, onSave }: { job: Job; saving: boolean; canManageJob: boolean; onFinishWork: () => void; onSave: (patch: Partial<Job>) => Promise<Job | undefined> }) {
+function CompleteJobFlow({ job, saving, canManageJob, onSave }: { job: Job; saving: boolean; canManageJob: boolean; onSave: (patch: Partial<Job>) => Promise<Job | undefined> }) {
   const [notes, setNotes] = useState(job.completionNotes || "");
   const [notified, setNotified] = useState(false);
   const [invoiceReady, setInvoiceReady] = useState(job.invoiceStatus === "Ready");
-  const [requireAfterPhotos, setRequireAfterPhotos] = useState(true);
-  const session = getWorkSession(job);
   const draftJob = { ...job, completionNotes: notes.trim() || job.completionNotes };
-  const reviewRequirements = closeoutRequirements(draftJob, "review", { requireAfterPhotos });
+  const reviewRequirements = closeoutRequirements(draftJob, "review");
   const reviewBlockers = blockingRequirements(reviewRequirements);
-  const afterPhotosReady = hasAfterPhotos(job);
   const canSubmitForReview = reviewBlockers.length === 0;
   const canComplete = canManageJob && canSubmitForReview;
-
-  useEffect(() => {
-    fetch("/api/settings")
-      .then((response) => response.json())
-      .then((settings) => setRequireAfterPhotos(settings.requireAfterPhotosToComplete ?? true))
-      .catch(() => setRequireAfterPhotos(true));
-  }, []);
 
   async function completeJob() {
     if (!canComplete) return;
     const checklist = job.checklist.map((item) => {
-      const completeLabels = ["Work completed", "After photos taken", "Completion notes added", "Dealer/factory notified"];
+      const completeLabels = ["Work completed", "Completion notes added", "Dealer/factory notified"];
       return completeLabels.includes(item.label) ? { ...item, complete: true } : item;
     });
     await onSave({
@@ -1405,7 +1311,7 @@ function CompleteJobFlow({ job, saving, canManageJob, onFinishWork, onSave }: { 
   async function sendForManagerReview() {
     if (!canSubmitForReview) return;
     const checklist = job.checklist.map((item) => {
-      const completeLabels = ["Work completed", "After photos taken", "Completion notes added"];
+      const completeLabels = ["Work completed", "Completion notes added"];
       return completeLabels.includes(item.label) ? { ...item, complete: true } : item;
     });
     await onSave({
@@ -1425,7 +1331,7 @@ function CompleteJobFlow({ job, saving, canManageJob, onFinishWork, onSave }: { 
       </div>
     </div>
     <div className="grid gap-3 sm:grid-cols-3">
-      <CloseoutCheck label="After photos" complete={afterPhotosReady} detail={`${photoCountFor(job, "After")} uploaded`} />
+      <CloseoutCheck label="Job media" complete={true} detail={`${groupJobPhotos(job).length} saved · optional`} />
       <CloseoutCheck label="Completion notes" complete={notes.trim().length > 0} detail={notes.trim() ? "Added" : "Required"} />
       <CloseoutCheck label="Status" complete={job.status === "Complete"} detail={job.status} />
     </div>
@@ -1434,17 +1340,7 @@ function CompleteJobFlow({ job, saving, canManageJob, onFinishWork, onSave }: { 
       <label className="flex min-h-12 items-center gap-3 rounded-xl border border-black/10 bg-sand p-3 text-sm font-bold"><input type="checkbox" checked={notified} onChange={(event) => setNotified(event.target.checked)} className="size-5 accent-forest" /> Customer/dealer/factory notified</label>
       {canManageJob && <label className="flex min-h-12 items-center gap-3 rounded-xl border border-black/10 bg-sand p-3 text-sm font-bold"><input type="checkbox" checked={invoiceReady} onChange={(event) => setInvoiceReady(event.target.checked)} className="size-5 accent-forest" /> Mark invoice ready</label>}
     </div>
-    {requireAfterPhotos && !afterPhotosReady && <p className="mt-3 rounded-xl bg-orange-50 p-3 text-sm font-bold text-orange-800">Add at least one After photo before completing the job.</p>}
     {reviewBlockers.length > 0 && <p className="mt-3 rounded-xl bg-orange-50 p-3 text-sm font-bold text-orange-800">Complete {reviewBlockers.length} item{reviewBlockers.length === 1 ? "" : "s"} first: {reviewBlockers.map((item) => item.name).join(", ")}.</p>}
-    <div className="mt-4 rounded-2xl border border-black/10 bg-sand p-3">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-sm font-black">Finish Work</p>
-          <p className="text-xs font-semibold text-black/45">{session.active ? "Closes the current work session without submitting for review." : session.started ? "Current work session is already closed." : "Start the job before finishing work."}</p>
-        </div>
-        <button type="button" disabled={saving || !session.active} onClick={onFinishWork} className="min-h-11 rounded-xl bg-ink px-4 py-2 text-sm font-black text-white disabled:opacity-50">{saving ? "Saving..." : "Finish Work"}</button>
-      </div>
-    </div>
     <div className={`mt-4 grid gap-2 ${canManageJob ? "sm:grid-cols-2" : ""}`}>
       <button type="button" disabled={saving || !canSubmitForReview} onClick={sendForManagerReview} className="min-h-12 rounded-xl border-2 border-black/10 bg-white px-4 py-3 font-black text-ink disabled:opacity-50">{saving ? "Saving…" : canSubmitForReview ? "Submit for Review" : `Complete ${reviewBlockers.length} items first`}</button>
       {canManageJob && <button type="button" disabled={saving || !canComplete} onClick={completeJob} className="min-h-12 rounded-xl bg-forest px-4 py-3 font-black text-white disabled:opacity-50">{saving ? "Saving…" : "Manager Approve Complete"}</button>}
