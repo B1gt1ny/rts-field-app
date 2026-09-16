@@ -8,6 +8,7 @@ import { authFetch } from "@/lib/client-auth";
 import { intakeCompleteness, type ReadinessCheck } from "@/lib/job-readiness";
 import { closedJobStatuses } from "@/lib/field-activity";
 import { PriorityBadge, StatusBadge } from "./StatusBadge";
+import { calendarJobStyle } from "@/lib/job-colors";
 
 export function ScheduleBoard({ jobs, canEditSchedule }: { jobs: Job[]; canEditSchedule: boolean }) {
   const [scheduleJobs, setScheduleJobs] = useState(jobs);
@@ -234,20 +235,10 @@ function CalendarDay({ date, dateKey: key, jobs, isToday, isCurrentMonth, onSele
   return <div className={`min-w-0 min-h-24 overflow-hidden border p-1.5 text-left ${isToday ? "border-forest bg-forest/5" : isCurrentMonth ? "border-black/5 bg-white" : "border-black/5 bg-black/[.025]"}`}>
     {onSelectDate ? <button type="button" onClick={() => onSelectDate(key)} aria-label={`Schedule work for ${formatDate(key)}`} className={`mb-1 rounded px-0.5 text-xs font-black hover:bg-black/5 ${isToday ? "text-forest" : isCurrentMonth ? "text-black/55" : "text-black/35"}`}>{date.getDate()}</button> : <span className={`mb-1 block px-0.5 text-xs font-black ${isToday ? "text-forest" : isCurrentMonth ? "text-black/55" : "text-black/35"}`}>{date.getDate()}</span>}
     <div className="space-y-0.5">
-      {visibleJobs.map((job) => <button key={job.jobId} type="button" onClick={() => onSelectEvent(job)} className="block min-w-0 max-w-full truncate rounded px-1 py-1 text-left text-xs font-black leading-tight text-white shadow-sm hover:brightness-95" style={calendarCrewStyle(job)} title={`${job.customerName} · ${job.assignedCrew || "Unassigned"} · ${job.schedulePlan || "Confirmed"}`}>{job.customerName}</button>)}
+      {visibleJobs.map((job) => <button key={job.jobId} type="button" onClick={() => onSelectEvent(job)} className="block min-w-0 max-w-full truncate rounded px-1 py-1 text-left text-xs font-black leading-tight text-white shadow-sm hover:brightness-95" style={calendarJobStyle(job)} title={`${job.customerName} · ${job.assignedCrew || "Unassigned"} · ${job.schedulePlan || "Confirmed"}`}>{job.customerName}</button>)}
       {jobs.length > 2 && <button type="button" onClick={() => setShowAll((expanded) => !expanded)} className="block max-w-full truncate rounded bg-black/5 px-1 py-1 text-left text-xs font-black leading-tight text-black/55 hover:bg-black/10">{showAll ? "Show less" : `+${jobs.length - 2} more`}</button>}
     </div>
   </div>;
-}
-
-function calendarCrewStyle(job: Job) {
-  const colors = ["#0f766e", "#2563eb", "#7c3aed", "#c2410c", "#be123c", "#0369a1", "#4d7c0f"];
-  const label = job.assignedCrew?.trim() && job.assignedCrew !== "Unassigned" ? job.assignedCrew : "Unassigned";
-  const hash = Array.from(label).reduce((total, character) => total + character.charCodeAt(0), 0);
-  const color = label === "Unassigned" ? "#6b7280" : colors[hash % colors.length];
-  return job.schedulePlan === "Tentative"
-    ? { backgroundColor: color, backgroundImage: "repeating-linear-gradient(135deg, rgba(255,255,255,.35) 0 4px, transparent 4px 8px)" }
-    : { backgroundColor: color };
 }
 
 function CalendarEventPanel({ job, saving, error, onClose, onScheduleChange, canEditSchedule }: { job: Job; saving: boolean; error: string; onClose: () => void; onScheduleChange: (dueDate: string, scheduledTime: string, schedulePlan: Job["schedulePlan"]) => Promise<void>; canEditSchedule: boolean }) {

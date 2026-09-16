@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CalendarDaysIcon } from "@heroicons/react/24/outline";
 import type { Job } from "@/lib/types";
+import { calendarJobStyle } from "@/lib/job-colors";
 
 const closedStatuses = ["Complete", "Billed", "Paid"];
 
@@ -48,7 +49,7 @@ export function MonthlyCalendar({ jobs, today = new Date() }: { jobs: Job[]; tod
         return <div key={key} className={`min-w-0 min-h-20 overflow-hidden border p-1 text-left sm:min-h-24 sm:p-1.5 ${isToday ? "border-forest bg-forest/5" : isCurrentMonth ? "border-black/5 bg-white" : "border-black/5 bg-black/[.025]"}`}>
           <p className={`mb-1 text-[10px] font-black sm:text-xs ${isToday ? "text-forest" : isCurrentMonth ? "text-black/45" : "text-black/25"}`}>{date.getDate()}</p>
           <div className="space-y-0.5">
-            {dayJobs.slice(0, 2).map((job) => <Link key={job.jobId} href={`/jobs/${job.jobId}`} className="block min-w-0 max-w-full truncate rounded px-1 py-0.5 text-[9px] font-black leading-tight text-white shadow-sm hover:brightness-95 sm:text-[10px]" style={calendarCrewStyle(job)} title={`${job.customerName} · ${job.assignedCrew || "Unassigned"} · ${job.schedulePlan || "Confirmed"}`}>{job.customerName}</Link>)}
+            {dayJobs.slice(0, 2).map((job) => <Link key={job.jobId} href={`/jobs/${job.jobId}`} className="block min-w-0 max-w-full truncate rounded px-1 py-0.5 text-[9px] font-black leading-tight text-white shadow-sm hover:brightness-95 sm:text-[10px]" style={calendarJobStyle(job)} title={`${job.customerName} · ${job.assignedCrew || "Unassigned"} · ${job.schedulePlan || "Confirmed"}`}>{job.customerName}</Link>)}
             {dayJobs.length > 2 && <Link href={`/schedule`} className="block rounded bg-black/5 px-1 py-0.5 text-[9px] font-black text-black/45 sm:text-[10px]">+{dayJobs.length - 2} more</Link>}
           </div>
         </div>;
@@ -82,16 +83,6 @@ export function MonthlyCalendar({ jobs, today = new Date() }: { jobs: Job[]; tod
     </div>
     <a href="https://calendar.google.com" target="_blank" className="action-contrast mx-4 mb-4 mt-4 inline-flex min-h-12 w-[calc(100%-2rem)] items-center justify-center rounded-xl border px-4 py-3 font-black sm:hidden">Open Google Calendar</a>
   </section>;
-}
-
-function calendarCrewStyle(job: Job) {
-  const colors = ["#0f766e", "#2563eb", "#7c3aed", "#c2410c", "#be123c", "#0369a1", "#4d7c0f"];
-  const label = job.assignedCrew?.trim() && job.assignedCrew !== "Unassigned" ? job.assignedCrew : "Unassigned";
-  const hash = Array.from(label).reduce((total, character) => total + character.charCodeAt(0), 0);
-  const color = label === "Unassigned" ? "#6b7280" : colors[hash % colors.length];
-  return job.schedulePlan === "Tentative"
-    ? { backgroundColor: color, backgroundImage: "repeating-linear-gradient(135deg, rgba(255,255,255,.35) 0 4px, transparent 4px 8px)" }
-    : { backgroundColor: color };
 }
 
 function compareScheduledJobs(a: Job, b: Job) {
