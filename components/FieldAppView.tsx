@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { BriefcaseIcon, CameraIcon, CalendarDaysIcon, CheckCircleIcon, ClipboardDocumentCheckIcon, ClockIcon, DocumentTextIcon, ExclamationTriangleIcon, MapPinIcon, PhoneIcon, PlayIcon, ReceiptPercentIcon, UserCircleIcon, UserGroupIcon, WrenchScrewdriverIcon } from "@heroicons/react/24/outline";
+import { BriefcaseIcon, CameraIcon, CalendarDaysIcon, CheckCircleIcon, ChevronDownIcon, ClipboardDocumentCheckIcon, ClockIcon, DocumentTextIcon, ExclamationTriangleIcon, MapPinIcon, PhoneIcon, PlayIcon, ReceiptPercentIcon, UserCircleIcon, UserGroupIcon, WrenchScrewdriverIcon } from "@heroicons/react/24/outline";
 import { defaultFactoryCost, type BusinessSettings, type Employee, type FactoryCostTracker, type Job, type JobActivity } from "@/lib/types";
 import { authFetch } from "@/lib/client-auth";
 import { getFactoryCostTotals, hasFactoryCostWork, roundUpToQuarterHour } from "@/lib/factory-costs";
@@ -754,29 +754,36 @@ function FieldActionCard({ job, noteDraft, saving, permissions, customerTextTemp
 function FieldJobCard({ job, noteDraft, saving, permissions, customerTextTemplate, fieldNoteTemplates, reviewInstructions, factoryCostInstructions, factoryTravelRates, requireBeforePhotosForReview, requireSerialTagPhotoForReview, requireDamagePhotosForReview, requireAfterPhotosForReview, requireCompletionNotesForReview, requireWorkCompleteForReview, requirePartsClosedForReview, requireFactoryCostsForReview, requireReceiptBackupForReview, fieldSupportName, fieldSupportPhone, employeeHelpInstructions, onStart, onReadyReview, onChecklist, onNote, onCompletionNotes, onFactoryCost, onNoteDraft }: { job: Job; noteDraft: string; saving: boolean; permissions: FieldPermissions; customerTextTemplate: string; fieldNoteTemplates: string[]; reviewInstructions: string; factoryCostInstructions: string; factoryTravelRates: { mileageRate: string; hourlyRate: string }; requireBeforePhotosForReview: boolean; requireSerialTagPhotoForReview: boolean; requireDamagePhotosForReview: boolean; requireAfterPhotosForReview: boolean; requireCompletionNotesForReview: boolean; requireWorkCompleteForReview: boolean; requirePartsClosedForReview: boolean; requireFactoryCostsForReview: boolean; requireReceiptBackupForReview: boolean; fieldSupportName: string; fieldSupportPhone: string; employeeHelpInstructions: string; onStart: () => void; onReadyReview: () => void; onChecklist: (itemId: string) => void; onNote: (message: string, type?: JobActivity["type"]) => void; onCompletionNotes: (notes: string) => void; onFactoryCost: (costPatch: Partial<FactoryCostTracker>) => void; onNoteDraft: (value: string) => void }) {
   const review = fieldReviewStatus(job, requireFactoryCostsForReview, requireReceiptBackupForReview, requireBeforePhotosForReview, requireSerialTagPhotoForReview, requireDamagePhotosForReview, requireAfterPhotosForReview, requireCompletionNotesForReview, requireWorkCompleteForReview, requirePartsClosedForReview);
   const helpMessage = fieldHelpMessage(job, review);
-  return <div className="card p-4">
-    <div className="flex items-start justify-between gap-3">
-      <Link href={`/jobs/${job.jobId}`} className="min-w-0 flex-1">
+  return <details className="card group overflow-hidden open:bg-sand/35">
+    <summary className="flex min-h-20 cursor-pointer list-none items-center gap-3 p-4 transition hover:bg-sand/40 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-forest/10 [&::-webkit-details-marker]:hidden">
+      <div className="min-w-0 flex-1">
         <p className="truncate text-xs font-black uppercase tracking-wide text-forest">{job.jobId} · {job.priority}</p>
-        <h3 className="mt-1 truncate text-xl font-black">{job.customerName}</h3>
-        <p className="mt-1 text-sm font-semibold text-black/55">{job.jobType} · {job.address}, {job.city}</p>
-      </Link>
+        <h3 className="mt-1 truncate text-lg font-black">{job.customerName}</h3>
+        <p className="mt-1 truncate text-sm font-semibold text-black/55">{job.city || "No city"} · {formatDue(job.dueDate)}</p>
+      </div>
       <StatusBadge status={job.status} />
+      <ChevronDownIcon className="size-5 shrink-0 text-black/35 transition-transform group-open:rotate-180" aria-hidden="true" />
+    </summary>
+    <div className="border-t border-black/5 p-4">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm font-bold text-black/55">{job.jobType || "Work type not recorded"} · {job.address || "Address not recorded"}</p>
+        <Link href={`/jobs/${job.jobId}`} className="rounded-xl border border-black/10 bg-white px-3 py-2 text-xs font-black text-forest">Open full job</Link>
+      </div>
+      <ProgressBar job={job} />
+      <FieldWorkSessionBadge job={job} />
+      <FieldDueStatus job={job} />
+      <FieldJobBasics job={job} />
+      <FieldScopeSummary job={job} />
+      <FieldPhotoProof job={job} canUpload={permissions.employeeCanUploadFiles} />
+      <FieldCloseoutStatus review={review} instructions={reviewInstructions} />
+      <QuickChecklist job={job} saving={saving} onChecklist={onChecklist} />
+      {permissions.employeeCanAddCompletionNotes && <QuickCompletionNotes job={job} saving={saving} onSave={onCompletionNotes} />}
+      <FieldLatestUpdate job={job} />
+      {permissions.employeeCanAddQuickNotes && <QuickFieldNotes job={job} noteDraft={noteDraft} templates={fieldNoteTemplates} saving={saving} onNote={onNote} onNoteDraft={onNoteDraft} />}
+      {permissions.employeeCanAddFactoryCosts && <FactoryCostQuickEntry job={job} instructions={factoryCostInstructions} travelRates={factoryTravelRates} saving={saving} onSave={onFactoryCost} />}
+      <FieldButtons job={job} saving={saving} permissions={permissions} customerTextTemplate={customerTextTemplate} fieldSupportName={fieldSupportName} fieldSupportPhone={fieldSupportPhone} employeeHelpInstructions={employeeHelpInstructions} reviewReady={review.readyForManager} reviewScore={review.score} supportText={helpMessage} onStart={onStart} onNeedHelp={() => onNote(helpMessage, "Status")} onReadyReview={onReadyReview} />
     </div>
-    <ProgressBar job={job} />
-    <FieldWorkSessionBadge job={job} />
-    <FieldDueStatus job={job} />
-    <FieldJobBasics job={job} />
-    <FieldScopeSummary job={job} />
-    <FieldPhotoProof job={job} canUpload={permissions.employeeCanUploadFiles} />
-    <FieldCloseoutStatus review={review} instructions={reviewInstructions} />
-    <QuickChecklist job={job} saving={saving} onChecklist={onChecklist} />
-    {permissions.employeeCanAddCompletionNotes && <QuickCompletionNotes job={job} saving={saving} onSave={onCompletionNotes} />}
-    <FieldLatestUpdate job={job} />
-    {permissions.employeeCanAddQuickNotes && <QuickFieldNotes job={job} noteDraft={noteDraft} templates={fieldNoteTemplates} saving={saving} onNote={onNote} onNoteDraft={onNoteDraft} />}
-    {permissions.employeeCanAddFactoryCosts && <FactoryCostQuickEntry job={job} instructions={factoryCostInstructions} travelRates={factoryTravelRates} saving={saving} onSave={onFactoryCost} />}
-    <FieldButtons job={job} saving={saving} permissions={permissions} customerTextTemplate={customerTextTemplate} fieldSupportName={fieldSupportName} fieldSupportPhone={fieldSupportPhone} employeeHelpInstructions={employeeHelpInstructions} reviewReady={review.readyForManager} reviewScore={review.score} supportText={helpMessage} onStart={onStart} onNeedHelp={() => onNote(helpMessage, "Status")} onReadyReview={onReadyReview} />
-  </div>;
+  </details>;
 }
 
 function FactoryCostQuickEntry({ job, instructions, travelRates, saving, onSave }: { job: Job; instructions: string; travelRates: { mileageRate: string; hourlyRate: string }; saving: boolean; onSave: (costPatch: Partial<FactoryCostTracker>) => void }) {
