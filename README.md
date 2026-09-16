@@ -2,6 +2,8 @@
 
 A mobile-first field operations app for mobile home contractors. Built with Next.js, TypeScript, Tailwind CSS, Supabase-backed storage in production, and local JSON fallback for development.
 
+> Deployment note: restored to the pre-field-PIN version on September 16, 2026.
+
 ## Features
 
 - Dashboard with at-a-glance workload metrics and admin missing receipt-backup counter
