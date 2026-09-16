@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ArrowPathIcon, ArrowTopRightOnSquareIcon, BanknotesIcon, CalendarDaysIcon, CameraIcon, ChatBubbleLeftRightIcon, CheckCircleIcon, CheckIcon, ClipboardDocumentListIcon, ClockIcon, MapPinIcon, PencilSquareIcon, PhoneIcon, PrinterIcon, ReceiptPercentIcon, ShareIcon, TrashIcon, UserGroupIcon, WrenchScrewdriverIcon } from "@heroicons/react/24/outline";
+import { ArrowPathIcon, ArrowTopRightOnSquareIcon, BanknotesIcon, CalendarDaysIcon, CameraIcon, ChatBubbleLeftRightIcon, CheckCircleIcon, CheckIcon, ClipboardDocumentListIcon, ClockIcon, InformationCircleIcon, MapPinIcon, PencilSquareIcon, PhoneIcon, PlusIcon, PrinterIcon, ReceiptPercentIcon, ShareIcon, TrashIcon, UserGroupIcon, VideoCameraIcon, WrenchScrewdriverIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { defaultFactoryCost, makeChecklist, type BusinessSettings, type CustomerSurvey, type FactoryCostTracker, type FileCategory, type Job, type JobActivity, type PaperworkItem, type PartItem, type ReceiptItem, type SignoffItem, type TimeEntry, type WorkOrderFile } from "@/lib/types";
 import { PriorityBadge, StatusBadge } from "./StatusBadge";
 import { authFetch } from "@/lib/client-auth";
@@ -1023,6 +1023,10 @@ function PhotoUploadPanel({ job, saving, onSave }: { job: Job; saving: boolean; 
   const gallery = groupJobPhotos(job);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [editingId, setEditingId] = useState("");
+  const [viewerId, setViewerId] = useState("");
+  const [selectionMode, setSelectionMode] = useState(false);
+  const viewerPhoto = gallery.find((photo) => photo.id === viewerId);
+  const galleryDays = groupMediaByDay(gallery);
 
   function chooseFiles(files: FileList | null) {
     setSelectedFiles(Array.from(files || []).filter((file) => file.type.startsWith("image/") || file.type.startsWith("video/")));
@@ -1077,43 +1081,19 @@ function PhotoUploadPanel({ job, saving, onSave }: { job: Job; saving: boolean; 
   }
   const jobLink = typeof window === "undefined" ? `/jobs/${job.jobId}#photos` : `${window.location.origin}/jobs/${job.jobId}#photos`;
 
-  return <section id="photos" className="card p-4 sm:p-6">
-    <div className="mb-4 flex items-start gap-3">
-      <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-blue-100 text-blue-800"><CameraIcon className="size-5" /></span>
-      <div>
-        <h2 className="text-lg font-black">Job media library</h2>
-        <p className="text-sm text-black/50">Photos and videos stay with this job. Add an optional description; the description and timestamp appear on each item.</p>
-      </div>
-    </div>
-    <div className="rounded-2xl border border-black/10 bg-sand p-3 sm:p-4">
-      <label className="block"><span className="label">Description for selected media (optional)</span><input className="field" value={caption} disabled={saving || uploading} onChange={(event) => setCaption(event.target.value)} placeholder="What does this show?" /></label>
-      <div className="mt-3 grid gap-2 sm:grid-cols-3">
-        <label className={`flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-xl bg-forest px-4 py-3 text-center font-black text-white ${(saving || uploading) ? "opacity-50" : ""}`}>
-          <CameraIcon className="size-5" /> Take Photo
-          <input type="file" accept="image/*" capture="environment" className="hidden" disabled={saving || uploading} onChange={(event) => chooseFiles(event.target.files)} />
-        </label>
-        <label className={`flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-black/10 bg-white px-4 py-3 text-center font-black text-ink ${(saving || uploading) ? "opacity-50" : ""}`}>
-          <CameraIcon className="size-5" /> Take Video
-          <input type="file" accept="video/*" capture="environment" className="hidden" disabled={saving || uploading} onChange={(event) => chooseFiles(event.target.files)} />
-        </label>
-        <label className={`flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-center font-black text-ink ${(saving || uploading) ? "opacity-50" : ""}`}><ArrowTopRightOnSquareIcon className="size-5" /> Upload<input type="file" accept="image/*,video/*" multiple className="hidden" disabled={saving || uploading} onChange={(event) => chooseFiles(event.target.files)} /></label>
-      </div>
-      {selectedFiles.length > 0 && <button type="button" disabled={saving || uploading} onClick={uploadSelectedPhotos} className="mt-3 min-h-12 w-full rounded-xl bg-lime px-4 py-3 font-black text-ink disabled:opacity-50">{uploading ? uploadProgress || "Uploading…" : `Save ${selectedFiles.length} selected item${selectedFiles.length === 1 ? "" : "s"}`}</button>}
-      <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold text-black/45">
-        <span className="rounded-full bg-white px-3 py-1">{selectedFiles.length ? `${selectedFiles.length} selected` : "No media selected"}</span>
-        <span className="rounded-full bg-white px-3 py-1">Large photos are resized before upload</span>
-      </div>
-      {message && <p role="status" className="mt-3 rounded-xl bg-white p-3 text-sm font-bold text-forest">{message}</p>}
-    </div>
-    <div className="mt-4 rounded-2xl border border-black/10 bg-white p-3">
-      <div className="mb-3 flex items-center justify-between gap-3"><div><p className="font-black">All job media</p><p className="text-xs font-semibold text-black/45">Select items to edit, remove, or share the job media link.</p></div><span className="rounded-full bg-sand px-2.5 py-1 text-xs font-black text-forest">{gallery.length}</span></div>
-      {selectedIds.length > 0 && <div className="mb-3 grid gap-2 sm:grid-cols-4">{selectedIds.length === 1 && <button type="button" onClick={() => setEditingId(selectedIds[0])} className="min-h-11 rounded-xl bg-white px-3 py-2 text-sm font-black text-ink">Edit description</button>}<button type="button" onClick={deleteSelected} className="min-h-11 rounded-xl bg-red-50 px-3 py-2 text-sm font-black text-red-800"><TrashIcon className="mr-1 inline size-4" />Remove {selectedIds.length}</button><a href={`sms:?&body=${encodeURIComponent(`Job media: ${jobLink}`)}`} className="min-h-11 rounded-xl bg-sand px-3 py-2 text-center text-sm font-black text-ink">Text link</a><a href={`mailto:?subject=${encodeURIComponent(`${job.jobId} job media`)}&body=${encodeURIComponent(`Job media: ${jobLink}`)}`} className="min-h-11 rounded-xl bg-sand px-3 py-2 text-center text-sm font-black text-ink">Email link</a></div>}
-      {gallery.length ? <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">{gallery.map((photo, index) => <PhotoGalleryTile key={photo.id} photo={photo} label={`Job media ${index + 1}`} selected={selectedIds.includes(photo.id)} editRequested={editingId === photo.id} onEditHandled={() => setEditingId("")} onToggle={() => photo.source === "file" && setSelectedIds((old) => old.includes(photo.id) ? old.filter((id) => id !== photo.id) : [...old, photo.id])} onCaptionSave={updatePhotoCaption} />)}</div> : <p className="rounded-xl bg-sand p-3 text-sm font-semibold text-black/45">No job media yet.</p>}
-    </div>
+  return <section id="photos" className="card overflow-hidden p-4 sm:p-6">
+    <div className="flex items-center justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-wide text-forest">{job.jobId}</p><h2 className="mt-1 text-2xl font-black">Photos ({gallery.length})</h2><p className="mt-1 text-sm font-semibold text-black/45">Job media library</p></div><button type="button" onClick={() => { setSelectionMode((value) => !value); setSelectedIds([]); }} className={`min-h-11 rounded-xl px-4 py-2 text-sm font-black ${selectionMode ? "bg-forest text-white" : "bg-sand text-ink"}`}>{selectionMode ? "Done" : "Select"}</button></div>
+    <label className="mt-4 block"><span className="label">Description for new media (optional)</span><input className="field" value={caption} disabled={saving || uploading} onChange={(event) => setCaption(event.target.value)} placeholder="Add a description…" /></label>
+    {selectedFiles.length > 0 && <button type="button" disabled={saving || uploading} onClick={uploadSelectedPhotos} className="mt-3 min-h-12 w-full rounded-xl bg-forest px-4 py-3 font-black text-white disabled:opacity-50">{uploading ? uploadProgress || "Saving…" : `Save ${selectedFiles.length} selected item${selectedFiles.length === 1 ? "" : "s"}`}</button>}
+    {message && <p role="status" className="mt-3 rounded-xl bg-forest/10 p-3 text-sm font-bold text-forest">{message}</p>}
+    {selectedIds.length > 0 && <div className="mt-4 grid gap-2 sm:grid-cols-4">{selectedIds.length === 1 && <button type="button" onClick={() => setEditingId(selectedIds[0])} className="min-h-11 rounded-xl bg-sand px-3 py-2 text-sm font-black text-ink">Edit description</button>}<button type="button" onClick={deleteSelected} className="min-h-11 rounded-xl bg-red-50 px-3 py-2 text-sm font-black text-red-800"><TrashIcon className="mr-1 inline size-4" />Remove {selectedIds.length}</button><a href={`sms:?&body=${encodeURIComponent(`Job media: ${jobLink}`)}`} className="min-h-11 rounded-xl bg-sand px-3 py-2 text-center text-sm font-black text-ink">Text link</a><a href={`mailto:?subject=${encodeURIComponent(`${job.jobId} job media`)}&body=${encodeURIComponent(`Job media: ${jobLink}`)}`} className="min-h-11 rounded-xl bg-sand px-3 py-2 text-center text-sm font-black text-ink">Email link</a></div>}
+    <div className="mt-5 space-y-5">{galleryDays.length ? galleryDays.map(([day, photos]) => <div key={day}><p className="mb-3 text-sm font-bold text-black/50">{day}</p><div className="grid grid-cols-3 gap-1.5 sm:gap-2">{photos.map((photo, index) => <PhotoGalleryTile key={photo.id} photo={photo} label={`Job media ${index + 1}`} selected={selectedIds.includes(photo.id)} selectionMode={selectionMode} editRequested={editingId === photo.id} onEditHandled={() => setEditingId("")} onOpen={() => setViewerId(photo.id)} onToggle={() => photo.source === "file" && setSelectedIds((old) => old.includes(photo.id) ? old.filter((id) => id !== photo.id) : [...old, photo.id])} onCaptionSave={updatePhotoCaption} />)}</div></div>) : <p className="rounded-xl bg-sand p-4 text-sm font-semibold text-black/45">No photos or videos on this job yet.</p>}</div>
+    <div className="sticky bottom-3 z-10 mx-auto mt-5 flex w-fit items-center gap-2 rounded-full bg-white p-2 shadow-xl ring-1 ring-black/10"><label className="grid size-12 cursor-pointer place-items-center rounded-full bg-sand text-ink"><CameraIcon className="size-6" /><span className="sr-only">Take photo</span><input type="file" accept="image/*" capture="environment" className="hidden" disabled={saving || uploading} onChange={(event) => chooseFiles(event.target.files)} /></label><label className="grid min-h-12 min-w-32 cursor-pointer place-items-center rounded-full bg-forest px-5 text-white"><CameraIcon className="size-6" /><span className="ml-2 text-sm font-black">Camera</span><input type="file" accept="image/*" capture="environment" className="hidden" disabled={saving || uploading} onChange={(event) => chooseFiles(event.target.files)} /></label><label className="grid size-12 cursor-pointer place-items-center rounded-full bg-sand text-ink"><VideoCameraIcon className="size-6" /><span className="sr-only">Take video</span><input type="file" accept="video/*" capture="environment" className="hidden" disabled={saving || uploading} onChange={(event) => chooseFiles(event.target.files)} /></label><label className="grid size-12 cursor-pointer place-items-center rounded-full bg-sand text-ink"><PlusIcon className="size-6" /><span className="sr-only">Upload media</span><input type="file" accept="image/*,video/*" multiple className="hidden" disabled={saving || uploading} onChange={(event) => chooseFiles(event.target.files)} /></label></div>
+    {viewerPhoto && <PhotoViewer job={job} photo={viewerPhoto} onClose={() => setViewerId("")} onCaptionSave={updatePhotoCaption} />}
   </section>;
 }
 
-function PhotoGalleryTile({ photo, label, selected, editRequested, onEditHandled, onToggle, onCaptionSave }: { photo: PhotoGalleryItem; label: string; selected: boolean; editRequested: boolean; onEditHandled: () => void; onToggle: () => void; onCaptionSave: (fileId: string, caption: string) => Promise<void> }) {
+function PhotoGalleryTile({ photo, label, selected, selectionMode, editRequested, onEditHandled, onOpen, onToggle, onCaptionSave }: { photo: PhotoGalleryItem; label: string; selected: boolean; selectionMode: boolean; editRequested: boolean; onEditHandled: () => void; onOpen: () => void; onToggle: () => void; onCaptionSave: (fileId: string, caption: string) => Promise<void> }) {
   const [editing, setEditing] = useState(false);
   const [caption, setCaption] = useState(photo.caption || "");
   const [saving, setSaving] = useState(false);
@@ -1126,26 +1106,42 @@ function PhotoGalleryTile({ photo, label, selected, editRequested, onEditHandled
     setEditing(false);
   }
   return <div className={`overflow-hidden rounded-xl border bg-sand ${selected ? "border-forest ring-2 ring-forest/30" : "border-black/10"}`}>
-    <div className="relative aspect-square bg-white">
-      {photo.fileType?.startsWith("video/") ? <video src={photo.url} controls className="size-full object-cover" /> : <a href={photo.url} target="_blank" className="block size-full"><img src={photo.url} alt={label} loading="lazy" className="size-full object-cover" /></a>}
-      <button type="button" disabled={photo.source !== "file"} onClick={onToggle} className="absolute left-2 top-2 rounded-lg bg-white/95 px-2 py-1 text-xs font-black text-ink disabled:opacity-40">{selected ? "Selected" : "Select"}</button>
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent px-2 pb-2 pt-8 text-white"><p className="line-clamp-2 text-xs font-black">{photo.caption || "No description"}</p><p className="mt-0.5 text-[10px] font-semibold text-white/75">{photo.uploadedAt ? new Date(photo.uploadedAt).toLocaleString() : "Saved job media"}</p></div>
-    </div>
+    <button type="button" onClick={selectionMode ? onToggle : onOpen} className="relative block aspect-[.82] w-full overflow-hidden bg-black text-left">
+      {photo.fileType?.startsWith("video/") ? <video src={photo.url} className="size-full object-cover" /> : <img src={photo.url} alt={label} loading="lazy" className="size-full object-cover" />}
+      {selectionMode ? <span className={`absolute right-2 top-2 grid size-7 place-items-center rounded-full text-xs font-black ${selected ? "bg-forest text-white" : "bg-white/95 text-ink"}`}>{selected ? <CheckIcon className="size-5" /> : ""}</span> : <span className="absolute bottom-2 left-2 grid size-8 place-items-center rounded-full bg-white/90 text-[11px] font-black text-ink">{initialsFor(photo.uploadedBy)}</span>}
+    </button>
     <div className="p-2">
-      <p className="truncate text-xs font-black">{photo.fileName}</p>
-      <p className="mt-0.5 text-[11px] font-semibold text-black/40">{photo.uploadedBy ? `${photo.uploadedBy} · ` : ""}{photo.fileSize ? `${(photo.fileSize / 1024).toFixed(0)} KB` : "Saved photo"}</p>
       {editing ? <div className="mt-2 space-y-2">
         <input className="field !min-h-10 !py-2 text-xs" value={caption} onChange={(event) => setCaption(event.target.value)} placeholder="Caption" />
         <button type="button" disabled={saving} onClick={saveCaption} className="min-h-10 w-full rounded-lg bg-forest px-3 py-2 text-xs font-black text-white disabled:opacity-50">{saving ? "Saving…" : "Save caption"}</button>
-      </div> : <>
-        {photo.caption && <p className="mt-2 text-xs font-semibold text-black/55">{photo.caption}</p>}
-        <div className="mt-2 grid grid-cols-2 gap-2">
-          <a href={photo.url} target="_blank" className="min-h-10 rounded-lg bg-white px-3 py-2 text-center text-xs font-black text-forest">Open</a>
-          {photo.source === "file" && <button type="button" onClick={() => setEditing(true)} className="min-h-10 rounded-lg bg-white px-3 py-2 text-xs font-black text-ink">Caption</button>}
-        </div>
-      </>}
+      </div> : photo.caption && <p className="line-clamp-2 text-xs font-semibold text-black/55">{photo.caption}</p>}
     </div>
   </div>;
+}
+
+function PhotoViewer({ job, photo, onClose, onCaptionSave }: { job: Job; photo: PhotoGalleryItem; onClose: () => void; onCaptionSave: (fileId: string, caption: string) => Promise<void> }) {
+  const [caption, setCaption] = useState(photo.caption || "");
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  async function save() { if (photo.source !== "file") return; setSaving(true); await onCaptionSave(photo.id, caption); setSaving(false); setEditing(false); }
+  const name = photo.uploadedBy || "RTS Field App";
+  const stamp = photo.uploadedAt ? new Date(photo.uploadedAt).toLocaleString() : "Saved job media";
+  return <div role="dialog" aria-modal="true" aria-label="Photo viewer" className="fixed inset-0 z-50 flex min-h-screen flex-col bg-black text-white">
+    <header className="flex items-center justify-between px-5 py-5"><button type="button" onClick={onClose} className="grid size-11 place-items-center rounded-full text-white"><XMarkIcon className="size-8" /></button><div className="text-center"><p className="text-lg font-black">{job.customerName}</p><p className="text-xs font-bold text-white/60">{job.city || job.jobId}</p></div><button type="button" className="grid size-11 place-items-center rounded-full text-white"><InformationCircleIcon className="size-7" /></button></header>
+    <div className="flex min-h-0 flex-1 items-center justify-center bg-black">{photo.fileType?.startsWith("video/") ? <video src={photo.url} controls autoPlay className="max-h-[58vh] w-full object-contain" /> : <img src={photo.url} alt={photo.fileName} className="max-h-[58vh] w-full object-contain" />}</div>
+    <div className="border-t border-white/10 bg-black px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4"><div className="flex gap-3"><span className="grid size-11 shrink-0 place-items-center rounded-full bg-white text-sm font-black text-ink">{initialsFor(name)}</span><div><p className="font-black">{name}</p><p className="text-sm font-semibold text-white/70">{stamp}</p></div></div>{editing ? <div className="mt-4 flex gap-2"><input autoFocus className="field flex-1 !border-white/20 !bg-white/10 !text-white" value={caption} onChange={(event) => setCaption(event.target.value)} placeholder="Add a description…" /><button type="button" disabled={saving} onClick={save} className="rounded-xl bg-white px-4 text-sm font-black text-ink">Save</button></div> : <button type="button" disabled={photo.source !== "file"} onClick={() => setEditing(true)} className="mt-4 w-full rounded-xl border border-white/15 px-4 py-3 text-left text-base font-semibold text-white/85 disabled:cursor-default">{photo.caption || "Add a description…"}</button>}<div className="mt-4 grid grid-cols-2 gap-2"><a href={`sms:?&body=${encodeURIComponent(`Job media for ${job.customerName}: ${window.location.origin}/jobs/${job.jobId}#photos`)}`} className="rounded-xl bg-white/10 px-4 py-3 text-center text-sm font-black">Text job link</a><a href={`mailto:?subject=${encodeURIComponent(`${job.customerName} job media`)}&body=${encodeURIComponent(`${window.location.origin}/jobs/${job.jobId}#photos`)}`} className="rounded-xl bg-white/10 px-4 py-3 text-center text-sm font-black">Email job link</a></div></div>
+  </div>;
+}
+
+function initialsFor(name?: string) { return (name || "RTS").split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase(); }
+
+function groupMediaByDay(photos: PhotoGalleryItem[]) {
+  const grouped = new Map<string, PhotoGalleryItem[]>();
+  for (const photo of photos) {
+    const day = photo.uploadedAt ? new Date(photo.uploadedAt).toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric", year: "numeric" }) : "Earlier job media";
+    grouped.set(day, [...(grouped.get(day) || []), photo]);
+  }
+  return [...grouped.entries()];
 }
 
 function groupJobPhotos(job: Job): PhotoGalleryItem[] {
