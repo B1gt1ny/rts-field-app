@@ -8,7 +8,7 @@ import { buildJobReminders, formatReminderDate, reminderTone } from "@/lib/remin
 import { getUserRole, isDatabaseConfigured } from "@/lib/auth";
 import { billingBoardState, intakeCompleteness, paymentFollowUpFor } from "@/lib/job-readiness";
 import { isReceiptBackupMissing } from "@/lib/receipt-backup";
-import type { Job, JobActivity } from "@/lib/types";
+import type { Job } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +32,6 @@ export default async function Dashboard() {
   const dueReminders = reminders.filter((reminder) => reminder.bucket === "Overdue" || reminder.bucket === "Today");
   const attentionItems = buildAttentionItems(jobs, dueReminders, today).slice(0, 6);
   const officePriorities = isEmployee ? [] : buildOfficeDailyPriorities(jobs);
-  const recentActivity = latestActivity(jobs).slice(0, 5);
 
   return <div className="space-y-5">
     <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -87,16 +86,6 @@ export default async function Dashboard() {
       </div>
     </section>
 
-    {recentActivity.length > 0 && <section className="card overflow-hidden">
-      <SectionHeader title="Recent Activity" detail="Latest job history so the owner can see what changed." />
-      <div className="divide-y divide-black/5">
-        {recentActivity.map(({ job, activity }) => <Link key={`${job.jobId}-${activity.id}`} href={`/jobs/${job.jobId}#operations`} className="block p-3 hover:bg-black/[.02] sm:p-4">
-          <p className="truncate text-xs font-black uppercase tracking-wide text-forest">{job.jobId} · {job.customerName}</p>
-          <p className="mt-1 line-clamp-2 text-sm font-black">{activity.message}</p>
-          <p className="mt-1 text-xs font-semibold text-black/45">{activity.createdBy} · {new Date(activity.createdAt).toLocaleString()}</p>
-        </Link>)}
-      </div>
-    </section>}
   </div>;
 }
 
@@ -166,12 +155,6 @@ function buildOfficeDailyPriorities(jobs: Job[]): OfficePriority[] {
     if (followUp) add({ job, action: "Billing Follow-Up", reason: followUp.label, href: `/jobs/${job.jobId}`, linkLabel: "Open" });
   });
   return priorities;
-}
-
-function latestActivity(jobs: Job[]) {
-  return jobs.flatMap((job) => (job.activityLog || []).map((activity) => ({ job, activity })))
-    .filter(({ activity }) => activity.createdAt)
-    .sort((a, b) => b.activity.createdAt.localeCompare(a.activity.createdAt));
 }
 
 function SectionHeader({ title, detail, actionHref, actionLabel }: { title: string; detail: string; actionHref?: string; actionLabel?: string }) {

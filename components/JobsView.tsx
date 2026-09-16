@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { BanknotesIcon, BellAlertIcon, CalendarDaysIcon, ExclamationTriangleIcon, MagnifyingGlassIcon, WrenchScrewdriverIcon } from "@heroicons/react/24/outline";
-import { JobCard } from "./JobCard";
+import { BanknotesIcon, BellAlertIcon, CalendarDaysIcon, ChevronDownIcon, ExclamationTriangleIcon, MagnifyingGlassIcon, WrenchScrewdriverIcon } from "@heroicons/react/24/outline";
 import { priorities, sources, statuses, type Employee, type Job, type JobSource, type JobStatus } from "@/lib/types";
 import { authFetch } from "@/lib/client-auth";
 import { hasOpenParts, intakeCompleteness } from "@/lib/job-readiness";
 import { closedJobStatuses } from "@/lib/field-activity";
+import { PriorityBadge, StatusBadge } from "./StatusBadge";
 
 type Preset = { status?: JobStatus | JobStatus[]; source?: JobSource; today?: boolean };
 type QuickFilter = "" | "overdue" | "unscheduled" | "parts" | "follow-up" | "billing" | "priority";
@@ -151,8 +151,55 @@ export function JobsView({ title, description, preset = {} }: { title: string; d
       </div>}
     </section>
     <div className="mb-3 flex items-center justify-between"><p className="text-sm font-bold text-black/45">{loading ? "Loading jobs…" : `${filtered.length} ${filtered.length === 1 ? "job" : "jobs"}`}</p><button type="button" onClick={clearFilters} className="text-sm font-black text-forest">Clear</button></div>
-    {!loading && filtered.length === 0 ? <div className="card py-16 text-center"><p className="font-extrabold">No jobs match these filters</p><button onClick={clearFilters} className="mt-2 text-sm font-bold text-forest">Clear filters</button></div> : <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{filtered.map((job) => <JobCard key={job.jobId} job={job} />)}</div>}
+    {!loading && filtered.length === 0 ? <div className="card py-16 text-center"><p className="font-extrabold">No jobs match these filters</p><button onClick={clearFilters} className="mt-2 text-sm font-bold text-forest">Clear filters</button></div> : <div className="card divide-y divide-black/5 overflow-hidden">{filtered.map((job) => <ExpandableJobRow key={job.jobId} job={job} />)}</div>}
   </>;
+}
+
+function ExpandableJobRow({ job }: { job: Job }) {
+  const dueDate = job.dueDate ? new Date(`${job.dueDate}T12:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Not scheduled";
+  const primaryAction = job.status === "In Progress" ? "Continue job" : "Open job";
+
+  return <details className="group bg-white open:bg-sand/35">
+    <summary className="flex min-h-20 cursor-pointer list-none items-center gap-3 p-3 transition hover:bg-sand/40 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-forest/10 sm:p-4 [&::-webkit-details-marker]:hidden">
+      <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 items-center gap-2">
+          <p className="truncate text-sm font-black sm:text-base">{job.customerName?.trim() || "Customer not recorded"}</p>
+          <span className="shrink-0 text-xs font-black text-black/35">{job.jobId}</span>
+        </div>
+        <p className="mt-1 truncate text-xs font-semibold text-black/45">{job.city?.trim() || "City not recorded"} · {dueDate}</p>
+      </div>
+      <StatusBadge status={job.status} />
+      <ChevronDownIcon className="size-5 shrink-0 text-black/35 transition-transform group-open:rotate-180" aria-hidden="true" />
+    </summary>
+    <div className="border-t border-black/5 px-4 pb-4 pt-3 sm:px-5 sm:pb-5">
+      <div className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+        <JobDetail label="Work type" value={job.jobType || "Not recorded"} />
+        <JobDetail label="Address" value={[job.address, job.city].filter(Boolean).join(", ") || "Not recorded"} />
+        <JobDetail label="Assigned to" value={job.assignedCrew || "Unassigned"} />
+        <JobDetail label="Source" value={job.source || "Not recorded"} />
+        <JobDetail label="Work order" value={job.factoryWorkOrderNumber || "Not recorded"} />
+        <div>
+          <p className="text-xs font-black uppercase tracking-wide text-black/35">Priority</p>
+          <div className="mt-1"><PriorityBadge priority={job.priority} /></div>
+        </div>
+      </div>
+      {job.scopeNotes?.trim() && <div className="mt-4 rounded-xl bg-white p-3 ring-1 ring-black/5">
+        <p className="text-xs font-black uppercase tracking-wide text-black/35">Scope</p>
+        <p className="mt-1 line-clamp-3 text-sm font-semibold leading-relaxed text-black/60">{job.scopeNotes}</p>
+      </div>}
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+        <Link href={`/jobs/${job.jobId}/edit`} className="btn-secondary min-h-11 justify-center !px-4 !py-2 text-sm !font-black text-forest">Edit / schedule</Link>
+        <Link href={`/jobs/${job.jobId}`} className="btn-primary min-h-11 justify-center !px-4 !py-2 text-sm !font-black">{primaryAction}</Link>
+      </div>
+    </div>
+  </details>;
+}
+
+function JobDetail({ label, value }: { label: string; value: string }) {
+  return <div className="min-w-0">
+    <p className="text-xs font-black uppercase tracking-wide text-black/35">{label}</p>
+    <p className="mt-1 truncate font-bold text-black/65">{value}</p>
+  </div>;
 }
 
 function QuickFilterTab({ label, value, count, active, onClick, icon }: { label: string; value: QuickFilter; count: number; active: boolean; onClick: (value: QuickFilter) => void; icon: React.ReactNode }) {

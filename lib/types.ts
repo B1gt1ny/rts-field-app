@@ -3,7 +3,7 @@ export const jobTypeOptions = ["Trim out", "Service", "Warranty", "Setup", "Skir
 export const priorities = ["Low", "Normal", "High", "Urgent"] as const;
 export const sources = ["Dealer", "Factory", "Individual"] as const;
 export const checklistLabels = [
-  "Paperwork picked up", "Scope reviewed", "Materials checked", "Before photos taken",
+  "Work order", "Scope reviewed", "Parts picked up", "Before photos taken",
   "Serial/VIN tag photo taken", "Work completed", "After photos taken",
   "Completion notes added", "Customer/source notified", "Invoice created",
 ] as const;
