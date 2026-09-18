@@ -176,6 +176,7 @@ export type WorkOrderFile = {
 export interface Job {
   jobId: string;
   source: JobSource;
+  manufacturer?: string;
   dealerName: string;
   factoryWorkOrderNumber: string;
   serialUnitNumber?: string;
@@ -257,7 +258,7 @@ export function defaultFactoryCost(): FactoryCostTracker {
 }
 
 export const emptyJob: Job = {
-  jobId: "", source: "Dealer", dealerName: "", factoryWorkOrderNumber: "", serialUnitNumber: "", returnVisitRequired: false, customerName: "",
+  jobId: "", source: "Dealer", manufacturer: "", dealerName: "", factoryWorkOrderNumber: "", serialUnitNumber: "", returnVisitRequired: false, customerName: "",
   phone: "", address: "", city: "", homeSize: "Single-wide", jobType: "Setup",
   priority: "Normal", status: "New", assignedCrew: "Unassigned", assignedEmployeeIds: [], fullCrew: false, dueDate: "", scheduledTime: "", schedulePlan: "Confirmed", scopeNotes: "",
   partsNeeded: "", paperworkPickedUp: false, paperworkPickedUpBy: "", paperworkPickupDate: "",

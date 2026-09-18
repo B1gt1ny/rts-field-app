@@ -142,7 +142,10 @@ export function JobForm({ initialJob }: { initialJob?: Job }) {
     <FormSection title="Job basics" description="Source, schedule, and assignment">
       <Select label="Source" value={job.source} options={[...sources]} onChange={(v) => set("source", v as Job["source"])} />
       {job.source === "Dealer" && <Input label="Dealer name" value={job.dealerName} onChange={(v) => set("dealerName", v)} required />}
-      {job.source === "Factory" && <Input label="Factory work order #" value={job.factoryWorkOrderNumber} onChange={(v) => set("factoryWorkOrderNumber", v)} required />}
+      {job.source === "Factory" && <>
+        <Input label="Manufacturer / factory" value={job.manufacturer || ""} onChange={(v) => set("manufacturer", v)} />
+        <Input label="Factory work order #" value={job.factoryWorkOrderNumber} onChange={(v) => set("factoryWorkOrderNumber", v)} required />
+      </>}
       <Select label="Job type" value={job.jobType} options={uniqueOptions(options.jobTypeOptions, job.jobType)} onChange={(v) => set("jobType", v)} />
       <Input label="Due date" type="date" value={job.dueDate} onChange={(v) => set("dueDate", v)} required />
       <Input label="Scheduled time" type="time" value={job.scheduledTime || ""} onChange={(v) => set("scheduledTime", v)} />

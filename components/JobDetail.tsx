@@ -419,7 +419,7 @@ function OverviewPanel({ job, companyCam }: { job: Job; companyCam: CompanyCamSt
     <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
       <div>
         <h2 className="text-lg font-black">Job information</h2>
-        <p className="text-sm font-semibold text-black/45">{job.source}{job.dealerName ? ` · ${job.dealerName}` : ""}{job.factoryWorkOrderNumber ? ` · WO ${job.factoryWorkOrderNumber}` : ""}</p>
+        <p className="text-sm font-semibold text-black/45">{job.source}{job.dealerName ? ` · ${job.dealerName}` : ""}{job.manufacturer ? ` · ${job.manufacturer}` : ""}{job.factoryWorkOrderNumber ? ` · WO ${job.factoryWorkOrderNumber}` : ""}</p>
       </div>
       <div className="flex flex-wrap gap-2"><StatusBadge status={job.status} /><PriorityBadge priority={job.priority} /></div>
     </div>
