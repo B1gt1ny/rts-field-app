@@ -37,6 +37,7 @@ const defaultCompany: BusinessSettings = {
   address: "",
   city: "",
   defaultCalendar: "Google Calendar",
+  calendarFeedToken: "",
   defaultState: "",
   merchandiseLink: "",
   fieldSupportName: "Office",
@@ -121,6 +122,25 @@ export function SettingsPanel() {
   const [newUserRole, setNewUserRole] = useState<UserRole>("Employee");
   const [newUserEmployeeId, setNewUserEmployeeId] = useState("");
   const [loading, setLoading] = useState(true);
+  const [copiedCalendarLink, setCopiedCalendarLink] = useState(false);
+
+  function calendarFeedUrl() {
+    if (typeof window === "undefined" || !company.calendarFeedToken) return "";
+    return `${window.location.origin}/api/calendar/feed/${company.calendarFeedToken}.ics`;
+  }
+
+  async function copyCalendarLink() {
+    const url = calendarFeedUrl();
+    if (!url) return;
+    await navigator.clipboard.writeText(url);
+    setCopiedCalendarLink(true);
+    window.setTimeout(() => setCopiedCalendarLink(false), 1800);
+  }
+
+  async function regenerateCalendarLink() {
+    const response = await authFetch("/api/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...company, calendarFeedToken: "" }) });
+    if (response.ok) setCompany({ ...defaultCompany, ...(await response.json()) });
+  }
 
   useEffect(() => {
     authFetch("/api/settings/status").then((response) => response.ok ? response.json() : Promise.reject(new Error("Status unavailable"))).then((data) => {
@@ -404,6 +424,18 @@ export function SettingsPanel() {
           <p className="mt-3 font-black">{title}</p>
           <p className="mt-1 text-sm text-black/50">{description}</p>
         </Link>)}
+      </div>
+    </section>
+
+    <section className="card p-4 sm:p-6">
+      <div className="flex items-start gap-3">
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-forest text-white"><CalendarDaysIcon className="size-5" /></span>
+        <div><h2 className="text-lg font-black">RTS calendar subscription</h2><p className="mt-1 text-sm text-black/45">Read-only calendar — scheduling changes must be made in RTS.</p></div>
+      </div>
+      <p className="mt-4 text-sm font-semibold text-black/55">Copy this private link into Google Calendar under Other calendars → From URL. Google Calendar changes do not sync back to RTS.</p>
+      <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+        <button type="button" onClick={() => void copyCalendarLink()} className="min-h-11 rounded-xl bg-forest px-4 py-3 text-sm font-black text-white">{copiedCalendarLink ? "Copied" : "Copy Calendar Link"}</button>
+        <button type="button" onClick={() => void regenerateCalendarLink()} className="min-h-11 rounded-xl border border-black/10 bg-white px-4 py-3 text-sm font-black text-ink">Regenerate / Revoke Link</button>
       </div>
     </section>
 

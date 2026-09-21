@@ -59,6 +59,7 @@ function normalizeSettings(input: Partial<BusinessSettings>): BusinessSettings {
     address: input.address?.trim() || "",
     city: input.city?.trim() || "",
     defaultCalendar: input.defaultCalendar?.trim() || "Google Calendar",
+    calendarFeedToken: input.calendarFeedToken?.trim() || undefined,
     defaultState: input.defaultState?.trim() || "",
     merchandiseLink: input.merchandiseLink?.trim() || "",
     fieldSupportName: input.fieldSupportName?.trim() || "Office",

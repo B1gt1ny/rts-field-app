@@ -24,6 +24,7 @@ export type BusinessSettings = {
   address: string;
   city: string;
   defaultCalendar: string;
+  calendarFeedToken?: string;
   defaultState: string;
   merchandiseLink: string;
   fieldSupportName: string;
