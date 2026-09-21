@@ -121,6 +121,16 @@ export type TimeEntry = {
   origin?: string;
   notes?: string;
 };
+export type TravelLeg = {
+  id: string;
+  date: string;
+  from: string;
+  to: string;
+  departureAt?: string;
+  arrivalAt?: string;
+  miles?: string;
+  employeeName: string;
+};
 export type SignoffItem = {
   id: string;
   type: "Work Authorization" | "Completion Sign-off" | "Customer Approval" | "Inspection";
@@ -216,6 +226,7 @@ export interface Job {
   receipts?: ReceiptItem[];
   partsItems?: PartItem[];
   timeEntries?: TimeEntry[];
+  travelLegs?: TravelLeg[];
   signoffs?: SignoffItem[];
   customerSurvey?: CustomerSurvey;
   factoryCost?: FactoryCostTracker;
@@ -264,7 +275,7 @@ export const emptyJob: Job = {
   partsNeeded: "", paperworkPickedUp: false, paperworkPickedUpBy: "", paperworkPickupDate: "",
   beforePhotos: [], damagePhotos: [], serialTagPhotos: [], afterPhotos: [], completionNotes: "",
   invoiceStatus: "Not started", checklist: makeChecklist(),
-  activityLog: [], paperworkItems: [], receipts: [], partsItems: [], timeEntries: [], signoffs: [], workOrderFiles: [],
+  activityLog: [], paperworkItems: [], receipts: [], partsItems: [], timeEntries: [], travelLegs: [], signoffs: [], workOrderFiles: [],
   factoryCost: defaultFactoryCost(),
   syncToCalendar: false,
   syncToCompanyCam: false,

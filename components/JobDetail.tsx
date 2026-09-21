@@ -10,7 +10,7 @@ import { getFactoryCostTotals, hasFactoryCostWork } from "@/lib/factory-costs";
 import { isReceiptBackupMissing } from "@/lib/receipt-backup";
 import { activeCorrectionCategories, billingBlockers, buildCorrectionActivity, checklistProgress, closeoutChecks, correctionCategories, correctionCategoryComplete, correctionResolutionPatch, dispatchBlockers, dispatchReadinessScore, hasActiveCorrections, hasOpenParts, intakeCompleteness, readinessScore, type CorrectionCategory } from "@/lib/job-readiness";
 import { useAuthUser } from "./AuthGate";
-import { getTravelState, getWorkSession, structuredTravelTotals } from "@/lib/field-activity";
+import { getTravelState, getWorkSession, hasStructuredTravelArrival, structuredTravelLegs, structuredTravelTotals } from "@/lib/field-activity";
 
 type CompanyCamState = {
   configured: boolean;
@@ -1529,6 +1529,9 @@ function ContractorInvoiceDataSummary({ job }: { job: Job }) {
   const receipts = job.receipts || [];
   const paperwork = job.paperworkItems || defaultPaperwork(job);
   const tracker = job.factoryCost;
+  const structured = structuredTravelTotals(job);
+  const canonicalMileageRecorded = structured ? structured.miles >= 0 : entries.some((entry) => entry.mileage?.trim());
+  const canonicalDriveTimeRecorded = structured ? structured.driveTimeRecorded : formatTravelDuration(entries) !== "0m";
   const tripStarts = entries.filter((entry) => entry.notes === "Started Travel");
   const tripOrigins = tripStarts.map((entry) => entry.origin?.trim()).filter((origin): origin is string => Boolean(origin));
   const paperworkComplete = paperwork.filter((item) => ["Collected", "Submitted", "Not needed"].includes(item.status)).length;
@@ -1558,9 +1561,9 @@ function ContractorInvoiceDataSummary({ job }: { job: Job }) {
         { label: "Trip date", value: recorded(tripStarts.length), href: "#time-log" },
         { label: "Origin", value: recorded(tripOrigins.length), href: "#time-log" },
         { label: "Destination", value: recorded([job.address, job.city].filter(Boolean).join(", ")), href: "#time-log" },
-        { label: "Mileage", value: recorded(entries.some((entry) => entry.mileage?.trim())), href: "#time-log" },
-        { label: "Billing mileage", value: recorded(tracker?.miles?.trim()), href: "#factory-costs" },
-        { label: "Drive time", value: recorded(tracker?.driveTimeHours?.trim() || formatTravelDuration(entries) !== "0m"), href: "#time-log" },
+        { label: "Mileage", value: recorded(structured ? true : entries.some((entry) => entry.mileage?.trim())), href: "#time-log" },
+        { label: "Billing mileage", value: recorded(canonicalMileageRecorded), href: "#time-log" },
+        { label: "Drive time", value: recorded(canonicalDriveTimeRecorded), href: "#time-log" },
       ],
     },
     {
@@ -2402,6 +2405,7 @@ function TimeLogPanel({ job, saving, onSave }: { job: Job; saving: boolean; onSa
   const today = new Date().toLocaleDateString("en-CA");
   const todayEntries = entries.filter((entry) => entry.createdAt.slice(0, 10) === today);
   const structured = structuredTravelTotals(job);
+  const structuredArrival = hasStructuredTravelArrival(job);
   const mileageTotal = structured ? structured.miles : entries.reduce((sum, entry) => sum + (Number(entry.mileage) || 0), 0);
   const session = getWorkSession(job);
   const travel = getTravelState(job);
@@ -2474,18 +2478,20 @@ function TimeLogPanel({ job, saving, onSave }: { job: Job; saving: boolean; onSa
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm font-black">Travel and mileage</p>
-          <p className="text-xs font-semibold text-black/45">{travelLabel(travel)}</p>
+          <p className="text-xs font-semibold text-black/45">{structured ? structuredArrival ? "Structured arrival is recorded." : "Structured travel is recorded without arrival." : travelLabel(travel)}</p>
         </div>
-        {travel.active
+        {structured
+          ? <span className="inline-flex min-h-11 items-center justify-center rounded-xl bg-white px-4 py-2 text-sm font-black text-black/45">Travel Recorded</span>
+          : travel.active
           ? <button type="button" disabled={saving} onClick={arriveAtJob} className="min-h-11 rounded-xl bg-forest px-4 py-2 text-sm font-black text-white disabled:opacity-50">{saving ? "Saving..." : "Arrive at Job"}</button>
           : !travel.started && !session.started
             ? <button type="button" disabled={saving} onClick={startTravel} className="min-h-11 rounded-xl bg-forest px-4 py-2 text-sm font-black text-white disabled:opacity-50">{saving ? "Saving..." : "Start Travel"}</button>
             : <span className="inline-flex min-h-11 items-center justify-center rounded-xl bg-white px-4 py-2 text-sm font-black text-black/45">Travel Recorded</span>}
       </div>
       <div className="mt-3 grid gap-2 sm:grid-cols-3">
-        <MiniMetric label="Travel started" value={travel.started ? formatSessionDate(travel.started.createdAt) : "Not started"} icon={<MapPinIcon />} />
-        <MiniMetric label="Arrival" value={travel.active ? "In travel" : travel.arrived ? formatSessionDate(travel.arrived.createdAt) : "Not recorded"} icon={<MapPinIcon />} />
-        <MiniMetric label="Drive time" value={travelDuration(travel)} icon={<ClockIcon />} />
+        <MiniMetric label="Travel started" value={structured ? `${structuredTravelLegs(job).length} structured leg${structuredTravelLegs(job).length === 1 ? "" : "s"}` : travel.started ? formatSessionDate(travel.started.createdAt) : "Not started"} icon={<MapPinIcon />} />
+        <MiniMetric label="Arrival" value={structured ? structuredArrival ? "Recorded" : "Not recorded" : travel.active ? "In travel" : travel.arrived ? formatSessionDate(travel.arrived.createdAt) : "Not recorded"} icon={<MapPinIcon />} />
+        <MiniMetric label="Drive time" value={structured ? formatMinutes(structured.driveMinutes) : travelDuration(travel)} icon={<ClockIcon />} />
       </div>
       {!travel.started && !session.started && <label className="mt-3 block text-sm font-bold text-black/55">Origin<input className="field mt-1 !min-h-11 !py-2 text-sm" value={origin} onChange={(event) => setOrigin(event.target.value)} placeholder="Starting location (optional)" /></label>}
     </div>
