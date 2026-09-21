@@ -1,5 +1,6 @@
 import type { Job, JobActivity } from "./types";
 import { isReceiptBackupMissing } from "./receipt-backup";
+import { hasStructuredTravelArrival, structuredTravelTotals } from "./field-activity";
 
 export type ReadinessCheck = {
   label: string;
@@ -207,6 +208,8 @@ function startOfToday() {
 
 function billingEvidenceChecks(job: Job): ReadinessCheck[] {
   const entries = job.timeEntries || [];
+  const structured = structuredTravelTotals(job);
+  const hasStructuredTravel = Boolean(structured);
   const travelStarted = entries.some((entry) => entry.notes === "Started Travel");
   const arrived = entries.some((entry) => entry.type === "Arrived");
   const workStarted = entries.some((entry) => entry.type === "Work started");
@@ -221,13 +224,13 @@ function billingEvidenceChecks(job: Job): ReadinessCheck[] {
   return [
     {
       label: "Travel arrival",
-      ok: !travelStarted || arrived,
-      detail: !travelStarted ? "No travel logged" : arrived ? "Arrival logged" : "Travel started without arrival",
+      ok: hasStructuredTravel ? hasStructuredTravelArrival(job) : !travelStarted || arrived,
+      detail: hasStructuredTravel ? hasStructuredTravelArrival(job) ? "Structured arrival logged" : "Structured travel without arrival" : !travelStarted ? "No travel logged" : arrived ? "Arrival logged" : "Travel started without arrival",
     },
     {
       label: "Mileage log",
-      ok: !travelStarted || mileageRecorded,
-      detail: !travelStarted ? "No travel logged" : mileageRecorded ? "Mileage logged" : "Travel logged without mileage",
+      ok: hasStructuredTravel || !travelStarted || mileageRecorded,
+      detail: hasStructuredTravel ? "Structured mileage logged" : !travelStarted ? "No travel logged" : mileageRecorded ? "Mileage logged" : "Travel logged without mileage",
     },
     {
       label: "Work session",

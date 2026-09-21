@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { BriefcaseIcon, CameraIcon, CalendarDaysIcon, CheckCircleIcon, ChevronDownIcon, ClipboardDocumentCheckIcon, ClockIcon, DocumentTextIcon, ExclamationTriangleIcon, MapPinIcon, PhoneIcon, PlayIcon, ReceiptPercentIcon, UserCircleIcon, UserGroupIcon, WrenchScrewdriverIcon } from "@heroicons/react/24/outline";
-import { defaultFactoryCost, type BusinessSettings, type Employee, type FactoryCostTracker, type Job, type JobActivity } from "@/lib/types";
+import { BriefcaseIcon, CameraIcon, CalendarDaysIcon, CheckCircleIcon, ClipboardDocumentCheckIcon, ClockIcon, DocumentTextIcon, ExclamationTriangleIcon, MapPinIcon, PhoneIcon, PlayIcon, ReceiptPercentIcon, UserCircleIcon, UserGroupIcon, WrenchScrewdriverIcon } from "@heroicons/react/24/outline";
+import { defaultFactoryCost, type BusinessSettings, type Employee, type FactoryCostTracker, type Job, type JobActivity, type TravelLeg } from "@/lib/types";
 import { authFetch } from "@/lib/client-auth";
-import { getFactoryCostTotals, hasFactoryCostWork, roundUpToQuarterHour } from "@/lib/factory-costs";
+import { getFactoryCostTotals, hasFactoryCostWork } from "@/lib/factory-costs";
 import { hasReceiptDollars, hasUploadedReceiptBackup } from "@/lib/receipt-backup";
 import { checklistProgress } from "@/lib/job-readiness";
 import { getTravelState, getWorkSession, isTodayJob, todayFieldStatus } from "@/lib/field-activity";
@@ -46,19 +46,18 @@ export function FieldAppView() {
   const [savingJobId, setSavingJobId] = useState("");
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
   const [crewFilter, setCrewFilter] = useState<CrewFilter>("today");
-  const [fieldNotice, setFieldNotice] = useState("Open your assigned job, check the scope, add any helpful photos or video, add notes, and tap Ready Review when field work is complete.");
-  const [reviewInstructions, setReviewInstructions] = useState("Manager review checks completion notes and completed work before billing. Parts and job media are optional.");
+  const [fieldNotice, setFieldNotice] = useState("Open your assigned job, check the scope, take required photos, add notes, and tap Ready Review when field work is complete.");
+  const [reviewInstructions, setReviewInstructions] = useState("Manager review checks after photos, completion notes, work completed, and open parts before billing.");
   const [customerTextTemplate, setCustomerTextTemplate] = useState("Company update for {customerName}: crew is on your job {jobId}.");
   const [fieldNoteTemplates, setFieldNoteTemplates] = useState(defaultFieldNoteTemplates);
   const [factoryCostInstructions, setFactoryCostInstructions] = useState("Factory jobs: enter miles, drive time, hotel, materials, and other receipt totals before sending the job for review.");
-  const [factoryTravelRates, setFactoryTravelRates] = useState({ mileageRate: "0.85", hourlyRate: "20" });
-  const [requireBeforePhotosForReview, setRequireBeforePhotosForReview] = useState(false);
-  const [requireSerialTagPhotoForReview, setRequireSerialTagPhotoForReview] = useState(false);
+  const [requireBeforePhotosForReview, setRequireBeforePhotosForReview] = useState(true);
+  const [requireSerialTagPhotoForReview, setRequireSerialTagPhotoForReview] = useState(true);
   const [requireDamagePhotosForReview, setRequireDamagePhotosForReview] = useState(false);
-  const [requireAfterPhotosForReview, setRequireAfterPhotosForReview] = useState(false);
+  const [requireAfterPhotosForReview, setRequireAfterPhotosForReview] = useState(true);
   const [requireCompletionNotesForReview, setRequireCompletionNotesForReview] = useState(true);
   const [requireWorkCompleteForReview, setRequireWorkCompleteForReview] = useState(true);
-  const [requirePartsClosedForReview, setRequirePartsClosedForReview] = useState(false);
+  const [requirePartsClosedForReview, setRequirePartsClosedForReview] = useState(true);
   const [requireFactoryCostsForReview, setRequireFactoryCostsForReview] = useState(true);
   const [requireReceiptBackupForReview, setRequireReceiptBackupForReview] = useState(true);
   const [fieldSupportName, setFieldSupportName] = useState("Office");
@@ -74,7 +73,7 @@ export function FieldAppView() {
     Promise.all([
       authFetch("/api/jobs").then((response) => response.json()),
       fetch("/api/employees").then((response) => response.json()),
-      authFetch("/api/settings").then((response) => response.ok ? response.json() : null).catch(() => null),
+      fetch("/api/settings").then((response) => response.json()).catch(() => null),
     ]).then(([jobData, employeeData, settings]) => {
       setJobs(Array.isArray(jobData) ? jobData : []);
       const businessSettings = settings as Partial<BusinessSettings> | null;
@@ -83,17 +82,13 @@ export function FieldAppView() {
       if (businessSettings?.customerTextTemplate) setCustomerTextTemplate(businessSettings.customerTextTemplate);
       if (businessSettings?.employeeFieldNoteTemplates?.length) setFieldNoteTemplates(businessSettings.employeeFieldNoteTemplates);
       if (businessSettings?.factoryCostInstructions) setFactoryCostInstructions(businessSettings.factoryCostInstructions);
-      setFactoryTravelRates({
-        mileageRate: businessSettings?.factoryCostDefaults?.mileageRate || "0.85",
-        hourlyRate: businessSettings?.factoryCostDefaults?.hourlyRate || "20",
-      });
-      setRequireBeforePhotosForReview(businessSettings?.requireBeforePhotosForReview ?? false);
-      setRequireSerialTagPhotoForReview(businessSettings?.requireSerialTagPhotoForReview ?? false);
+      setRequireBeforePhotosForReview(businessSettings?.requireBeforePhotosForReview ?? true);
+      setRequireSerialTagPhotoForReview(businessSettings?.requireSerialTagPhotoForReview ?? true);
       setRequireDamagePhotosForReview(businessSettings?.requireDamagePhotosForReview ?? false);
-      setRequireAfterPhotosForReview(businessSettings?.requireAfterPhotosForReview ?? false);
+      setRequireAfterPhotosForReview(businessSettings?.requireAfterPhotosForReview ?? true);
       setRequireCompletionNotesForReview(businessSettings?.requireCompletionNotesForReview ?? true);
       setRequireWorkCompleteForReview(businessSettings?.requireWorkCompleteForReview ?? true);
-      setRequirePartsClosedForReview(false);
+      setRequirePartsClosedForReview(businessSettings?.requirePartsClosedForReview ?? true);
       setRequireFactoryCostsForReview(businessSettings?.requireFactoryCostsForReview ?? true);
       setRequireReceiptBackupForReview(businessSettings?.requireReceiptBackupForReview ?? true);
       setFieldSupportName(businessSettings?.fieldSupportName || "Office");
@@ -151,18 +146,27 @@ export function FieldAppView() {
   async function startJob(job: Job) {
     setSavingJobId(job.jobId);
     const employeeName = employee?.name || user?.employeeName || "Crew";
+    const session = getWorkSession(job);
     const now = new Date().toISOString();
     const activity: JobActivity = {
       id: `activity-${Date.now()}`,
-      type: "Status",
+      type: "Time",
       message: "Started Job",
       createdAt: now,
       createdBy: employeeName,
       audience: "All",
     };
+    const timeEntry: NonNullable<Job["timeEntries"]>[number] | undefined = session.active ? undefined : {
+      id: `time-${Date.now()}`,
+      type: "Work started",
+      employeeName,
+      createdAt: now,
+      notes: "Started from Field App.",
+    };
     const patch: Partial<Job> = {
       status: ["New", "Scheduled"].includes(job.status) ? "In Progress" : job.status,
-      activityLog: [activity, ...(job.activityLog || [])].slice(0, 50),
+      activityLog: session.active ? job.activityLog || [] : [activity, ...(job.activityLog || [])].slice(0, 50),
+      timeEntries: timeEntry ? [timeEntry, ...(job.timeEntries || [])].slice(0, 100) : job.timeEntries || [],
     };
     try {
       const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
@@ -304,22 +308,25 @@ export function FieldAppView() {
     }
   }
 
+  async function saveTravelLeg(job: Job, leg: Omit<TravelLeg, "id" | "employeeName">) {
+    setSavingJobId(job.jobId);
+    const employeeName = employee?.name || user?.employeeName || "Crew";
+    const travelLeg: TravelLeg = { ...leg, id: `travel-${Date.now()}`, employeeName };
+    try {
+      const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ travelLegs: [...(job.travelLegs || []), travelLeg] }) });
+      const saved = await response.json();
+      if (response.ok) setJobs((old) => old.map((item) => item.jobId === job.jobId ? { ...item, ...saved } : item));
+    } finally { setSavingJobId(""); }
+  }
+
   async function saveFactoryCost(job: Job, costPatch: Partial<FactoryCostTracker>) {
     setSavingJobId(job.jobId);
     const employeeName = employee?.name || user?.employeeName || "Crew";
-    const factoryCost = {
-      ...defaultFactoryCost(),
-      ...(job.factoryCost || {}),
-      mileageRate: factoryTravelRates.mileageRate,
-      hourlyRate: factoryTravelRates.hourlyRate,
-      ...costPatch,
-      driveTimeHours: String(roundUpToQuarterHour(costPatch.driveTimeHours ?? job.factoryCost?.driveTimeHours)),
-    };
-    const total = getFactoryCostTotals(factoryCost).grandTotal;
+    const factoryCost = { ...defaultFactoryCost(), ...(job.factoryCost || {}), ...costPatch };
     const activity: JobActivity = {
       id: `activity-${Date.now()}`,
       type: "Invoice",
-      message: `${employeeName} updated factory costs from the field. Factory total: $${total.toFixed(2)}.`,
+      message: employeeName + " updated factory costs from the field.",
       createdAt: new Date().toISOString(),
       createdBy: employeeName,
       audience: "Admin",
@@ -408,7 +415,7 @@ export function FieldAppView() {
   }
 
   return <div className="mx-auto max-w-3xl space-y-4">
-    <section className="overflow-hidden rounded-3xl bg-ink p-4 text-white shadow-card sm:p-5">
+    <section className="rounded-2xl bg-ink p-4 text-white sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-black uppercase tracking-widest text-lime">Employee field app</p>
@@ -416,7 +423,7 @@ export function FieldAppView() {
           <p className="mt-1 text-sm font-semibold text-white/60">{formatTodayLabel()} · {todayJobs.length} assigned today</p>
           <p className="mt-2 text-sm text-white/70">Next job, next action, then the rest of today.</p>
         </div>
-        <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-lime text-ink shadow-lg shadow-lime/10"><UserCircleIcon className="size-6" /></span>
+        <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-lime text-ink"><UserCircleIcon className="size-6" /></span>
       </div>
       {employees.length > 0 && !lockedToLogin && <label className="mt-4 block">
         <span className="mb-2 block text-xs font-black uppercase tracking-wide text-white/60">Viewing employee</span>
@@ -435,23 +442,24 @@ export function FieldAppView() {
       <Link href="/employees" className="btn-primary mt-4">Open Employees</Link>
     </section> : null}
 
-    {!loading && employee && <CurrentJobPanel job={currentJob} employeeName={employee.name} today={today} saving={savingJobId === currentJob?.jobId} permissions={fieldPermissions} onStart={(job) => startJob(job)} />}
+    {!loading && employee && <CurrentJobPanel job={currentJob} employeeName={employee.name} today={today} saving={savingJobId === currentJob?.jobId} permissions={fieldPermissions} onStart={(job) => startJob(job)} onStartTravel={(job) => startTravel(job)} onArrive={(job) => arriveAtJob(job)} />}
 
     {!loading && employee && <EmployeeSevenDaySchedule groups={sevenDaySchedule} />}
 
     {!loading && employee && fieldBlockers.length > 0 && <FieldBlockers blockers={fieldBlockers} />}
 
+    {!loading && employee && recentFieldActivity.length > 0 && <RecentFieldActivity items={recentFieldActivity} />}
 
     {!loading && employee && assignedJobs.length ? <section id="all-assigned-work" className="scroll-mt-24">
       <details>
-        <summary className="cursor-pointer rounded-2xl border border-black/10 bg-white px-4 py-3 text-base font-black shadow-sm">All assigned work</summary>
+        <summary className="cursor-pointer rounded-xl border border-black/10 bg-white px-4 py-3 text-base font-black">All assigned work</summary>
         <div className="mt-3">
           <CrewFilterBar value={crewFilter} counts={crewFilterCounts} onChange={setCrewFilter} />
-          <div className="grid gap-3 md:grid-cols-2">{filteredAssignedJobs.map((job) => <FieldJobCard key={job.jobId} job={job} noteDraft={noteDrafts[job.jobId] || ""} saving={savingJobId === job.jobId} permissions={fieldPermissions} customerTextTemplate={customerTextTemplate} fieldNoteTemplates={fieldNoteTemplates} reviewInstructions={reviewInstructions} factoryCostInstructions={factoryCostInstructions} factoryTravelRates={factoryTravelRates} requireBeforePhotosForReview={requireBeforePhotosForReview} requireSerialTagPhotoForReview={requireSerialTagPhotoForReview} requireDamagePhotosForReview={requireDamagePhotosForReview} requireAfterPhotosForReview={requireAfterPhotosForReview} requireCompletionNotesForReview={requireCompletionNotesForReview} requireWorkCompleteForReview={requireWorkCompleteForReview} requirePartsClosedForReview={requirePartsClosedForReview} requireFactoryCostsForReview={requireFactoryCostsForReview} requireReceiptBackupForReview={requireReceiptBackupForReview} fieldSupportName={fieldSupportName} fieldSupportPhone={fieldSupportPhone} employeeHelpInstructions={employeeHelpInstructions} onStart={() => startJob(job)} onReadyReview={() => readyForManagerReview(job)} onChecklist={(itemId) => toggleChecklist(job, itemId)} onNote={(message, type) => saveFieldNote(job, message, type)} onCompletionNotes={(notes) => saveCompletionNotes(job, notes)} onFactoryCost={(costPatch) => saveFactoryCost(job, costPatch)} onNoteDraft={(value) => setNoteDrafts((old) => ({ ...old, [job.jobId]: value }))} />)}</div>
+          <div className="grid gap-3 md:grid-cols-2">{filteredAssignedJobs.map((job) => <FieldJobCard key={job.jobId} job={job} noteDraft={noteDrafts[job.jobId] || ""} saving={savingJobId === job.jobId} permissions={fieldPermissions} customerTextTemplate={customerTextTemplate} fieldNoteTemplates={fieldNoteTemplates} reviewInstructions={reviewInstructions} factoryCostInstructions={factoryCostInstructions} requireBeforePhotosForReview={requireBeforePhotosForReview} requireSerialTagPhotoForReview={requireSerialTagPhotoForReview} requireDamagePhotosForReview={requireDamagePhotosForReview} requireAfterPhotosForReview={requireAfterPhotosForReview} requireCompletionNotesForReview={requireCompletionNotesForReview} requireWorkCompleteForReview={requireWorkCompleteForReview} requirePartsClosedForReview={requirePartsClosedForReview} requireFactoryCostsForReview={requireFactoryCostsForReview} requireReceiptBackupForReview={requireReceiptBackupForReview} fieldSupportName={fieldSupportName} fieldSupportPhone={fieldSupportPhone} employeeHelpInstructions={employeeHelpInstructions} onStart={() => startJob(job)} onReadyReview={() => readyForManagerReview(job)} onChecklist={(itemId) => toggleChecklist(job, itemId)} onNote={(message, type) => saveFieldNote(job, message, type)} onCompletionNotes={(notes) => saveCompletionNotes(job, notes)} onFactoryCost={(costPatch) => saveFactoryCost(job, costPatch)} onSaveTravelLeg={(leg) => saveTravelLeg(job, leg)} onNoteDraft={(value) => setNoteDrafts((old) => ({ ...old, [job.jobId]: value }))} />)}</div>
           {assignedJobs.length > 0 && !filteredAssignedJobs.length && <div className="card p-6 text-center">
             <p className="font-black">No jobs in this lane.</p>
             <p className="mt-1 text-sm text-black/45">Try another crew filter or view all assigned work.</p>
-            <button type="button" onClick={() => setCrewFilter("all")} className="btn-primary mt-4 min-h-11 !px-4 !py-2">Show All Work</button>
+            <button type="button" onClick={() => setCrewFilter("all")} className="mt-4 min-h-11 rounded-xl bg-forest px-4 py-2 font-black text-white">Show All Work</button>
           </div>}
         </div>
       </details>
@@ -464,17 +472,18 @@ export function FieldAppView() {
   </div>;
 }
 
-function CurrentJobPanel({ job, employeeName, today, saving, permissions, onStart }: { job?: Job; employeeName: string; today: string; saving: boolean; permissions: FieldPermissions; onStart: (job: Job) => void }) {
+function CurrentJobPanel({ job, employeeName, today, saving, permissions, onStart, onStartTravel, onArrive }: { job?: Job; employeeName: string; today: string; saving: boolean; permissions: FieldPermissions; onStart: (job: Job) => void; onStartTravel: (job: Job) => void; onArrive: (job: Job) => void }) {
   if (!job) return <section className="card p-5 text-center">
     <p className="text-lg font-black">No assigned work right now.</p>
     <p className="mt-1 text-sm font-semibold text-black/45">Assigned jobs will show here when dispatch puts them on your crew list.</p>
   </section>;
   const action = fieldNextStep(job);
   const attention = fieldAttentionItems(job, action);
+  const session = getWorkSession(job);
   const fieldStatus = todayFieldStatus(job, employeeName, today);
   return <section className="card overflow-hidden">
-    <div className="bg-sand/80 p-4 sm:p-5">
-      <p className="eyebrow">Current / next job</p>
+    <div className="bg-sand p-4">
+      <p className="text-xs font-black uppercase tracking-widest text-forest">Current / next job</p>
       <div className="mt-2 flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate text-sm font-black text-black/45">{job.jobId} · {job.priority}</p>
@@ -485,7 +494,7 @@ function CurrentJobPanel({ job, employeeName, today, saving, permissions, onStar
       </div>
       {job.assignedCrew && <p className="mt-2 text-xs font-black uppercase tracking-wide text-black/40">Crew: {job.assignedCrew}</p>}
       <p className="mt-2 text-xs font-black uppercase tracking-wide text-black/40">{fieldStatus}</p>
-      <div className="mt-3 rounded-2xl border border-black/[.06] bg-white p-3 shadow-sm">
+      <div className="mt-3 rounded-xl bg-white p-3">
         <p className="text-xs font-black uppercase tracking-wide text-forest">Next Step</p>
         <p className="mt-1 text-sm font-bold text-black/65">{action.reason}</p>
         {attention.items.length > 0 && <div className="mt-3 border-t border-black/10 pt-3">
@@ -499,18 +508,20 @@ function CurrentJobPanel({ job, employeeName, today, saving, permissions, onStar
     </div>
     <div className="space-y-3 p-4">
       <CurrentJobInfo job={job} />
-      {job.phone && <p className="rounded-xl border border-black/[.08] bg-white p-3 text-sm font-black text-ink">Contact customer with ETA before arrival</p>}
+      {job.phone && <p className="rounded-xl bg-blue-50 p-3 text-sm font-black text-blue-900">Contact customer with ETA before arrival</p>}
       <FieldWorkflowGuide />
-      {permissions.employeeCanStartJobs && action.kind === "start"
-        ? <button type="button" disabled={saving} onClick={() => onStart(job)} className="btn-primary block w-full">{saving ? "Saving..." : action.label}</button>
-        : <Link href={action.href} className="btn-primary flex w-full">{action.label}</Link>}
+      {session.started
+        ? <Link href={`/jobs/${job.jobId}`} className="block min-h-12 rounded-xl bg-forest px-4 py-3 text-center font-black text-white">{action.label}</Link>
+        : permissions.employeeCanStartJobs && action.kind === "start"
+          ? <button type="button" disabled={saving} onClick={() => onStart(job)} className="block min-h-12 w-full rounded-xl bg-forest px-4 py-3 text-center font-black text-white disabled:opacity-50">{saving ? "Saving..." : action.label}</button>
+          : <Link href={action.href} className="block min-h-12 rounded-xl bg-forest px-4 py-3 text-center font-black text-white">{action.label}</Link>}
       <QuickCurrentJobActions job={job} canUpload={permissions.employeeCanUploadFiles} />
     </div>
   </section>;
 }
 
 function CurrentJobInfo({ job }: { job: Job }) {
-  return <div className="rounded-2xl border border-black/[.08] bg-white p-3 shadow-sm">
+  return <div className="rounded-2xl border border-black/10 bg-white p-3">
     <div className="grid gap-2 text-sm">
       <InfoLine label="Customer / job" value={job.customerName || job.jobId} />
       <InfoLine label="Address" value={[job.address, job.city].filter(Boolean).join(", ")} />
@@ -536,7 +547,7 @@ function InfoLine({ label, value }: { label: string; value?: string }) {
 
 function FieldWorkflowGuide() {
   const steps = ["Before Photos", "Perform Work", "Progress Photos", "Completed Photos", "Paperwork", "Ready for Review"];
-  return <div className="flex flex-wrap items-center gap-1 rounded-2xl border border-black/[.05] bg-sand/75 p-2 text-[11px] font-black text-black/55">
+  return <div className="flex flex-wrap items-center gap-1 rounded-xl bg-sand p-2 text-[11px] font-black text-black/55">
     {steps.map((step, index) => <span key={step} className="inline-flex items-center gap-1">
       <span className="rounded-full bg-white px-2 py-1">{step}</span>
       {index < steps.length - 1 && <span aria-hidden="true">→</span>}
@@ -553,8 +564,8 @@ function QuickCurrentJobActions({ job, canUpload }: { job: Job; canUpload: boole
   ].filter(Boolean).slice(0, 4) as Array<{ label: string; href: string; icon: React.ReactNode; external?: boolean }>;
   return <div className="grid grid-cols-2 gap-2">
     {actions.map((action) => action.external
-      ? <a key={action.label} href={action.href} target="_blank" className="btn-secondary min-h-12 !px-3 !py-2 text-sm !font-black">{action.icon}{action.label}</a>
-      : <Link key={action.label} href={action.href} className="btn-secondary min-h-12 !px-3 !py-2 text-sm !font-black">{action.icon}{action.label}</Link>)}
+      ? <a key={action.label} href={action.href} target="_blank" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-black/10 bg-white px-3 py-2 text-sm font-black text-ink">{action.icon}{action.label}</a>
+      : <Link key={action.label} href={action.href} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-black/10 bg-white px-3 py-2 text-sm font-black text-ink">{action.icon}{action.label}</Link>)}
   </div>;
 }
 
@@ -628,7 +639,7 @@ function CrewFilterBar({ value, counts, onChange }: { value: CrewFilter; counts:
     { value: "all", label: "All" },
   ];
   return <div className="mb-4 grid grid-cols-3 gap-2 sm:grid-cols-6">
-    {filters.map((filter) => <button key={filter.value} type="button" onClick={() => onChange(filter.value)} className={`min-h-16 rounded-2xl border p-2 text-center shadow-sm transition duration-150 hover:-translate-y-px active:translate-y-0 active:scale-[.98] ${value === filter.value ? "border-forest bg-forest text-white shadow-forest/15" : "border-black/10 bg-white text-ink hover:border-forest/20"}`}>
+    {filters.map((filter) => <button key={filter.value} type="button" onClick={() => onChange(filter.value)} className={`min-h-16 rounded-2xl border p-2 text-center transition active:scale-[.98] ${value === filter.value ? "border-forest bg-forest text-white" : "border-black/10 bg-white text-ink"}`}>
       <span className="block text-2xl font-black">{counts[filter.value]}</span>
       <span className={`text-[11px] font-black uppercase tracking-wide ${value === filter.value ? "text-white/70" : "text-black/45"}`}>{filter.label}</span>
     </button>)}
@@ -705,7 +716,7 @@ function EmployeeHelpPanel({ employeeName, fieldNotice, reviewInstructions }: { 
   </section>;
 }
 
-function FieldActionCard({ job, noteDraft, saving, permissions, customerTextTemplate, fieldNoteTemplates, reviewInstructions, factoryCostInstructions, requireBeforePhotosForReview, requireSerialTagPhotoForReview, requireDamagePhotosForReview, requireAfterPhotosForReview, requireCompletionNotesForReview, requireWorkCompleteForReview, requirePartsClosedForReview, requireFactoryCostsForReview, requireReceiptBackupForReview, fieldSupportName, fieldSupportPhone, employeeHelpInstructions, onStart, onReadyReview, onChecklist, onNote, onCompletionNotes, onFactoryCost, onNoteDraft }: { job: Job; noteDraft: string; saving: boolean; permissions: FieldPermissions; customerTextTemplate: string; fieldNoteTemplates: string[]; reviewInstructions: string; factoryCostInstructions: string; requireBeforePhotosForReview: boolean; requireSerialTagPhotoForReview: boolean; requireDamagePhotosForReview: boolean; requireAfterPhotosForReview: boolean; requireCompletionNotesForReview: boolean; requireWorkCompleteForReview: boolean; requirePartsClosedForReview: boolean; requireFactoryCostsForReview: boolean; requireReceiptBackupForReview: boolean; fieldSupportName: string; fieldSupportPhone: string; employeeHelpInstructions: string; onStart: () => void; onReadyReview: () => void; onChecklist: (itemId: string) => void; onNote: (message: string, type?: JobActivity["type"]) => void; onCompletionNotes: (notes: string) => void; onFactoryCost: (costPatch: Partial<FactoryCostTracker>) => void; onNoteDraft: (value: string) => void }) {
+function FieldActionCard({ job, noteDraft, saving, permissions, customerTextTemplate, fieldNoteTemplates, reviewInstructions, factoryCostInstructions, requireBeforePhotosForReview, requireSerialTagPhotoForReview, requireDamagePhotosForReview, requireAfterPhotosForReview, requireCompletionNotesForReview, requireWorkCompleteForReview, requirePartsClosedForReview, requireFactoryCostsForReview, requireReceiptBackupForReview, fieldSupportName, fieldSupportPhone, employeeHelpInstructions, onStart, onReadyReview, onChecklist, onNote, onCompletionNotes, onFactoryCost, onSaveTravelLeg, onNoteDraft }: { job: Job; noteDraft: string; saving: boolean; permissions: FieldPermissions; customerTextTemplate: string; fieldNoteTemplates: string[]; reviewInstructions: string; factoryCostInstructions: string; requireBeforePhotosForReview: boolean; requireSerialTagPhotoForReview: boolean; requireDamagePhotosForReview: boolean; requireAfterPhotosForReview: boolean; requireCompletionNotesForReview: boolean; requireWorkCompleteForReview: boolean; requirePartsClosedForReview: boolean; requireFactoryCostsForReview: boolean; requireReceiptBackupForReview: boolean; fieldSupportName: string; fieldSupportPhone: string; employeeHelpInstructions: string; onStart: () => void; onReadyReview: () => void; onChecklist: (itemId: string) => void; onNote: (message: string, type?: JobActivity["type"]) => void; onCompletionNotes: (notes: string) => void; onFactoryCost: (costPatch: Partial<FactoryCostTracker>) => void; onSaveTravelLeg: (leg: Omit<TravelLeg, "id" | "employeeName">) => void; onNoteDraft: (value: string) => void }) {
   const review = fieldReviewStatus(job, requireFactoryCostsForReview, requireReceiptBackupForReview, requireBeforePhotosForReview, requireSerialTagPhotoForReview, requireDamagePhotosForReview, requireAfterPhotosForReview, requireCompletionNotesForReview, requireWorkCompleteForReview, requirePartsClosedForReview);
   const missing = fieldMissingItems(review);
   const helpMessage = fieldHelpMessage(job, review);
@@ -728,87 +739,86 @@ function FieldActionCard({ job, noteDraft, saving, permissions, customerTextTemp
     {permissions.employeeCanAddCompletionNotes && <QuickCompletionNotes job={job} saving={saving} onSave={onCompletionNotes} />}
     <FieldLatestUpdate job={job} />
     {permissions.employeeCanAddQuickNotes && <QuickFieldNotes job={job} noteDraft={noteDraft} templates={fieldNoteTemplates} saving={saving} onNote={onNote} onNoteDraft={onNoteDraft} />}
-    {permissions.employeeCanAddFactoryCosts && <FactoryCostQuickEntry job={job} instructions={factoryCostInstructions} travelRates={{ mileageRate: "0.85", hourlyRate: "20" }} saving={saving} onSave={onFactoryCost} />}
+    <StructuredTravelLegs job={job} saving={saving} onSave={onSaveTravelLeg} />
+    {permissions.employeeCanAddFactoryCosts && <FactoryCostQuickEntry job={job} instructions={factoryCostInstructions} saving={saving} onSave={onFactoryCost} />}
     {missing.length > 0 && <p className="mt-3 rounded-xl bg-orange-50 p-3 text-sm font-bold text-orange-800"><ExclamationTriangleIcon className="mr-1 inline size-4" />Needs: {missing.join(", ")}</p>}
     <FieldButtons job={job} saving={saving} permissions={permissions} customerTextTemplate={customerTextTemplate} fieldSupportName={fieldSupportName} fieldSupportPhone={fieldSupportPhone} employeeHelpInstructions={employeeHelpInstructions} reviewReady={review.readyForManager} reviewScore={review.score} supportText={helpMessage} onStart={onStart} onNeedHelp={() => onNote(helpMessage, "Status")} onReadyReview={onReadyReview} />
   </div>;
 }
 
-function FieldJobCard({ job, noteDraft, saving, permissions, customerTextTemplate, fieldNoteTemplates, reviewInstructions, factoryCostInstructions, factoryTravelRates, requireBeforePhotosForReview, requireSerialTagPhotoForReview, requireDamagePhotosForReview, requireAfterPhotosForReview, requireCompletionNotesForReview, requireWorkCompleteForReview, requirePartsClosedForReview, requireFactoryCostsForReview, requireReceiptBackupForReview, fieldSupportName, fieldSupportPhone, employeeHelpInstructions, onStart, onReadyReview, onChecklist, onNote, onCompletionNotes, onFactoryCost, onNoteDraft }: { job: Job; noteDraft: string; saving: boolean; permissions: FieldPermissions; customerTextTemplate: string; fieldNoteTemplates: string[]; reviewInstructions: string; factoryCostInstructions: string; factoryTravelRates: { mileageRate: string; hourlyRate: string }; requireBeforePhotosForReview: boolean; requireSerialTagPhotoForReview: boolean; requireDamagePhotosForReview: boolean; requireAfterPhotosForReview: boolean; requireCompletionNotesForReview: boolean; requireWorkCompleteForReview: boolean; requirePartsClosedForReview: boolean; requireFactoryCostsForReview: boolean; requireReceiptBackupForReview: boolean; fieldSupportName: string; fieldSupportPhone: string; employeeHelpInstructions: string; onStart: () => void; onReadyReview: () => void; onChecklist: (itemId: string) => void; onNote: (message: string, type?: JobActivity["type"]) => void; onCompletionNotes: (notes: string) => void; onFactoryCost: (costPatch: Partial<FactoryCostTracker>) => void; onNoteDraft: (value: string) => void }) {
+function FieldJobCard({ job, noteDraft, saving, permissions, customerTextTemplate, fieldNoteTemplates, reviewInstructions, factoryCostInstructions, requireBeforePhotosForReview, requireSerialTagPhotoForReview, requireDamagePhotosForReview, requireAfterPhotosForReview, requireCompletionNotesForReview, requireWorkCompleteForReview, requirePartsClosedForReview, requireFactoryCostsForReview, requireReceiptBackupForReview, fieldSupportName, fieldSupportPhone, employeeHelpInstructions, onStart, onReadyReview, onChecklist, onNote, onCompletionNotes, onFactoryCost, onSaveTravelLeg, onNoteDraft }: { job: Job; noteDraft: string; saving: boolean; permissions: FieldPermissions; customerTextTemplate: string; fieldNoteTemplates: string[]; reviewInstructions: string; factoryCostInstructions: string; requireBeforePhotosForReview: boolean; requireSerialTagPhotoForReview: boolean; requireDamagePhotosForReview: boolean; requireAfterPhotosForReview: boolean; requireCompletionNotesForReview: boolean; requireWorkCompleteForReview: boolean; requirePartsClosedForReview: boolean; requireFactoryCostsForReview: boolean; requireReceiptBackupForReview: boolean; fieldSupportName: string; fieldSupportPhone: string; employeeHelpInstructions: string; onStart: () => void; onReadyReview: () => void; onChecklist: (itemId: string) => void; onNote: (message: string, type?: JobActivity["type"]) => void; onCompletionNotes: (notes: string) => void; onFactoryCost: (costPatch: Partial<FactoryCostTracker>) => void; onSaveTravelLeg: (leg: Omit<TravelLeg, "id" | "employeeName">) => void; onNoteDraft: (value: string) => void }) {
   const review = fieldReviewStatus(job, requireFactoryCostsForReview, requireReceiptBackupForReview, requireBeforePhotosForReview, requireSerialTagPhotoForReview, requireDamagePhotosForReview, requireAfterPhotosForReview, requireCompletionNotesForReview, requireWorkCompleteForReview, requirePartsClosedForReview);
   const helpMessage = fieldHelpMessage(job, review);
-  return <details className="card group overflow-hidden open:bg-sand/35">
-    <summary className="flex min-h-20 cursor-pointer list-none items-center gap-3 p-4 transition hover:bg-sand/40 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-forest/10 [&::-webkit-details-marker]:hidden">
-      <div className="min-w-0 flex-1">
+  return <div className="card p-4">
+    <div className="flex items-start justify-between gap-3">
+      <Link href={`/jobs/${job.jobId}`} className="min-w-0 flex-1">
         <p className="truncate text-xs font-black uppercase tracking-wide text-forest">{job.jobId} · {job.priority}</p>
-        <h3 className="mt-1 truncate text-lg font-black">{job.customerName}</h3>
-        <p className="mt-1 truncate text-sm font-semibold text-black/55">{job.city || "No city"} · {formatDue(job.dueDate)}</p>
-      </div>
+        <h3 className="mt-1 truncate text-xl font-black">{job.customerName}</h3>
+        <p className="mt-1 text-sm font-semibold text-black/55">{job.jobType} · {job.address}, {job.city}</p>
+      </Link>
       <StatusBadge status={job.status} />
-      <ChevronDownIcon className="size-5 shrink-0 text-black/35 transition-transform group-open:rotate-180" aria-hidden="true" />
-    </summary>
-    <div className="border-t border-black/5 p-4">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm font-bold text-black/55">{job.jobType || "Work type not recorded"} · {job.address || "Address not recorded"}</p>
-        <Link href={`/jobs/${job.jobId}`} className="rounded-xl border border-black/10 bg-white px-3 py-2 text-xs font-black text-forest">Open full job</Link>
-      </div>
-      <ProgressBar job={job} />
-      <FieldDueStatus job={job} />
-      <FieldJobBasics job={job} />
-      <FieldScopeSummary job={job} />
-      <FieldPhotoProof job={job} canUpload={permissions.employeeCanUploadFiles} />
-      <FieldCloseoutStatus review={review} instructions={reviewInstructions} />
-      <QuickChecklist job={job} saving={saving} onChecklist={onChecklist} />
-      {permissions.employeeCanAddCompletionNotes && <QuickCompletionNotes job={job} saving={saving} onSave={onCompletionNotes} />}
-      <FieldLatestUpdate job={job} />
-      {permissions.employeeCanAddQuickNotes && <QuickFieldNotes job={job} noteDraft={noteDraft} templates={fieldNoteTemplates} saving={saving} onNote={onNote} onNoteDraft={onNoteDraft} />}
-      {permissions.employeeCanAddFactoryCosts && <FactoryCostQuickEntry job={job} instructions={factoryCostInstructions} travelRates={factoryTravelRates} saving={saving} onSave={onFactoryCost} />}
-      <FieldButtons job={job} saving={saving} permissions={permissions} customerTextTemplate={customerTextTemplate} fieldSupportName={fieldSupportName} fieldSupportPhone={fieldSupportPhone} employeeHelpInstructions={employeeHelpInstructions} reviewReady={review.readyForManager} reviewScore={review.score} supportText={helpMessage} onStart={onStart} onNeedHelp={() => onNote(helpMessage, "Status")} onReadyReview={onReadyReview} />
     </div>
-  </details>;
+    <ProgressBar job={job} />
+    <FieldWorkSessionBadge job={job} />
+    <FieldDueStatus job={job} />
+    <FieldJobBasics job={job} />
+    <FieldScopeSummary job={job} />
+    <FieldPhotoProof job={job} canUpload={permissions.employeeCanUploadFiles} />
+    <FieldCloseoutStatus review={review} instructions={reviewInstructions} />
+    <QuickChecklist job={job} saving={saving} onChecklist={onChecklist} />
+    {permissions.employeeCanAddCompletionNotes && <QuickCompletionNotes job={job} saving={saving} onSave={onCompletionNotes} />}
+    <FieldLatestUpdate job={job} />
+    {permissions.employeeCanAddQuickNotes && <QuickFieldNotes job={job} noteDraft={noteDraft} templates={fieldNoteTemplates} saving={saving} onNote={onNote} onNoteDraft={onNoteDraft} />}
+    <StructuredTravelLegs job={job} saving={saving} onSave={onSaveTravelLeg} />
+    {permissions.employeeCanAddFactoryCosts && <FactoryCostQuickEntry job={job} instructions={factoryCostInstructions} saving={saving} onSave={onFactoryCost} />}
+    <FieldButtons job={job} saving={saving} permissions={permissions} customerTextTemplate={customerTextTemplate} fieldSupportName={fieldSupportName} fieldSupportPhone={fieldSupportPhone} employeeHelpInstructions={employeeHelpInstructions} reviewReady={review.readyForManager} reviewScore={review.score} supportText={helpMessage} onStart={onStart} onNeedHelp={() => onNote(helpMessage, "Status")} onReadyReview={onReadyReview} />
+  </div>;
 }
 
-function FactoryCostQuickEntry({ job, instructions, travelRates, saving, onSave }: { job: Job; instructions: string; travelRates: { mileageRate: string; hourlyRate: string }; saving: boolean; onSave: (costPatch: Partial<FactoryCostTracker>) => void }) {
-  const existing = { ...defaultFactoryCost(), ...(job.factoryCost || {}), ...travelRates };
+function StructuredTravelLegs({ job, saving, onSave }: { job: Job; saving: boolean; onSave: (leg: Omit<TravelLeg, "id" | "employeeName">) => void }) {
+  const [draft, setDraft] = useState({ date: new Date().toLocaleDateString("en-CA"), from: "", to: "", departureAt: "", arrivalAt: "", miles: "" });
+  const legs = job.travelLegs || [];
+  function submit(event: React.FormEvent) {
+    event.preventDefault();
+    const miles = Number(draft.miles);
+    const departure = draft.departureAt ? Date.parse(draft.departureAt) : undefined;
+    const arrival = draft.arrivalAt ? Date.parse(draft.arrivalAt) : undefined;
+    if (!draft.date || !draft.from.trim() || !draft.to.trim() || !draft.miles.trim() || !Number.isFinite(miles) || miles < 0 || (departure !== undefined && !Number.isFinite(departure)) || (arrival !== undefined && !Number.isFinite(arrival)) || (departure !== undefined && arrival !== undefined && arrival < departure)) return;
+    onSave({ ...draft, from: draft.from.trim(), to: draft.to.trim(), miles: String(miles) });
+    setDraft((old) => ({ ...old, from: "", to: "", departureAt: "", arrivalAt: "", miles: "" }));
+  }
+  return <section className="mt-3 rounded-2xl border border-black/10 bg-sand p-3"><p className="text-sm font-black">Travel legs</p><p className="mt-1 text-xs font-semibold text-black/45">Record trip activity only. Rates and dollar amounts stay with the office.</p><form onSubmit={submit} className="mt-3 grid gap-2 sm:grid-cols-2"><input className="field !min-h-11 !py-2 text-sm" type="date" value={draft.date} onChange={(e) => setDraft((old) => ({ ...old, date: e.target.value }))} /><input className="field !min-h-11 !py-2 text-sm" placeholder="From / origin" value={draft.from} onChange={(e) => setDraft((old) => ({ ...old, from: e.target.value }))} required /><input className="field !min-h-11 !py-2 text-sm" placeholder="To / destination" value={draft.to} onChange={(e) => setDraft((old) => ({ ...old, to: e.target.value }))} required /><input className="field !min-h-11 !py-2 text-sm" type="datetime-local" value={draft.departureAt ? draft.departureAt.slice(0, 16) : ""} onChange={(e) => setDraft((old) => ({ ...old, departureAt: e.target.value ? new Date(e.target.value).toISOString() : "" }))} /><input className="field !min-h-11 !py-2 text-sm" type="datetime-local" value={draft.arrivalAt ? draft.arrivalAt.slice(0, 16) : ""} onChange={(e) => setDraft((old) => ({ ...old, arrivalAt: e.target.value ? new Date(e.target.value).toISOString() : "" }))} /><input className="field !min-h-11 !py-2 text-sm" type="number" min="0" step="0.1" inputMode="decimal" placeholder="Miles" value={draft.miles} onChange={(e) => setDraft((old) => ({ ...old, miles: e.target.value }))} required /><button type="submit" disabled={saving} className="min-h-11 rounded-xl bg-forest px-4 py-2 text-sm font-black text-white sm:col-span-2">{saving ? "Saving..." : "Add travel leg"}</button></form>{legs.length > 0 && <div className="mt-3 space-y-2">{legs.map((leg) => <div key={leg.id} className="rounded-xl bg-white p-3 text-sm"><p className="font-black">{leg.date} · {leg.from} → {leg.to}</p><p className="text-xs font-semibold text-black/45">{leg.departureAt ? new Date(leg.departureAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "No departure"} → {leg.arrivalAt ? new Date(leg.arrivalAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "No arrival"} · {leg.miles || "0"} miles</p></div>)}</div>}</section>;
+}
+
+function FactoryCostQuickEntry({ job, instructions, saving, onSave }: { job: Job; instructions: string; saving: boolean; onSave: (costPatch: Partial<FactoryCostTracker>) => void }) {
+  const existing = { ...defaultFactoryCost(), ...(job.factoryCost || {}) };
   const [draft, setDraft] = useState({
-    tripCount: existing.tripCount,
     miles: existing.miles,
     driveTimeHours: existing.driveTimeHours,
-    workHours: existing.workHours,
-    workRate: existing.workRate,
+    hourlyRate: existing.hourlyRate,
     helperHours: existing.helperHours,
     helperRate: existing.helperRate,
     perDiemDays: existing.perDiemDays,
     perDiemRate: existing.perDiemRate,
     hotelTotal: existing.hotelTotal,
-    mealTotal: existing.mealTotal,
     materialsTotal: existing.materialsTotal,
     otherReceiptsTotal: existing.otherReceiptsTotal,
     notes: existing.notes || "",
   });
   if (job.source !== "Factory") return null;
-
-  const preview = getFactoryCostTotals({ ...existing, ...draft });
   return <div className="mt-3 rounded-2xl border border-blue-100 bg-blue-50 p-3">
     <div className="mb-2 flex items-center justify-between gap-2">
       <div>
         <p className="text-sm font-black text-blue-950">Factory costs</p>
         <p className="text-xs font-semibold text-blue-900/65">{instructions}</p>
       </div>
-      <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-blue-900">${preview.grandTotal.toFixed(2)}</span>
     </div>
     <div className="grid grid-cols-2 gap-2">
-      <FieldCostInput label="Trips" value={draft.tripCount} onChange={(value) => setDraft((old) => ({ ...old, tripCount: value }))} />
       <FieldCostInput label="Miles" value={draft.miles} onChange={(value) => setDraft((old) => ({ ...old, miles: value }))} />
-      <FieldCostInput label="Drive hrs (¼ hour)" value={draft.driveTimeHours} onChange={(value) => setDraft((old) => ({ ...old, driveTimeHours: value }))} />
-      <FieldCostInput label="Work hrs" value={draft.workHours} onChange={(value) => setDraft((old) => ({ ...old, workHours: value }))} />
-      <FieldCostInput label="Work rate $" value={draft.workRate} onChange={(value) => setDraft((old) => ({ ...old, workRate: value }))} />
+      <FieldCostInput label="Drive hrs" value={draft.driveTimeHours} onChange={(value) => setDraft((old) => ({ ...old, driveTimeHours: value }))} />
       <FieldCostInput label="Helper hrs" value={draft.helperHours} onChange={(value) => setDraft((old) => ({ ...old, helperHours: value }))} />
-      <FieldCostInput label="Helper $" value={draft.helperRate} onChange={(value) => setDraft((old) => ({ ...old, helperRate: value }))} />
       <FieldCostInput label="Per diem days" value={draft.perDiemDays} onChange={(value) => setDraft((old) => ({ ...old, perDiemDays: value }))} />
-      <FieldCostInput label="Per diem $" value={draft.perDiemRate} onChange={(value) => setDraft((old) => ({ ...old, perDiemRate: value }))} />
       <FieldCostInput label="Hotel $" value={draft.hotelTotal} onChange={(value) => setDraft((old) => ({ ...old, hotelTotal: value }))} />
-      <FieldCostInput label="Meals $" value={draft.mealTotal} onChange={(value) => setDraft((old) => ({ ...old, mealTotal: value }))} />
       <FieldCostInput label="Materials $" value={draft.materialsTotal} onChange={(value) => setDraft((old) => ({ ...old, materialsTotal: value }))} />
       <FieldCostInput label="Other $" value={draft.otherReceiptsTotal} onChange={(value) => setDraft((old) => ({ ...old, otherReceiptsTotal: value }))} />
       <input value={draft.notes} onChange={(event) => setDraft((old) => ({ ...old, notes: event.target.value }))} className="min-h-10 rounded-xl border border-black/10 bg-white px-3 py-2 text-sm font-bold outline-none focus:border-blue-500" placeholder="Notes" />
@@ -896,14 +906,27 @@ function FieldScopeSummary({ job }: { job: Job }) {
 }
 
 function FieldPhotoProof({ job, canUpload }: { job: Job; canUpload: boolean }) {
-  const count = (job.workOrderFiles || []).filter((file) => file.fileType.startsWith("image/") || file.fileType.startsWith("video/")).length + (job.beforePhotos || []).length + (job.serialTagPhotos || []).length + (job.damagePhotos || []).length + (job.afterPhotos || []).length;
+  const requirements = [
+    { label: "Before", count: (job.beforePhotos || []).length, needed: true },
+    { label: "Serial/VIN", count: (job.serialTagPhotos || []).length, needed: true },
+    { label: "Damage", count: (job.damagePhotos || []).length, needed: false },
+    { label: "After", count: (job.afterPhotos || []).length, needed: ["In Progress", "Needs Inspection", "Complete"].includes(job.status) },
+  ];
+  const missing = requirements.filter((item) => item.needed && item.count === 0);
+  if (!missing.length && requirements.every((item) => item.count === 0)) return null;
   return <div className="mt-3 rounded-2xl border border-black/10 bg-white p-3">
     <div className="mb-2 flex items-center justify-between gap-2">
       <div>
-        <p className="text-sm font-black">Job media</p>
-        <p className="text-xs font-semibold text-black/45">{count} photo or video item{count === 1 ? "" : "s"} saved. Media is optional.</p>
+        <p className="text-sm font-black">Photo proof</p>
+        <p className="text-xs font-semibold text-black/45">{missing.length ? `${missing.length} required photo set${missing.length === 1 ? "" : "s"} missing` : "Required photo proof is covered."}</p>
       </div>
-      {canUpload && <Link href={`/jobs/${job.jobId}#photos`} className="rounded-xl bg-lime px-3 py-2 text-xs font-black text-ink">Open library</Link>}
+      {canUpload && <Link href={`/jobs/${job.jobId}#photos`} className="rounded-xl bg-lime px-3 py-2 text-xs font-black text-ink">Add photos</Link>}
+    </div>
+    <div className="grid grid-cols-2 gap-2">
+      {requirements.map((item) => <Link key={item.label} href={`/jobs/${job.jobId}#photos`} className={`rounded-xl p-2 text-xs font-black ${item.needed && item.count === 0 ? "bg-orange-50 text-orange-900" : "bg-sand text-black/60"}`}>
+        <span className="block">{item.needed && item.count === 0 ? "Need" : "Have"} · {item.label}</span>
+        <span className="mt-0.5 block font-semibold opacity-70">{item.count} uploaded</span>
+      </Link>)}
     </div>
   </div>;
 }
@@ -994,6 +1017,7 @@ function FieldButtons({ job, saving, permissions, customerTextTemplate, fieldSup
     {permissions.employeeCanStartJobs && (session.started ? <Link href={`/jobs/${job.jobId}`} className="min-h-12 rounded-xl bg-blue-100 px-3 py-3 text-center text-xs font-black text-blue-900"><PlayIcon className="mx-auto mb-1 size-5" />Continue</Link> : <button type="button" onClick={onStart} disabled={saving} className="min-h-12 rounded-xl bg-blue-100 px-3 py-3 text-center text-xs font-black text-blue-900 disabled:opacity-50"><PlayIcon className="mx-auto mb-1 size-5" />{saving ? "Saving" : "Start"}</button>)}
     {job.googleCalendarEventUrl && <a href={job.googleCalendarEventUrl} target="_blank" className="min-h-12 rounded-xl bg-blue-50 px-3 py-3 text-center text-xs font-black text-blue-900"><CalendarDaysIcon className="mx-auto mb-1 size-5" />Calendar</a>}
     {job.companyCamProjectUrl && <a href={job.companyCamProjectUrl} target="_blank" className="min-h-12 rounded-xl bg-yellow-50 px-3 py-3 text-center text-xs font-black text-yellow-900"><CameraIcon className="mx-auto mb-1 size-5" />CompanyCam</a>}
+    <Link href={`/jobs/${job.jobId}#time-log`} className="min-h-12 rounded-xl bg-sand px-3 py-3 text-center text-xs font-black text-ink"><ClockIcon className="mx-auto mb-1 size-5" />Time</Link>
     {permissions.employeeCanUploadFiles && <Link href={`/jobs/${job.jobId}#paperwork`} className="min-h-12 rounded-xl bg-purple-50 px-3 py-3 text-center text-xs font-black text-purple-900"><DocumentTextIcon className="mx-auto mb-1 size-5" />Paperwork</Link>}
     {permissions.employeeCanUploadFiles && <Link href={`/jobs/${job.jobId}#photos`} className="min-h-12 rounded-xl bg-lime px-3 py-3 text-center text-xs font-black text-ink"><CameraIcon className="mx-auto mb-1 size-5" />Photos</Link>}
     {permissions.employeeCanUploadFiles && <Link href={`/jobs/${job.jobId}#receipts`} className="min-h-12 rounded-xl bg-blue-50 px-3 py-3 text-center text-xs font-black text-blue-900"><ReceiptPercentIcon className="mx-auto mb-1 size-5" />Receipts</Link>}
@@ -1046,9 +1070,10 @@ function fieldReviewStatusFromOptions(job: Job, options: FieldReviewOptions) {
   return fieldReviewStatus(job, options.requireFactoryCostsForReview, options.requireReceiptBackupForReview, options.requireBeforePhotosForReview, options.requireSerialTagPhotoForReview, options.requireDamagePhotosForReview, options.requireAfterPhotosForReview, options.requireCompletionNotesForReview, options.requireWorkCompleteForReview, options.requirePartsClosedForReview);
 }
 
-function fieldReviewStatus(job: Job, requireFactoryCostsForReview = true, requireReceiptBackupForReview = true, requireBeforePhotosForReview = true, requireSerialTagPhotoForReview = true, requireDamagePhotosForReview = false, requireAfterPhotosForReview = true, requireCompletionNotesForReview = true, requireWorkCompleteForReview = true, _requirePartsClosedForReview = false) {
+function fieldReviewStatus(job: Job, requireFactoryCostsForReview = true, requireReceiptBackupForReview = true, requireBeforePhotosForReview = true, requireSerialTagPhotoForReview = true, requireDamagePhotosForReview = false, requireAfterPhotosForReview = true, requireCompletionNotesForReview = true, requireWorkCompleteForReview = true, requirePartsClosedForReview = true) {
   const checklist = job.checklist || [];
   const workCompleted = checklist.some((item) => item.label === "Work completed" && item.complete) || ["Complete", "Needs Inspection", "Billed", "Paid"].includes(job.status);
+  const openParts = (job.partsItems || []).some((part) => ["Needed", "Ordered", "Picked up"].includes(part.status)) || job.status === "Waiting on Parts";
   const factoryCostsReady = job.source !== "Factory" || !requireFactoryCostsForReview || hasFactoryCostWork(job.factoryCost);
   const receiptBackupReady = !requireReceiptBackupForReview || !hasReceiptDollars(job) || hasUploadedReceiptBackup(job);
   const items = [
@@ -1058,6 +1083,7 @@ function fieldReviewStatus(job: Job, requireFactoryCostsForReview = true, requir
     ...(requireAfterPhotosForReview ? [{ label: "After photos", ok: (job.afterPhotos || []).length > 0, detail: `${(job.afterPhotos || []).length} uploaded`, href: `/jobs/${job.jobId}#photos` }] : []),
     ...(requireCompletionNotesForReview ? [{ label: "Completion notes", ok: Boolean(job.completionNotes?.trim()), detail: job.completionNotes?.trim() ? "Added" : "Missing", href: `/jobs/${job.jobId}#complete-job` }] : []),
     ...(requireWorkCompleteForReview ? [{ label: "Work completed", ok: workCompleted, detail: workCompleted ? "Checked" : "Checklist/status needed", href: `/jobs/${job.jobId}` }] : []),
+    ...(requirePartsClosedForReview ? [{ label: "Parts closed", ok: !openParts, detail: openParts ? "Parts still open" : "No open parts", href: `/jobs/${job.jobId}#parts-needed` }] : []),
     ...(job.source === "Factory" && requireFactoryCostsForReview ? [{ label: "Factory costs", ok: factoryCostsReady, detail: factoryCostsReady ? "Added" : "Cost entry needed", href: `/jobs/${job.jobId}#factory-costs` }] : []),
     ...(requireReceiptBackupForReview && hasReceiptDollars(job) ? [{ label: "Receipt backup", ok: receiptBackupReady, detail: receiptBackupReady ? "Added" : "Receipt upload needed", href: `/jobs/${job.jobId}#receipts` }] : []),
   ];
@@ -1162,7 +1188,7 @@ function matchesCrewFilter(job: Job, filter: CrewFilter, today: string, options:
   if (filter === "all") return true;
   if (filter === "today") return job.dueDate === today;
   if (filter === "overdue") return activeStatuses.includes(job.status) && Boolean(job.dueDate) && job.dueDate < today;
-  if (filter === "started") return job.status === "In Progress";
+  if (filter === "started") return Boolean(getWorkSession(job).started);
   if (filter === "parts") return job.status === "Waiting on Parts";
   if (filter === "closeout") return needsFieldCloseout(job, options);
   return true;

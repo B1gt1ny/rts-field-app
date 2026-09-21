@@ -1,4 +1,4 @@
-import type { Job, TimeEntry } from "./types";
+import type { Job, TimeEntry, TravelLeg } from "./types";
 
 export const closedJobStatuses = ["Complete", "Billed", "Paid"];
 
@@ -53,6 +53,53 @@ export function recordedWorkSessions(entries: TimeEntry[]) {
 
 export function recordedTravelSessions(entries: TimeEntry[]) {
   return recordedSessions(entries, isTravelStarted, (entry) => entry.type === "Arrived");
+}
+
+export function structuredTravelTotals(job: Job) {
+  const legs = structuredTravelLegs(job);
+  if (!legs.length) return undefined;
+  let miles = 0;
+  let driveMinutes = 0;
+  let driveTimeRecorded = false;
+  for (const leg of legs) {
+    const legMiles = Number(leg.miles);
+    if (Number.isFinite(legMiles) && legMiles >= 0) miles += legMiles;
+    if (leg.departureAt && leg.arrivalAt) {
+      const duration = Date.parse(leg.arrivalAt) - Date.parse(leg.departureAt);
+      if (Number.isFinite(duration) && duration >= 0) {
+        driveMinutes += Math.round(duration / 60000);
+        driveTimeRecorded = true;
+      }
+    }
+  }
+  return { miles, driveMinutes, driveTimeRecorded };
+}
+
+export function structuredTravelLegs(job: Job) {
+  return (job.travelLegs || []).filter(isUsableStructuredTravelLeg);
+}
+
+export function isUsableStructuredTravelLeg(leg: TravelLeg) {
+  return Boolean(leg.id?.trim() && isValidTravelDate(leg.date) && leg.from?.trim() && leg.to?.trim() && leg.employeeName?.trim() && Number.isFinite(Number(leg.miles)) && Number(leg.miles) >= 0 && hasValidOptionalTimestamp(leg.departureAt) && hasValidOptionalTimestamp(leg.arrivalAt));
+}
+
+export function hasStructuredTravelArrival(job: Job) {
+  return structuredTravelLegs(job).some((leg) => {
+    const arrival = Date.parse(leg.arrivalAt || "");
+    const departure = leg.departureAt ? Date.parse(leg.departureAt) : undefined;
+    return Number.isFinite(arrival) && (departure === undefined || (Number.isFinite(departure) && arrival >= departure));
+  });
+}
+
+function isValidTravelDate(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+}
+
+function hasValidOptionalTimestamp(value?: string) {
+  return !value || Number.isFinite(Date.parse(value));
 }
 
 export function sameEmployee(a: string, b: string) {
