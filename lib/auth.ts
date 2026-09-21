@@ -74,6 +74,7 @@ export function employeeSafeJobPatch(input: Record<string, unknown>) {
     "receipts",
     "partsItems",
     "timeEntries",
+    "travelLegs",
     "signoffs",
     "workOrderFiles",
     "beforePhotos",
