@@ -43,7 +43,7 @@ const defaultCompany: BusinessSettings = {
   fieldSupportName: "Office",
   fieldSupportPhone: "",
   employeeHelpInstructions: "If something blocks the job, tap Need Help, add what is missing, then call or text the office before leaving.",
-  employeeFieldNotice: "Open your assigned job, check the scope, take required photos, add notes, and tap Ready Review when field work is complete.",
+  employeeFieldNotice: "Open your assigned job, check the scope, take required photos, add notes, and send it to the manager when field work is complete.",
   managerReviewInstructions: "Manager review checks after photos, completion notes, and completed work before billing. Parts are optional tracking.",
   customerTextTemplate: "Company update for {customerName}: crew is on your job {jobId}.",
   factoryCostInstructions: "Factory jobs: enter miles, drive time, hotel, materials, and other receipt totals before sending the job for review.",
@@ -72,7 +72,7 @@ const defaultCompany: BusinessSettings = {
     "Customer not home | Customer not home. Crew needs follow-up before returning. | Customer",
     "Parts missing | Parts missing or incorrect. Need manager review before work can continue. | Parts",
     "Blocked | Crew is blocked and needs manager direction before continuing. | Status",
-    "Work complete | Field work complete. Ready for closeout review. | Status",
+    "Work complete | Field work complete. Send it to the manager for review. | Status",
   ],
   requireAfterPhotosToComplete: true,
   requireBeforePhotosForReview: true,
@@ -621,7 +621,7 @@ export function SettingsPanel() {
             <PermissionToggle title="Photos and files" description="Show employee shortcuts for job photos and uploaded paperwork/files." checked={company.employeeCanUploadFiles} onChange={(value) => set("employeeCanUploadFiles", value)} />
             <PermissionToggle title="Parts requests" description="Show employee shortcut for parts needed and parts updates." checked={company.employeeCanRequestParts} onChange={(value) => set("employeeCanRequestParts", value)} />
             <PermissionToggle title="Factory costs" description="Allow employees to enter miles, drive time, hotel, material, and receipt totals on factory jobs." checked={company.employeeCanAddFactoryCosts} onChange={(value) => set("employeeCanAddFactoryCosts", value)} />
-            <PermissionToggle title="Ready Review" description="Allow employees to send completed field work to manager inspection." checked={company.employeeCanSendReadyReview} onChange={(value) => set("employeeCanSendReadyReview", value)} />
+            <PermissionToggle title="Send to manager" description="Allow employees to send finished field work to the manager for review." checked={company.employeeCanSendReadyReview} onChange={(value) => set("employeeCanSendReadyReview", value)} />
             <PermissionToggle title="Customer sign-offs" description="Show employee shortcut for customer/dealer/factory signatures." checked={company.employeeCanAddSignoffs} onChange={(value) => set("employeeCanAddSignoffs", value)} />
             <PermissionToggle title="Closeout packets" description="Allow employees to open printable job packets from the phone." checked={company.employeeCanViewPackets} onChange={(value) => set("employeeCanViewPackets", value)} />
             <PermissionToggle title="Completed jobs" description="Show completed, billed, and paid jobs in the employee field app list." checked={company.showCompletedJobsInFieldApp} onChange={(value) => set("showCompletedJobsInFieldApp", value)} />
@@ -633,38 +633,38 @@ export function SettingsPanel() {
         </label>
         <label className="flex min-h-14 items-center gap-3 rounded-xl border border-black/10 bg-sand p-3 lg:col-span-2">
           <input type="checkbox" checked={company.requireBeforePhotosForReview} onChange={(event) => set("requireBeforePhotosForReview", event.target.checked)} className="size-5 accent-forest" />
-          <span><span className="block font-black">Require before photos before Ready Review</span><span className="block text-xs font-semibold text-black/45">Employees must add before photos before sending field work to manager review.</span></span>
+          <span><span className="block font-black">Require before photos before sending</span><span className="block text-xs font-semibold text-black/45">Employees must add before photos before sending field work to manager review.</span></span>
         </label>
         <label className="flex min-h-14 items-center gap-3 rounded-xl border border-black/10 bg-sand p-3 lg:col-span-2">
           <input type="checkbox" checked={company.requireSerialTagPhotoForReview} onChange={(event) => set("requireSerialTagPhotoForReview", event.target.checked)} className="size-5 accent-forest" />
-          <span><span className="block font-black">Require serial/VIN photo before Ready Review</span><span className="block text-xs font-semibold text-black/45">Employees must add serial/VIN tag proof before manager review.</span></span>
+          <span><span className="block font-black">Require serial/VIN photo before sending</span><span className="block text-xs font-semibold text-black/45">Employees must add serial/VIN tag proof before manager review.</span></span>
         </label>
         <label className="flex min-h-14 items-center gap-3 rounded-xl border border-black/10 bg-sand p-3 lg:col-span-2">
           <input type="checkbox" checked={company.requireDamagePhotosForReview} onChange={(event) => set("requireDamagePhotosForReview", event.target.checked)} className="size-5 accent-forest" />
-          <span><span className="block font-black">Require damage photos before Ready Review</span><span className="block text-xs font-semibold text-black/45">Turn this on for businesses that need damage proof on every reviewed job.</span></span>
+          <span><span className="block font-black">Require damage photos before sending</span><span className="block text-xs font-semibold text-black/45">Turn this on for businesses that need damage proof on every reviewed job.</span></span>
         </label>
         <label className="flex min-h-14 items-center gap-3 rounded-xl border border-black/10 bg-sand p-3 lg:col-span-2">
           <input type="checkbox" checked={company.requireAfterPhotosForReview} onChange={(event) => set("requireAfterPhotosForReview", event.target.checked)} className="size-5 accent-forest" />
-          <span><span className="block font-black">Require after photos before Ready Review</span><span className="block text-xs font-semibold text-black/45">Employees must add after photos before sending field work to manager review.</span></span>
+          <span><span className="block font-black">Require after photos before sending</span><span className="block text-xs font-semibold text-black/45">Employees must add after photos before sending field work to manager review.</span></span>
         </label>
         <label className="flex min-h-14 items-center gap-3 rounded-xl border border-black/10 bg-sand p-3 lg:col-span-2">
           <input type="checkbox" checked={company.requireCompletionNotesForReview} onChange={(event) => set("requireCompletionNotesForReview", event.target.checked)} className="size-5 accent-forest" />
-          <span><span className="block font-black">Require completion notes before Ready Review</span><span className="block text-xs font-semibold text-black/45">Employees must add notes explaining what was finished before manager review.</span></span>
+          <span><span className="block font-black">Require completion notes before sending</span><span className="block text-xs font-semibold text-black/45">Employees must add notes explaining what was finished before manager review.</span></span>
         </label>
         <label className="flex min-h-14 items-center gap-3 rounded-xl border border-black/10 bg-sand p-3 lg:col-span-2">
           <input type="checkbox" checked={company.requireWorkCompleteForReview} onChange={(event) => set("requireWorkCompleteForReview", event.target.checked)} className="size-5 accent-forest" />
-          <span><span className="block font-black">Require work completed before Ready Review</span><span className="block text-xs font-semibold text-black/45">Employees must mark Work completed or move the job to a completion status before manager review.</span></span>
+          <span><span className="block font-black">Require work completed before sending</span><span className="block text-xs font-semibold text-black/45">Employees must mark Work completed or move the job to a completion status before manager review.</span></span>
         </label>
         <div className="flex min-h-14 items-center gap-3 rounded-xl border border-forest/10 bg-forest/5 p-3 lg:col-span-2">
-          <span><span className="block font-black">Parts tracking is optional</span><span className="block text-xs font-semibold text-black/45">Open parts stay visible, but they do not block Ready Review or billing.</span></span>
+          <span><span className="block font-black">Parts tracking is optional</span><span className="block text-xs font-semibold text-black/45">Open parts stay visible, but they do not block sending or billing.</span></span>
         </div>
         <label className="flex min-h-14 items-center gap-3 rounded-xl border border-black/10 bg-sand p-3 lg:col-span-2">
           <input type="checkbox" checked={company.requireFactoryCostsForReview} onChange={(event) => set("requireFactoryCostsForReview", event.target.checked)} className="size-5 accent-forest" />
-          <span><span className="block font-black">Require factory costs before Ready Review</span><span className="block text-xs font-semibold text-black/45">Factory jobs must have cost entries before employees can send them to manager review.</span></span>
+          <span><span className="block font-black">Require factory costs before sending</span><span className="block text-xs font-semibold text-black/45">Factory jobs must have cost entries before employees can send them to manager review.</span></span>
         </label>
         <label className="flex min-h-14 items-center gap-3 rounded-xl border border-black/10 bg-sand p-3 lg:col-span-2">
           <input type="checkbox" checked={company.requireReceiptBackupForReview} onChange={(event) => set("requireReceiptBackupForReview", event.target.checked)} className="size-5 accent-forest" />
-          <span><span className="block font-black">Require receipt backup before Ready Review</span><span className="block text-xs font-semibold text-black/45">If a job has receipt or factory receipt dollars, employees must add receipt backup before Ready Review.</span></span>
+          <span><span className="block font-black">Require receipt backup before sending</span><span className="block text-xs font-semibold text-black/45">If a job has receipt or factory receipt dollars, employees must add receipt backup before sending it to the manager.</span></span>
         </label>
         <button className="btn-primary lg:col-span-2">Save Field App Options</button>
       </form>
@@ -812,7 +812,7 @@ function buildCrewInvite(company: BusinessSettings) {
     `Install on iPhone: open the link in Safari, tap Share, then Add to Home Screen.`,
     `Install on Android: open the link in Chrome, tap the menu, then Install app or Add to Home screen.`,
     "",
-    company.employeeFieldNotice || "Open your assigned job, check the scope, take required photos, add notes, and tap Ready Review when field work is complete.",
+    company.employeeFieldNotice || "Open your assigned job, check the scope, take required photos, add notes, and send it to the manager when field work is complete.",
     "",
     `If you cannot see your jobs, ask admin to link your login to your employee name.`,
   ].join("\n");

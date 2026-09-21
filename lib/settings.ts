@@ -65,7 +65,7 @@ function normalizeSettings(input: Partial<BusinessSettings>): BusinessSettings {
     fieldSupportName: input.fieldSupportName?.trim() || "Office",
     fieldSupportPhone: input.fieldSupportPhone?.trim() || input.phone?.trim() || "",
     employeeHelpInstructions: input.employeeHelpInstructions?.trim() || "If something blocks the job, tap Need Help, add what is missing, then call or text the office before leaving.",
-    employeeFieldNotice: input.employeeFieldNotice?.trim() || "Open your assigned job, check the scope, take required photos, add notes, and tap Ready Review when field work is complete.",
+    employeeFieldNotice: input.employeeFieldNotice?.trim() || "Open your assigned job, check the scope, take required photos, add notes, and send it to the manager when field work is complete.",
     managerReviewInstructions: !input.managerReviewInstructions?.trim() || input.managerReviewInstructions.trim() === "Manager review checks after photos, completion notes, work completed, and open parts before billing."
       ? "Manager review checks after photos, completion notes, and completed work before billing. Parts are optional tracking."
       : input.managerReviewInstructions.trim(),

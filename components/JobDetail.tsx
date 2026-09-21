@@ -216,7 +216,7 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
         <TimeLogPanel job={job} saving={saving} onSave={saveJobPatch} />
         {canManageJob && <FactoryCostTrackerPanel job={job} saving={saving} onSave={saveJobPatch} />}
       </WorkspaceSection>
-      <WorkspaceSection id="closeout" title="Closeout" summary={`${readinessScore(job)}% billing ready`} openSection={openSection} setOpenSection={setOpenSection}>
+      <WorkspaceSection id="closeout" title="Finish job" summary={`${readinessScore(job)}% ready for billing`} openSection={openSection} setOpenSection={setOpenSection}>
         <GuidedCloseoutPanel job={job} canManageJob={canManageJob} />
         {canManageJob && <CloseoutQualityPanel job={job} />}
         {canManageJob && <ManagerCorrectionPanel job={job} saving={saving} onSave={saveJobPatch} />}
@@ -1546,7 +1546,7 @@ function GuidedCloseoutPanel({ job, canManageJob }: { job: Job; canManageJob: bo
     <div className={`p-4 ${bannerClass}`}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="text-xs font-black uppercase tracking-widest opacity-70">Smart closeout</p>
+          <p className="text-xs font-black uppercase tracking-widest opacity-70">Finish job</p>
           <h2 className="mt-1 text-2xl font-black">{summary.label}</h2>
           <p className="mt-1 text-sm font-semibold opacity-75">{summary.detail}</p>
         </div>
@@ -1560,7 +1560,7 @@ function GuidedCloseoutPanel({ job, canManageJob }: { job: Job; canManageJob: bo
       {requirements.map((item) => <CloseoutRequirementRow key={item.name} requirement={item} />)}
     </div>
     <div className="border-t border-black/5 p-4">
-      {nextAction?.href ? <a href={nextAction.href} className="block min-h-12 rounded-xl bg-forest px-4 py-3 text-center font-black text-white">{nextAction.status === "missing" ? `Fix: ${nextAction.name}` : "Continue Closeout"}</a> : canManageJob ? <a href="#billing-handoff" className="block min-h-12 rounded-xl bg-ink px-4 py-3 text-center font-black text-white">Billing handoff</a> : <a href="#complete-job" className="block min-h-12 rounded-xl bg-forest px-4 py-3 text-center font-black text-white">Submit for Review</a>}
+      {nextAction?.href ? <a href={nextAction.href} className="block min-h-12 rounded-xl bg-forest px-4 py-3 text-center font-black text-white">{nextAction.status === "missing" ? `Fix: ${nextAction.name}` : "Continue finishing job"}</a> : canManageJob ? <a href="#billing-handoff" className="block min-h-12 rounded-xl bg-ink px-4 py-3 text-center font-black text-white">Send to billing</a> : <a href="#complete-job" className="block min-h-12 rounded-xl bg-forest px-4 py-3 text-center font-black text-white">Send to manager</a>}
     </div>
     {blockers.length > 0 && <p className="mx-4 mb-4 rounded-xl bg-orange-50 p-3 text-sm font-bold text-orange-800">Blocking closeout items: {blockers.map((blocker) => blocker.name).join(", ")}.</p>}
   </section>;

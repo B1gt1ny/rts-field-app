@@ -63,7 +63,7 @@ export function ReadyCheckView({ jobs: initialJobs }: { jobs: Job[] }) {
         <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-lime text-ink"><ClipboardDocumentCheckIcon className="size-7" /></span>
         <div>
           <p className="text-xs font-black uppercase tracking-widest text-lime">Manager prep</p>
-          <h1 className="text-3xl font-black">Ready Check</h1>
+          <h1 className="text-3xl font-black">Manager review</h1>
           <p className="mt-1 text-sm text-white/55">See what can be sent to the field and what needs fixed before dispatch.</p>
         </div>
       </div>
@@ -81,7 +81,7 @@ export function ReadyCheckView({ jobs: initialJobs }: { jobs: Job[] }) {
           <div>
             <p className="text-xs font-black uppercase tracking-widest text-lime">Manager inspection queue</p>
             <h2 className="mt-1 text-2xl font-black">Jobs ready for approval</h2>
-            <p className="mt-1 text-sm text-white/55">Crew moved these to Needs Inspection. Approve complete or send back with a clear reason.</p>
+            <p className="mt-1 text-sm text-white/55">Crew sent these jobs for review. Approve the work or send it back with a clear reason.</p>
           </div>
           <Link href="/jobs?status=Needs%20Inspection" className="min-h-11 rounded-xl bg-lime px-4 py-2 text-center text-sm font-black text-ink">Open list</Link>
         </div>

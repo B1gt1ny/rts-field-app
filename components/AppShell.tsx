@@ -23,7 +23,7 @@ const adminMobileNavigation = [
   { href: "/settings", label: "More", icon: Cog6ToothIcon },
 ];
 const adminMore = [
-  ["/command", "Operations"], ["/today", "Today"], ["/today-command", "Today Command"], ["/ready-check", "Ready Check"], ["/customers", "Customers"], ["/install", "Install on Phone"], ["/factory", "Factory Jobs"], ["/dealer", "Dealer Jobs"], ["/individual", "Individual Jobs"], ["/crew", "Employee Assignments"], ["/waiting-on-parts", "Waiting on Parts"], ["/completed", "Completed Jobs"],
+  ["/command", "Operations"], ["/today", "Today"], ["/today-command", "Daily command"], ["/ready-check", "Manager review"], ["/customers", "Customers"], ["/install", "Install on Phone"], ["/factory", "Factory Jobs"], ["/dealer", "Dealer Jobs"], ["/individual", "Individual Jobs"], ["/crew", "Employee Assignments"], ["/waiting-on-parts", "Waiting on Parts"], ["/completed", "Completed Jobs"],
 ];
 const employeeMore = [["/customers", "Customers"], ["/waiting-on-parts", "Waiting on Parts"], ["/install", "Install on Phone"]];
 const admin = [["/employees", "Employees"], ["/dispatch", "Dispatch"], ["/documents", "Documents"], ["/communication", "Communication"], ["/reminders", "Reminders"], ["/tasks", "Tasks"], ["/billing", "Billing"], ["/reports", "Reports"], ["/settings", "Settings"], ["/account", "My Account"]];

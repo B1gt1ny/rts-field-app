@@ -46,7 +46,7 @@ export function FieldAppView() {
   const [savingJobId, setSavingJobId] = useState("");
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
   const [crewFilter, setCrewFilter] = useState<CrewFilter>("today");
-  const [fieldNotice, setFieldNotice] = useState("Open your assigned job, check the scope, take required photos, add notes, and tap Ready Review when field work is complete.");
+  const [fieldNotice, setFieldNotice] = useState("Open your assigned job, check the scope, take required photos, add notes, and send it to the manager when field work is complete.");
   const [reviewInstructions, setReviewInstructions] = useState("Manager review checks after photos, completion notes, work completed, and open parts before billing.");
   const [customerTextTemplate, setCustomerTextTemplate] = useState("Company update for {customerName}: crew is on your job {jobId}.");
   const [fieldNoteTemplates, setFieldNoteTemplates] = useState(defaultFieldNoteTemplates);
@@ -452,7 +452,7 @@ export function FieldAppView() {
 
     {!loading && employee && assignedJobs.length ? <section id="all-assigned-work" className="scroll-mt-24">
       <details>
-        <summary className="cursor-pointer rounded-xl border border-black/10 bg-white px-4 py-3 text-base font-black">All assigned work</summary>
+        <summary className="cursor-pointer rounded-xl border border-black/10 bg-white px-4 py-3 text-base font-black">Other assigned work</summary>
         <div className="mt-3">
           <CrewFilterBar value={crewFilter} counts={crewFilterCounts} onChange={setCrewFilter} />
           <div className="grid gap-3 md:grid-cols-2">{filteredAssignedJobs.map((job) => <FieldJobCard key={job.jobId} job={job} noteDraft={noteDrafts[job.jobId] || ""} saving={savingJobId === job.jobId} permissions={fieldPermissions} customerTextTemplate={customerTextTemplate} fieldNoteTemplates={fieldNoteTemplates} reviewInstructions={reviewInstructions} factoryCostInstructions={factoryCostInstructions} requireBeforePhotosForReview={requireBeforePhotosForReview} requireSerialTagPhotoForReview={requireSerialTagPhotoForReview} requireDamagePhotosForReview={requireDamagePhotosForReview} requireAfterPhotosForReview={requireAfterPhotosForReview} requireCompletionNotesForReview={requireCompletionNotesForReview} requireWorkCompleteForReview={requireWorkCompleteForReview} requirePartsClosedForReview={requirePartsClosedForReview} requireFactoryCostsForReview={requireFactoryCostsForReview} requireReceiptBackupForReview={requireReceiptBackupForReview} fieldSupportName={fieldSupportName} fieldSupportPhone={fieldSupportPhone} employeeHelpInstructions={employeeHelpInstructions} onStart={() => startJob(job)} onReadyReview={() => readyForManagerReview(job)} onChecklist={(itemId) => toggleChecklist(job, itemId)} onNote={(message, type) => saveFieldNote(job, message, type)} onCompletionNotes={(notes) => saveCompletionNotes(job, notes)} onFactoryCost={(costPatch) => saveFactoryCost(job, costPatch)} onSaveTravelLeg={(leg) => saveTravelLeg(job, leg)} onNoteDraft={(value) => setNoteDrafts((old) => ({ ...old, [job.jobId]: value }))} />)}</div>
@@ -546,7 +546,7 @@ function InfoLine({ label, value }: { label: string; value?: string }) {
 }
 
 function FieldWorkflowGuide() {
-  const steps = ["Before Photos", "Perform Work", "Progress Photos", "Completed Photos", "Paperwork", "Ready for Review"];
+  const steps = ["Before photos", "Do the work", "Progress photos", "After photos", "Paperwork", "Send to manager"];
   return <div className="flex flex-wrap items-center gap-1 rounded-xl bg-sand p-2 text-[11px] font-black text-black/55">
     {steps.map((step, index) => <span key={step} className="inline-flex items-center gap-1">
       <span className="rounded-full bg-white px-2 py-1">{step}</span>
@@ -602,7 +602,7 @@ function ScheduleAssignmentRow({ job }: { job: Job }) {
 function FieldBlockers({ blockers }: { blockers: FieldBlocker[] }) {
   return <section className="card overflow-hidden">
     <div className="border-b border-black/5 p-4">
-      <h2 className="text-lg font-black">Field blockers</h2>
+      <h2 className="text-lg font-black">Problems stopping work</h2>
       <p className="text-sm font-semibold text-black/45">Only items tied to assigned work.</p>
     </div>
     <div className="divide-y divide-black/5">
@@ -635,7 +635,7 @@ function CrewFilterBar({ value, counts, onChange }: { value: CrewFilter; counts:
     { value: "overdue", label: "Overdue" },
     { value: "started", label: "Started" },
     { value: "parts", label: "Parts" },
-    { value: "closeout", label: "Closeout" },
+    { value: "closeout", label: "Finish job" },
     { value: "all", label: "All" },
   ];
   return <div className="mb-4 grid grid-cols-3 gap-2 sm:grid-cols-6">
@@ -841,7 +841,7 @@ function QuickCompletionNotes({ job, saving, onSave }: { job: Job; saving: boole
     <div className="mb-2 flex items-center justify-between gap-2">
       <div>
         <p className="text-sm font-black text-emerald-950">Completion notes</p>
-        <p className="text-xs font-semibold text-emerald-900/65">{saved ? "Saved for manager review." : "Tell admin what was finished before Ready Review."}</p>
+        <p className="text-xs font-semibold text-emerald-900/65">{saved ? "Saved for manager review." : "Tell the manager what was finished before sending the job."}</p>
       </div>
       <span className={`rounded-full px-3 py-1 text-xs font-black ${saved ? "bg-white text-emerald-900" : "bg-orange-100 text-orange-900"}`}>{saved ? "Added" : "Needed"}</span>
     </div>
@@ -981,13 +981,13 @@ function FieldCloseoutStatus({ review, instructions }: { review: ReturnType<type
   return <div className="mt-3 rounded-2xl border border-black/10 bg-sand p-3">
     <div className="mb-2 flex items-center justify-between gap-3">
       <div>
-        <p className="text-sm font-black">Before you send for review</p>
-        <p className="text-xs font-semibold text-black/45">{hasRequirements ? review.readyForManager ? "Everything needed is ready." : `${remaining} remaining before Ready for Review.` : "No required closeout checks are enabled."}</p>
+        <p className="text-sm font-black">Before you send to the manager</p>
+        <p className="text-xs font-semibold text-black/45">{hasRequirements ? review.readyForManager ? "Everything needed is ready." : `${remaining} item${remaining === 1 ? "" : "s"} remaining before you can send it.` : "No required finish checks are enabled."}</p>
       </div>
       <span className={`rounded-full px-3 py-1 text-xs font-black ${review.readyForManager ? "bg-forest text-white" : "bg-orange-100 text-orange-900"}`}>{review.score}%</span>
     </div>
     {instructions && <p className="mb-2 rounded-xl border border-black/10 bg-white p-3 text-xs font-bold text-black/55">{instructions}</p>}
-    {!hasRequirements ? <p className="mb-2 rounded-xl bg-white p-3 text-sm font-black text-forest">Admin has no required Ready Review checks turned on for this job.</p> : review.readyForManager ? <p className="mb-2 rounded-xl bg-white p-3 text-sm font-black text-forest">Good to go — tap Ready Review when the job is finished.</p> : <div className="mb-2 grid gap-2">
+    {!hasRequirements ? <p className="mb-2 rounded-xl bg-white p-3 text-sm font-black text-forest">No required finish checks are turned on for this job.</p> : review.readyForManager ? <p className="mb-2 rounded-xl bg-white p-3 text-sm font-black text-forest">Good to go — send it to the manager when the job is finished.</p> : <div className="mb-2 grid gap-2">
       {nextSteps.map((item) => <a key={item.label} href={item.href} className="rounded-xl bg-white p-3 text-sm font-black text-orange-900">
         Do this next: {item.label}
         <span className="mt-0.5 block text-xs font-semibold text-black/45">{item.detail}</span>
@@ -1003,7 +1003,7 @@ function FieldCloseoutStatus({ review, instructions }: { review: ReturnType<type
 }
 
 function FieldButtons({ job, saving, permissions, customerTextTemplate, fieldSupportName, fieldSupportPhone, employeeHelpInstructions, reviewReady, reviewScore, supportText, onStart, onNeedHelp, onReadyReview }: { job: Job; saving: boolean; permissions: FieldPermissions; customerTextTemplate: string; fieldSupportName: string; fieldSupportPhone: string; employeeHelpInstructions: string; reviewReady: boolean; reviewScore: number; supportText: string; onStart: () => void; onNeedHelp: () => void; onReadyReview: () => void }) {
-  const reviewButtonLabel = job.status === "Needs Inspection" ? "Review Sent" : reviewReady ? "Ready Review" : `Locked ${reviewScore}%`;
+  const reviewButtonLabel = job.status === "Needs Inspection" ? "Sent to Manager" : reviewReady ? "Send to Manager" : `Not Ready ${reviewScore}%`;
   const session = getWorkSession(job);
   return <div className="mt-4 space-y-2">
     {permissions.employeeCanRequestHelp && employeeHelpInstructions && <p className="rounded-xl border border-red-100 bg-red-50 p-3 text-xs font-bold text-red-900">{employeeHelpInstructions}</p>}

@@ -32,7 +32,7 @@ export function fieldNextStep(job: Job): FieldNextStep {
   }
 
   if (hasActiveCorrections(job)) return { kind: "open", label: "Resolve Correction", href: `/jobs/${job.jobId}`, reason: "A manager correction needs attention before review.", attention: "correction" };
-  if (job.status === "Needs Inspection") return { kind: "review", label: "Ready for Review", href: `/jobs/${job.jobId}#complete-job`, reason: "Field work is with the office for review." };
+  if (job.status === "Needs Inspection") return { kind: "review", label: "Sent to Manager", href: `/jobs/${job.jobId}#complete-job`, reason: "Field work is with the office for review." };
   if (job.status === "Waiting on Parts" && openParts(job).length) return { ...action, reason: "Open parts still need review.", attention: "parts" };
 
   const paperwork = closeoutChecks(job).find((check) => !check.ok && check.label === "Paperwork");
