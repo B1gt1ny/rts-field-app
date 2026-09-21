@@ -10,6 +10,7 @@ import { getFactoryCostTotals, hasFactoryCostWork } from "@/lib/factory-costs";
 import { isReceiptBackupMissing } from "@/lib/receipt-backup";
 import { activeCorrectionCategories, billingBlockers, buildCorrectionActivity, checklistProgress, closeoutChecks, correctionCategories, correctionCategoryComplete, correctionResolutionPatch, dispatchBlockers, dispatchReadinessScore, hasActiveCorrections, hasOpenParts, intakeCompleteness, readinessScore, type CorrectionCategory } from "@/lib/job-readiness";
 import { useAuthUser } from "./AuthGate";
+import { getTravelState, getWorkSession, structuredTravelTotals } from "@/lib/field-activity";
 
 type CompanyCamState = {
   configured: boolean;
@@ -22,7 +23,7 @@ type CompanyCamState = {
   error?: string;
 };
 
-type WorkspaceSectionId = "overview" | "checklist" | "photos" | "parts" | "documents" | "notes" | "closeout" | "history";
+type WorkspaceSectionId = "overview" | "checklist" | "photos" | "parts" | "documents" | "notes" | "time" | "closeout" | "history";
 type FactoryCostSectionId = "travel" | "labor" | "expenses" | "notes" | "total";
 
 export function JobDetail({ initialJob }: { initialJob: Job }) {
@@ -53,7 +54,7 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
   const complete = checklist.complete;
   const checklistPercent = checklist.percent;
   const isEmployee = user?.role === "Employee";
-  const canManageJob = !isEmployee;
+  const canManageJob = Boolean(user && user.role !== "Employee");
   async function saveJobPatch(patch: Partial<Job>) {
     setSaving(true);
     setDetailMessage("");
@@ -222,6 +223,10 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
         <OfflineDraftPanel job={job} saving={saving} onSave={saveJobPatch} />
         {job.completionNotes && <section className="card p-4 sm:p-6"><h2 className="mb-2 text-lg font-black">Completion notes</h2><p className="text-black/65">{job.completionNotes}</p></section>}
       </WorkspaceSection>
+      <WorkspaceSection id="time" title="Time" summary={`${job.timeEntries?.length || 0} entries`} openSection={openSection} setOpenSection={setOpenSection}>
+        <TimeLogPanel job={job} saving={saving} onSave={saveJobPatch} />
+        {canManageJob && <FactoryCostTrackerPanel job={job} saving={saving} onSave={saveJobPatch} />}
+      </WorkspaceSection>
       <WorkspaceSection id="closeout" title="Closeout" summary={`${readinessScore(job)}% billing ready`} openSection={openSection} setOpenSection={setOpenSection}>
         <GuidedCloseoutPanel job={job} canManageJob={canManageJob} />
         {canManageJob && <CloseoutQualityPanel job={job} />}
@@ -259,13 +264,14 @@ function NeedsCorrectionBadge() {
 
 function ManagerOperationalSummary({ job }: { job: Job }) {
   const entries = job.timeEntries || [];
-  const mileage = entries.reduce((total, entry) => total + (Number(entry.mileage) || 0), 0);
+  const structured = structuredTravelTotals(job);
+  const mileage = structured ? structured.miles : entries.reduce((total, entry) => total + (Number(entry.mileage) || 0), 0);
   const helperHours = Number(job.factoryCost?.helperHours) || 0;
   const receiptTotal = (job.receipts || []).reduce((total, receipt) => total + (Number(receipt.amount) || 0), 0);
   const receiptFiles = summarizeFiles(job).receipts;
   const metrics = [
     { label: "Work time", value: formatEntryDuration(entries, "Work started", "Departed") },
-    { label: "Drive time", value: formatTravelDuration(entries) },
+    { label: "Drive time", value: structured ? formatMinutes(structured.driveMinutes) : formatTravelDuration(entries) },
     { label: "Mileage", value: `${mileage.toFixed(1)} mi` },
     { label: "Helper time", value: helperHours ? `${formatHours(helperHours)} tracked` : "Not tracked" },
     { label: "Receipts / expenses", value: `${(job.receipts || []).length} tracked · $${receiptTotal.toFixed(2)}${receiptFiles ? ` · ${receiptFiles} file${receiptFiles === 1 ? "" : "s"}` : ""}` },
@@ -1943,28 +1949,6 @@ function addJobActivity(job: Job, message: string, type: JobActivity["type"] = "
   return [entry, ...(job.activityLog || [])].slice(0, 50);
 }
 
-function getWorkSession(job: Job) {
-  const entries = [...(job.timeEntries || [])].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  const started = entries.find((entry) => entry.type === "Work started");
-  const finished = entries.find((entry) => entry.type === "Departed");
-  return {
-    started,
-    finished,
-    active: Boolean(started && (!finished || started.createdAt > finished.createdAt)),
-  };
-}
-
-function getTravelState(job: Job) {
-  const entries = [...(job.timeEntries || [])].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  const started = entries.find((entry) => entry.notes === "Started Travel");
-  const arrived = entries.find((entry) => entry.type === "Arrived");
-  return {
-    started,
-    arrived,
-    active: Boolean(started && (!arrived || started.createdAt > arrived.createdAt)),
-  };
-}
-
 function buildTimeActivity(job: Job, employeeName: string, message: string) {
   const entry: JobActivity = {
     id: `activity-${Date.now()}`,
@@ -2417,7 +2401,8 @@ function TimeLogPanel({ job, saving, onSave }: { job: Job; saving: boolean; onSa
   const employeeName = user?.employeeName || user?.email || "Field";
   const today = new Date().toLocaleDateString("en-CA");
   const todayEntries = entries.filter((entry) => entry.createdAt.slice(0, 10) === today);
-  const mileageTotal = entries.reduce((sum, entry) => sum + (Number(entry.mileage) || 0), 0);
+  const structured = structuredTravelTotals(job);
+  const mileageTotal = structured ? structured.miles : entries.reduce((sum, entry) => sum + (Number(entry.mileage) || 0), 0);
   const session = getWorkSession(job);
   const travel = getTravelState(job);
   const lastUpdated = entries[0]?.createdAt;

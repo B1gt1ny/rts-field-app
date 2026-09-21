@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { BriefcaseIcon, CameraIcon, CalendarDaysIcon, CheckCircleIcon, ChevronDownIcon, ClipboardDocumentCheckIcon, ClockIcon, DocumentTextIcon, ExclamationTriangleIcon, MapPinIcon, PhoneIcon, PlayIcon, ReceiptPercentIcon, UserCircleIcon, UserGroupIcon, WrenchScrewdriverIcon } from "@heroicons/react/24/outline";
-import { defaultFactoryCost, type BusinessSettings, type Employee, type FactoryCostTracker, type Job, type JobActivity } from "@/lib/types";
+import { defaultFactoryCost, type BusinessSettings, type Employee, type FactoryCostTracker, type Job, type JobActivity, type TravelLeg } from "@/lib/types";
 import { authFetch } from "@/lib/client-auth";
 import { getFactoryCostTotals, hasFactoryCostWork, roundUpToQuarterHour } from "@/lib/factory-costs";
 import { hasReceiptDollars, hasUploadedReceiptBackup } from "@/lib/receipt-backup";
@@ -304,6 +304,17 @@ export function FieldAppView() {
     }
   }
 
+  async function saveTravelLeg(job: Job, leg: Omit<TravelLeg, "id" | "employeeName">) {
+    setSavingJobId(job.jobId);
+    const employeeName = employee?.name || user?.employeeName || "Crew";
+    const travelLeg: TravelLeg = { ...leg, id: `travel-${Date.now()}`, employeeName };
+    try {
+      const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ travelLegs: [...(job.travelLegs || []), travelLeg] }) });
+      const saved = await response.json();
+      if (response.ok) setJobs((old) => old.map((item) => item.jobId === job.jobId ? { ...item, ...saved } : item));
+    } finally { setSavingJobId(""); }
+  }
+
   async function saveFactoryCost(job: Job, costPatch: Partial<FactoryCostTracker>) {
     setSavingJobId(job.jobId);
     const employeeName = employee?.name || user?.employeeName || "Crew";
@@ -319,7 +330,7 @@ export function FieldAppView() {
     const activity: JobActivity = {
       id: `activity-${Date.now()}`,
       type: "Invoice",
-      message: `${employeeName} updated factory costs from the field. Factory total: $${total.toFixed(2)}.`,
+      message: employeeName + " updated factory costs from the field.",
       createdAt: new Date().toISOString(),
       createdBy: employeeName,
       audience: "Admin",
@@ -447,7 +458,8 @@ export function FieldAppView() {
         <summary className="cursor-pointer rounded-2xl border border-black/10 bg-white px-4 py-3 text-base font-black shadow-sm">All assigned work</summary>
         <div className="mt-3">
           <CrewFilterBar value={crewFilter} counts={crewFilterCounts} onChange={setCrewFilter} />
-          <div className="grid gap-3 md:grid-cols-2">{filteredAssignedJobs.map((job) => <FieldJobCard key={job.jobId} job={job} noteDraft={noteDrafts[job.jobId] || ""} saving={savingJobId === job.jobId} permissions={fieldPermissions} customerTextTemplate={customerTextTemplate} fieldNoteTemplates={fieldNoteTemplates} reviewInstructions={reviewInstructions} factoryCostInstructions={factoryCostInstructions} factoryTravelRates={factoryTravelRates} requireBeforePhotosForReview={requireBeforePhotosForReview} requireSerialTagPhotoForReview={requireSerialTagPhotoForReview} requireDamagePhotosForReview={requireDamagePhotosForReview} requireAfterPhotosForReview={requireAfterPhotosForReview} requireCompletionNotesForReview={requireCompletionNotesForReview} requireWorkCompleteForReview={requireWorkCompleteForReview} requirePartsClosedForReview={requirePartsClosedForReview} requireFactoryCostsForReview={requireFactoryCostsForReview} requireReceiptBackupForReview={requireReceiptBackupForReview} fieldSupportName={fieldSupportName} fieldSupportPhone={fieldSupportPhone} employeeHelpInstructions={employeeHelpInstructions} onStart={() => startJob(job)} onReadyReview={() => readyForManagerReview(job)} onChecklist={(itemId) => toggleChecklist(job, itemId)} onNote={(message, type) => saveFieldNote(job, message, type)} onCompletionNotes={(notes) => saveCompletionNotes(job, notes)} onFactoryCost={(costPatch) => saveFactoryCost(job, costPatch)} onNoteDraft={(value) => setNoteDrafts((old) => ({ ...old, [job.jobId]: value }))} />)}</div>
+          <div className="grid gap-3 md:grid-cols-2">{filteredAssignedJobs.map((job) => <FieldJobCard key={job.jobId} job={job} noteDraft={noteDrafts[job.jobId] || ""} saving={savingJobId === job.jobId} permissions={fieldPermissions} customerTextTemplate={customerTextTemplate} fieldNoteTemplates={fieldNoteTemplates} reviewInstructions={reviewInstructions} factoryCostInstructions={factoryCostInstructions} requireBeforePhotosForReview={requireBeforePhotosForReview} requireSerialTagPhotoForReview={requireSerialTagPhotoForReview} requireDamagePhotosForReview={requireDamagePhotosForReview} requireAfterPhotosForReview={requireAfterPhotosForReview} requireCompletionNotesForReview={requireCompletionNotesForReview} requireWorkCompleteForReview={requireWorkCompleteForReview} requirePartsClosedForReview={requirePartsClosedForReview} requireFactoryCostsForReview={requireFactoryCostsForReview} requireReceiptBackupForReview={requireReceiptBackupForReview} fieldSupportName={fieldSupportName} fieldSupportPhone={fieldSupportPhone} employeeHelpInstructions={employeeHelpInstructions} onStart={() => startJob(job)} onReadyReview={() => readyForManagerReview(job)} onChecklist={(itemId) => toggleChecklist(job, itemId)} onNote={(message, type) => saveFieldNote(job, message, type)} onCompletionNotes={(notes) => saveCompletionNotes(job, notes)} onFactoryCost={(costPatch) => saveFactoryCost(job, costPatch)} onSaveTravelLeg={(leg) => saveTravelLeg(job, leg)} onNoteDraft={(value) => setNoteDrafts((old) => ({ ...old, [job.jobId]: value }))} />)}</div>
+          <div className="grid gap-3 md:grid-cols-2">{filteredAssignedJobs.map((job) => <FieldJobCard key={job.jobId} job={job} noteDraft={noteDrafts[job.jobId] || ""} saving={savingJobId === job.jobId} permissions={fieldPermissions} customerTextTemplate={customerTextTemplate} fieldNoteTemplates={fieldNoteTemplates} reviewInstructions={reviewInstructions} factoryCostInstructions={factoryCostInstructions} requireBeforePhotosForReview={requireBeforePhotosForReview} requireSerialTagPhotoForReview={requireSerialTagPhotoForReview} requireDamagePhotosForReview={requireDamagePhotosForReview} requireAfterPhotosForReview={requireAfterPhotosForReview} requireCompletionNotesForReview={requireCompletionNotesForReview} requireWorkCompleteForReview={requireWorkCompleteForReview} requirePartsClosedForReview={requirePartsClosedForReview} requireFactoryCostsForReview={requireFactoryCostsForReview} requireReceiptBackupForReview={requireReceiptBackupForReview} fieldSupportName={fieldSupportName} fieldSupportPhone={fieldSupportPhone} employeeHelpInstructions={employeeHelpInstructions} onStart={() => startJob(job)} onReadyReview={() => readyForManagerReview(job)} onChecklist={(itemId) => toggleChecklist(job, itemId)} onNote={(message, type) => saveFieldNote(job, message, type)} onCompletionNotes={(notes) => saveCompletionNotes(job, notes)} onFactoryCost={(costPatch) => saveFactoryCost(job, costPatch)} onSaveTravelLeg={(leg) => saveTravelLeg(job, leg)} onNoteDraft={(value) => setNoteDrafts((old) => ({ ...old, [job.jobId]: value }))} />)}</div>
           {assignedJobs.length > 0 && !filteredAssignedJobs.length && <div className="card p-6 text-center">
             <p className="font-black">No jobs in this lane.</p>
             <p className="mt-1 text-sm text-black/45">Try another crew filter or view all assigned work.</p>
@@ -705,7 +717,7 @@ function EmployeeHelpPanel({ employeeName, fieldNotice, reviewInstructions }: { 
   </section>;
 }
 
-function FieldActionCard({ job, noteDraft, saving, permissions, customerTextTemplate, fieldNoteTemplates, reviewInstructions, factoryCostInstructions, requireBeforePhotosForReview, requireSerialTagPhotoForReview, requireDamagePhotosForReview, requireAfterPhotosForReview, requireCompletionNotesForReview, requireWorkCompleteForReview, requirePartsClosedForReview, requireFactoryCostsForReview, requireReceiptBackupForReview, fieldSupportName, fieldSupportPhone, employeeHelpInstructions, onStart, onReadyReview, onChecklist, onNote, onCompletionNotes, onFactoryCost, onNoteDraft }: { job: Job; noteDraft: string; saving: boolean; permissions: FieldPermissions; customerTextTemplate: string; fieldNoteTemplates: string[]; reviewInstructions: string; factoryCostInstructions: string; requireBeforePhotosForReview: boolean; requireSerialTagPhotoForReview: boolean; requireDamagePhotosForReview: boolean; requireAfterPhotosForReview: boolean; requireCompletionNotesForReview: boolean; requireWorkCompleteForReview: boolean; requirePartsClosedForReview: boolean; requireFactoryCostsForReview: boolean; requireReceiptBackupForReview: boolean; fieldSupportName: string; fieldSupportPhone: string; employeeHelpInstructions: string; onStart: () => void; onReadyReview: () => void; onChecklist: (itemId: string) => void; onNote: (message: string, type?: JobActivity["type"]) => void; onCompletionNotes: (notes: string) => void; onFactoryCost: (costPatch: Partial<FactoryCostTracker>) => void; onNoteDraft: (value: string) => void }) {
+function FieldActionCard({ job, noteDraft, saving, permissions, customerTextTemplate, fieldNoteTemplates, reviewInstructions, factoryCostInstructions, requireBeforePhotosForReview, requireSerialTagPhotoForReview, requireDamagePhotosForReview, requireAfterPhotosForReview, requireCompletionNotesForReview, requireWorkCompleteForReview, requirePartsClosedForReview, requireFactoryCostsForReview, requireReceiptBackupForReview, fieldSupportName, fieldSupportPhone, employeeHelpInstructions, onStart, onReadyReview, onChecklist, onNote, onCompletionNotes, onFactoryCost, onSaveTravelLeg, onNoteDraft }: { job: Job; noteDraft: string; saving: boolean; permissions: FieldPermissions; customerTextTemplate: string; fieldNoteTemplates: string[]; reviewInstructions: string; factoryCostInstructions: string; requireBeforePhotosForReview: boolean; requireSerialTagPhotoForReview: boolean; requireDamagePhotosForReview: boolean; requireAfterPhotosForReview: boolean; requireCompletionNotesForReview: boolean; requireWorkCompleteForReview: boolean; requirePartsClosedForReview: boolean; requireFactoryCostsForReview: boolean; requireReceiptBackupForReview: boolean; fieldSupportName: string; fieldSupportPhone: string; employeeHelpInstructions: string; onStart: () => void; onReadyReview: () => void; onChecklist: (itemId: string) => void; onNote: (message: string, type?: JobActivity["type"]) => void; onCompletionNotes: (notes: string) => void; onFactoryCost: (costPatch: Partial<FactoryCostTracker>) => void; onSaveTravelLeg: (leg: Omit<TravelLeg, "id" | "employeeName">) => void; onNoteDraft: (value: string) => void }) {
   const review = fieldReviewStatus(job, requireFactoryCostsForReview, requireReceiptBackupForReview, requireBeforePhotosForReview, requireSerialTagPhotoForReview, requireDamagePhotosForReview, requireAfterPhotosForReview, requireCompletionNotesForReview, requireWorkCompleteForReview, requirePartsClosedForReview);
   const missing = fieldMissingItems(review);
   const helpMessage = fieldHelpMessage(job, review);
@@ -728,13 +740,14 @@ function FieldActionCard({ job, noteDraft, saving, permissions, customerTextTemp
     {permissions.employeeCanAddCompletionNotes && <QuickCompletionNotes job={job} saving={saving} onSave={onCompletionNotes} />}
     <FieldLatestUpdate job={job} />
     {permissions.employeeCanAddQuickNotes && <QuickFieldNotes job={job} noteDraft={noteDraft} templates={fieldNoteTemplates} saving={saving} onNote={onNote} onNoteDraft={onNoteDraft} />}
+    <StructuredTravelLegs job={job} saving={saving} onSave={onSaveTravelLeg} />
     {permissions.employeeCanAddFactoryCosts && <FactoryCostQuickEntry job={job} instructions={factoryCostInstructions} travelRates={{ mileageRate: "0.85", hourlyRate: "20" }} saving={saving} onSave={onFactoryCost} />}
     {missing.length > 0 && <p className="mt-3 rounded-xl bg-orange-50 p-3 text-sm font-bold text-orange-800"><ExclamationTriangleIcon className="mr-1 inline size-4" />Needs: {missing.join(", ")}</p>}
     <FieldButtons job={job} saving={saving} permissions={permissions} customerTextTemplate={customerTextTemplate} fieldSupportName={fieldSupportName} fieldSupportPhone={fieldSupportPhone} employeeHelpInstructions={employeeHelpInstructions} reviewReady={review.readyForManager} reviewScore={review.score} supportText={helpMessage} onStart={onStart} onNeedHelp={() => onNote(helpMessage, "Status")} onReadyReview={onReadyReview} />
   </div>;
 }
 
-function FieldJobCard({ job, noteDraft, saving, permissions, customerTextTemplate, fieldNoteTemplates, reviewInstructions, factoryCostInstructions, factoryTravelRates, requireBeforePhotosForReview, requireSerialTagPhotoForReview, requireDamagePhotosForReview, requireAfterPhotosForReview, requireCompletionNotesForReview, requireWorkCompleteForReview, requirePartsClosedForReview, requireFactoryCostsForReview, requireReceiptBackupForReview, fieldSupportName, fieldSupportPhone, employeeHelpInstructions, onStart, onReadyReview, onChecklist, onNote, onCompletionNotes, onFactoryCost, onNoteDraft }: { job: Job; noteDraft: string; saving: boolean; permissions: FieldPermissions; customerTextTemplate: string; fieldNoteTemplates: string[]; reviewInstructions: string; factoryCostInstructions: string; factoryTravelRates: { mileageRate: string; hourlyRate: string }; requireBeforePhotosForReview: boolean; requireSerialTagPhotoForReview: boolean; requireDamagePhotosForReview: boolean; requireAfterPhotosForReview: boolean; requireCompletionNotesForReview: boolean; requireWorkCompleteForReview: boolean; requirePartsClosedForReview: boolean; requireFactoryCostsForReview: boolean; requireReceiptBackupForReview: boolean; fieldSupportName: string; fieldSupportPhone: string; employeeHelpInstructions: string; onStart: () => void; onReadyReview: () => void; onChecklist: (itemId: string) => void; onNote: (message: string, type?: JobActivity["type"]) => void; onCompletionNotes: (notes: string) => void; onFactoryCost: (costPatch: Partial<FactoryCostTracker>) => void; onNoteDraft: (value: string) => void }) {
+function FieldJobCard({ job, noteDraft, saving, permissions, customerTextTemplate, fieldNoteTemplates, reviewInstructions, factoryCostInstructions, requireBeforePhotosForReview, requireSerialTagPhotoForReview, requireDamagePhotosForReview, requireAfterPhotosForReview, requireCompletionNotesForReview, requireWorkCompleteForReview, requirePartsClosedForReview, requireFactoryCostsForReview, requireReceiptBackupForReview, fieldSupportName, fieldSupportPhone, employeeHelpInstructions, onStart, onReadyReview, onChecklist, onNote, onCompletionNotes, onFactoryCost, onSaveTravelLeg, onNoteDraft }: { job: Job; noteDraft: string; saving: boolean; permissions: FieldPermissions; customerTextTemplate: string; fieldNoteTemplates: string[]; reviewInstructions: string; factoryCostInstructions: string; requireBeforePhotosForReview: boolean; requireSerialTagPhotoForReview: boolean; requireDamagePhotosForReview: boolean; requireAfterPhotosForReview: boolean; requireCompletionNotesForReview: boolean; requireWorkCompleteForReview: boolean; requirePartsClosedForReview: boolean; requireFactoryCostsForReview: boolean; requireReceiptBackupForReview: boolean; fieldSupportName: string; fieldSupportPhone: string; employeeHelpInstructions: string; onStart: () => void; onReadyReview: () => void; onChecklist: (itemId: string) => void; onNote: (message: string, type?: JobActivity["type"]) => void; onCompletionNotes: (notes: string) => void; onFactoryCost: (costPatch: Partial<FactoryCostTracker>) => void; onSaveTravelLeg: (leg: Omit<TravelLeg, "id" | "employeeName">) => void; onNoteDraft: (value: string) => void }) {
   const review = fieldReviewStatus(job, requireFactoryCostsForReview, requireReceiptBackupForReview, requireBeforePhotosForReview, requireSerialTagPhotoForReview, requireDamagePhotosForReview, requireAfterPhotosForReview, requireCompletionNotesForReview, requireWorkCompleteForReview, requirePartsClosedForReview);
   const helpMessage = fieldHelpMessage(job, review);
   return <details className="card group overflow-hidden open:bg-sand/35">
@@ -762,14 +775,22 @@ function FieldJobCard({ job, noteDraft, saving, permissions, customerTextTemplat
       {permissions.employeeCanAddCompletionNotes && <QuickCompletionNotes job={job} saving={saving} onSave={onCompletionNotes} />}
       <FieldLatestUpdate job={job} />
       {permissions.employeeCanAddQuickNotes && <QuickFieldNotes job={job} noteDraft={noteDraft} templates={fieldNoteTemplates} saving={saving} onNote={onNote} onNoteDraft={onNoteDraft} />}
-      {permissions.employeeCanAddFactoryCosts && <FactoryCostQuickEntry job={job} instructions={factoryCostInstructions} travelRates={factoryTravelRates} saving={saving} onSave={onFactoryCost} />}
+      {permissions.employeeCanAddFactoryCosts && <FactoryCostQuickEntry job={job} instructions={factoryCostInstructions} travelRates={{ mileageRate: "0.85", hourlyRate: "20" }} saving={saving} onSave={onFactoryCost} />}
       <FieldButtons job={job} saving={saving} permissions={permissions} customerTextTemplate={customerTextTemplate} fieldSupportName={fieldSupportName} fieldSupportPhone={fieldSupportPhone} employeeHelpInstructions={employeeHelpInstructions} reviewReady={review.readyForManager} reviewScore={review.score} supportText={helpMessage} onStart={onStart} onNeedHelp={() => onNote(helpMessage, "Status")} onReadyReview={onReadyReview} />
     </div>
   </details>;
 }
 
+function StructuredTravelLegs({ job, saving, onSave }: { job: Job; saving: boolean; onSave: (leg: Omit<TravelLeg, "id" | "employeeName">) => void }) {
+  const [draft, setDraft] = useState({ date: new Date().toLocaleDateString("en-CA"), from: "", to: "", departureAt: "", arrivalAt: "", miles: "" });
+  const legs = job.travelLegs || [];
+  function submit(event: React.FormEvent) { event.preventDefault(); if (!draft.date || !draft.from.trim() || !draft.to.trim() || !draft.miles.trim()) return; onSave({ ...draft, from: draft.from.trim(), to: draft.to.trim() }); setDraft((old) => ({ ...old, from: "", to: "", departureAt: "", arrivalAt: "", miles: "" })); }
+  return <section className="mt-3 rounded-2xl border border-black/10 bg-sand p-3"><p className="text-sm font-black">Travel legs</p><p className="mt-1 text-xs font-semibold text-black/45">Record trip activity only. Rates and dollar amounts stay with the office.</p><form onSubmit={submit} className="mt-3 grid gap-2 sm:grid-cols-2"><input className="field !min-h-11 !py-2 text-sm" type="date" value={draft.date} onChange={(e) => setDraft((old) => ({ ...old, date: e.target.value }))} /><input className="field !min-h-11 !py-2 text-sm" placeholder="From / origin" value={draft.from} onChange={(e) => setDraft((old) => ({ ...old, from: e.target.value }))} required /><input className="field !min-h-11 !py-2 text-sm" placeholder="To / destination" value={draft.to} onChange={(e) => setDraft((old) => ({ ...old, to: e.target.value }))} required /><input className="field !min-h-11 !py-2 text-sm" type="datetime-local" value={draft.departureAt ? draft.departureAt.slice(0, 16) : ""} onChange={(e) => setDraft((old) => ({ ...old, departureAt: e.target.value ? new Date(e.target.value).toISOString() : "" }))} /><input className="field !min-h-11 !py-2 text-sm" type="datetime-local" value={draft.arrivalAt ? draft.arrivalAt.slice(0, 16) : ""} onChange={(e) => setDraft((old) => ({ ...old, arrivalAt: e.target.value ? new Date(e.target.value).toISOString() : "" }))} /><input className="field !min-h-11 !py-2 text-sm" type="number" min="0" step="0.1" inputMode="decimal" placeholder="Miles" value={draft.miles} onChange={(e) => setDraft((old) => ({ ...old, miles: e.target.value }))} required /><button type="submit" disabled={saving} className="min-h-11 rounded-xl bg-forest px-4 py-2 text-sm font-black text-white sm:col-span-2">{saving ? "Saving..." : "Add travel leg"}</button></form>{legs.length > 0 && <div className="mt-3 space-y-2">{legs.map((leg) => <div key={leg.id} className="rounded-xl bg-white p-3 text-sm"><p className="font-black">{leg.date} · {leg.from} → {leg.to}</p><p className="text-xs font-semibold text-black/45">{leg.departureAt ? new Date(leg.departureAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "No departure"} → {leg.arrivalAt ? new Date(leg.arrivalAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "No arrival"} · {leg.miles || "0"} miles</p></div>)}</div>}</section>;
+}
+
 function FactoryCostQuickEntry({ job, instructions, travelRates, saving, onSave }: { job: Job; instructions: string; travelRates: { mileageRate: string; hourlyRate: string }; saving: boolean; onSave: (costPatch: Partial<FactoryCostTracker>) => void }) {
   const existing = { ...defaultFactoryCost(), ...(job.factoryCost || {}), ...travelRates };
+
   const [draft, setDraft] = useState({
     tripCount: existing.tripCount,
     miles: existing.miles,
@@ -787,15 +808,12 @@ function FactoryCostQuickEntry({ job, instructions, travelRates, saving, onSave 
     notes: existing.notes || "",
   });
   if (job.source !== "Factory") return null;
-
-  const preview = getFactoryCostTotals({ ...existing, ...draft });
   return <div className="mt-3 rounded-2xl border border-blue-100 bg-blue-50 p-3">
     <div className="mb-2 flex items-center justify-between gap-2">
       <div>
         <p className="text-sm font-black text-blue-950">Factory costs</p>
         <p className="text-xs font-semibold text-blue-900/65">{instructions}</p>
       </div>
-      <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-blue-900">${preview.grandTotal.toFixed(2)}</span>
     </div>
     <div className="grid grid-cols-2 gap-2">
       <FieldCostInput label="Trips" value={draft.tripCount} onChange={(value) => setDraft((old) => ({ ...old, tripCount: value }))} />
@@ -804,9 +822,7 @@ function FactoryCostQuickEntry({ job, instructions, travelRates, saving, onSave 
       <FieldCostInput label="Work hrs" value={draft.workHours} onChange={(value) => setDraft((old) => ({ ...old, workHours: value }))} />
       <FieldCostInput label="Work rate $" value={draft.workRate} onChange={(value) => setDraft((old) => ({ ...old, workRate: value }))} />
       <FieldCostInput label="Helper hrs" value={draft.helperHours} onChange={(value) => setDraft((old) => ({ ...old, helperHours: value }))} />
-      <FieldCostInput label="Helper $" value={draft.helperRate} onChange={(value) => setDraft((old) => ({ ...old, helperRate: value }))} />
       <FieldCostInput label="Per diem days" value={draft.perDiemDays} onChange={(value) => setDraft((old) => ({ ...old, perDiemDays: value }))} />
-      <FieldCostInput label="Per diem $" value={draft.perDiemRate} onChange={(value) => setDraft((old) => ({ ...old, perDiemRate: value }))} />
       <FieldCostInput label="Hotel $" value={draft.hotelTotal} onChange={(value) => setDraft((old) => ({ ...old, hotelTotal: value }))} />
       <FieldCostInput label="Meals $" value={draft.mealTotal} onChange={(value) => setDraft((old) => ({ ...old, mealTotal: value }))} />
       <FieldCostInput label="Materials $" value={draft.materialsTotal} onChange={(value) => setDraft((old) => ({ ...old, materialsTotal: value }))} />

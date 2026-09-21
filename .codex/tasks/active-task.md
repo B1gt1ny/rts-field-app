@@ -29,3 +29,16 @@
 ## Out of scope
 
 - Database migrations, environment variables, external API setup, schema changes, packages, auth changes, additional commits, and deployment.
+## Travel-leg extension
+
+# Goal
+Implement structured travel legs as the preferred travel activity model while preserving legacy time entries and keeping rates admin-controlled.
+
+# Scope
+Add optional `travelLegs?: TravelLeg[]` with date, from, to, departure, arrival, miles, and employee attribution. Prefer structured-leg totals when travel legs contain activity; otherwise preserve legacy `timeEntries` and factory-cost behavior. Hide billing-rate fields from employees while preserving admin/billing rates.
+
+# Prohibited Changes
+Do not migrate or rewrite legacy `timeEntries`, sum both representations for one job, add a second editable travel-pricing path, perform schema/package/auth/integration/credential/environment changes, or broad billing/timekeeping refactors. Protect all pre-existing dirty/untracked work.
+
+# Required Verification
+Run typecheck, production build, `git diff --check`, review Sprint 6.3 hunks only, verify legacy/one-leg/multi-leg/incomplete/invalid legs and precedence/no-double-counting, confirm creating/saving a structured TravelLeg does not create, rewrite, or duplicate legacy timeEntries, verify employees cannot see/edit rates, confirm admin/billing rates remain applied, and stop before commit.
