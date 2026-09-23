@@ -183,7 +183,7 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
       <WorkspaceSection id="overview" title="Overview" summary={`${job.jobId} · ${job.status} · ${job.assignedCrew || "Unassigned"}`} openSection={openSection} setOpenSection={setOpenSection}>
         <OverviewPanel job={job} companyCam={companyCam} />
         {canManageJob && <IntakeCompletenessPanel job={job} />}
-        <CalendarPanel job={job} setJob={setJob} />
+        <CalendarPanel job={job} />
         <ProfileSheetPanel job={job} />
         <ScopePanel job={job} />
       </WorkspaceSection>
@@ -471,7 +471,7 @@ function JobCommandHub({ job, companyCam }: { job: Job; companyCam: CompanyCamSt
   const dispatchMissing = dispatchBlockers(job);
   const topMissing = dispatchMissing.slice(0, 3);
   const checklist = checklistProgress(job);
-  const calendarStatus = job.googleCalendarEventUrl ? "Linked" : job.dueDate ? "Date set" : "No date";
+  const calendarStatus = job.dueDate ? "In RTS feed" : "No date";
   const companyCamStatus = companyCam.projectUrl ? "Linked" : companyCam.configured ? "Ready" : "Needs token";
 
   return <section className="card mb-5 overflow-hidden print:hidden">
@@ -489,7 +489,7 @@ function JobCommandHub({ job, companyCam }: { job: Job; companyCam: CompanyCamSt
       <CommandMetric label="Dispatch ready" value={`${dispatchScore}%`} detail={dispatchMissing.length ? `${dispatchMissing.length} item${dispatchMissing.length === 1 ? "" : "s"} missing` : "Ready to send"} tone={dispatchMissing.length ? "orange" : "green"} />
       <CommandMetric label="Closeout ready" value={`${closeoutScore}%`} detail={billingBlockers(job).length ? "Billing blockers open" : "Billing packet clean"} tone={billingBlockers(job).length ? "orange" : "green"} />
       <CommandMetric label="Checklist" value={`${checklist.complete}/${checklist.total}`} detail="Field checklist progress" tone={checklist.complete === checklist.total ? "green" : "blue"} />
-      <CommandMetric label="Calendar / Cam" value={calendarStatus} detail={`CompanyCam: ${companyCamStatus}`} tone={job.googleCalendarEventUrl && companyCam.projectUrl ? "green" : "blue"} />
+      <CommandMetric label="Calendar / Cam" value={calendarStatus} detail={`CompanyCam: ${companyCamStatus}`} tone={job.dueDate && companyCam.projectUrl ? "green" : "blue"} />
     </div>
     {topMissing.length > 0 && <div className="px-4 pb-4">
       <div className="rounded-2xl border border-orange-200 bg-orange-50 p-3">
@@ -543,7 +543,7 @@ function buildNextActions(job: Job, companyCam: CompanyCamState) {
   if (!job.phone?.trim() || !job.address?.trim() || !job.city?.trim()) actions.push({ label: "Complete customer info", detail: "Phone, address, and city are needed for field work.", href: `/jobs/${job.jobId}/edit` });
   if ((job.paperworkItems || defaultPaperwork(job)).some((item) => item.status === "Needed")) actions.push({ label: "Collect paperwork", detail: "Upload or mark work order and sign-off paperwork.", href: "#paperwork" });
   if ((job.partsItems || []).some((part) => ["Needed", "Ordered", "Picked up"].includes(part.status)) || job.status === "Waiting on Parts" || job.partsNeeded?.trim()) actions.push({ label: "Resolve parts", detail: "Order, pick up, install, or close open part requests.", href: "#parts-needed" });
-  if (!job.googleCalendarEventUrl && job.dueDate) actions.push({ label: "Place on calendar", detail: "Use Google quick-add or sync after credentials are connected.", href: "#scheduling" });
+  if (!job.dueDate) actions.push({ label: "Set a due date", detail: "Due-dated jobs appear in the RTS calendar feed.", href: "#scheduling" });
   if (!companyCam.projectUrl) actions.push({ label: "Set up photo project", detail: "Create or link the CompanyCam project when credentials are ready.", href: "#companycam" });
   if (job.status === "In Progress" && !(job.afterPhotos || []).length) actions.push({ label: "Take after photos", detail: "Photos protect billing and completion proof.", href: "#photos" });
   if (job.status === "In Progress" && !job.completionNotes?.trim()) actions.push({ label: "Add completion notes", detail: "Write what was completed before closeout.", href: "#complete-job" });
@@ -762,7 +762,7 @@ function FieldWorkspace({ job, companyCam }: { job: Job; companyCam: CompanyCamS
     },
     {
       title: "Schedule & apps",
-      detail: `${job.googleCalendarEventUrl ? "Calendar linked" : "Calendar quick-add"} · ${companyCam.projectUrl ? "CompanyCam linked" : "CompanyCam ready"}`,
+      detail: `${job.dueDate ? "In RTS feed" : "No date"} · ${companyCam.projectUrl ? "CompanyCam linked" : "CompanyCam ready"}`,
       icon: <CalendarDaysIcon />,
       actions: [
         { label: "Calendar", href: "#scheduling", primary: true },
@@ -2082,56 +2082,24 @@ function readAsDataUrl(file: File) {
   });
 }
 
-function CalendarPanel({ job, setJob }: { job: Job; setJob: React.Dispatch<React.SetStateAction<Job>> }) {
-  const [syncing, setSyncing] = useState(false);
-  const [message, setMessage] = useState("");
-  async function syncCalendar() {
-    setSyncing(true);
-    setMessage("");
-    try {
-      const response = await authFetch(`/api/jobs/${job.jobId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ syncToCalendar: true }),
-      });
-      const saved = await response.json();
-      if (!response.ok) throw new Error(saved.error || "Google Calendar sync failed.");
-      setJob((old) => ({ ...old, ...saved }));
-      if (saved.googleCalendarEventUrl) setMessage("Google Calendar event linked.");
-      else if (saved.integrationWarnings?.length) setMessage(saved.integrationWarnings.join(" "));
-      else setMessage("Calendar sync is turned on, but Google Calendar credentials are not connected yet.");
-    } catch (caught) {
-      setMessage(caught instanceof Error ? caught.message : "Google Calendar sync failed.");
-    } finally {
-      setSyncing(false);
-    }
-  }
-
+function CalendarPanel({ job }: { job: Job }) {
   const calendarDate = job.dueDate ? new Date(`${job.dueDate}T12:00:00`) : null;
-  const calendarLocation = [job.address, job.city].filter(Boolean).join(", ");
-  const googleCalendarQuickAdd = calendarDate ? `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(`${job.jobId} — ${job.customerName} — ${job.jobType}`)}&dates=${job.dueDate.replaceAll("-", "")}/${new Date(calendarDate.getTime() + 86400000).toISOString().slice(0, 10).replaceAll("-", "")}&location=${encodeURIComponent(calendarLocation)}&details=${encodeURIComponent(`Status: ${job.status}\nEmployees: ${job.assignedCrew}\nPriority: ${job.priority}\n\n${job.scopeNotes}`)}` : "https://calendar.google.com";
-
   return <section id="scheduling" className="card p-4 sm:p-6">
     <div className="mb-4 flex items-start gap-3">
       <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-emerald-100 text-emerald-800"><CalendarDaysIcon className="size-5" /></span>
       <div>
         <h2 className="text-lg font-black">Scheduling</h2>
-        <p className="text-sm text-black/50">Place this job on Google Calendar and keep the profile linked.</p>
+        <p className="text-sm text-black/50">RTS is the source of truth. Subscribe once from Settings to view due-dated RTS jobs in Google Calendar.</p>
       </div>
     </div>
     <div className="grid gap-3 sm:grid-cols-2">
       <div className="rounded-xl bg-sand p-4">
         <p className="text-xs font-black uppercase tracking-wide text-black/35">Due date</p>
         <p className="font-extrabold">{calendarDate ? calendarDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }) : "No due date"}</p>
-        <p className="mt-2 text-xs font-semibold text-black/45">{job.googleCalendarEventUrl ? "Linked to Google Calendar" : "Not linked to Google Calendar yet"}</p>
+        <p className="mt-2 text-xs font-semibold text-black/45">{calendarDate ? "Included in the RTS calendar feed" : "Add a due date to include this job"}</p>
       </div>
-      <div className="space-y-2">
-        {job.googleCalendarEventUrl && <a href={job.googleCalendarEventUrl} target="_blank" className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-forest px-4 py-3 font-black text-white">Open Calendar Event <ArrowTopRightOnSquareIcon className="size-5" /></a>}
-        <button type="button" onClick={syncCalendar} disabled={syncing || !job.dueDate} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-black/10 bg-white px-4 py-3 font-black disabled:opacity-50"><ArrowPathIcon className={`size-5 ${syncing ? "animate-spin" : ""}`} />{syncing ? "Syncing…" : job.googleCalendarEventUrl ? "Update Google Calendar" : "Add to Google Calendar"}</button>
-        <a href={googleCalendarQuickAdd} target="_blank" className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-emerald-200 bg-emerald-50 px-4 py-3 text-center font-black text-emerald-900">Open Google quick add <ArrowTopRightOnSquareIcon className="size-5" /></a>
-      </div>
+      <Link href="/settings" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-forest px-4 py-3 font-black text-white">Open calendar settings</Link>
     </div>
-    {message && <p className="mt-3 rounded-lg border border-black/10 bg-white p-3 text-sm font-bold text-black/60">{message}</p>}
   </section>;
 }
 
@@ -2628,7 +2596,7 @@ function buildManagerHandoffText(job: Job) {
     `Status/Priority: ${job.status} / ${job.priority}`,
     `Schedule: ${job.dueDate || "Not scheduled"} · Crew: ${job.assignedCrew || "Unassigned"}`,
     `Checklist: ${checklist.complete}/${checklist.total} · Open follow-ups: ${openFollowUps}`,
-    `Calendar: ${job.googleCalendarEventUrl ? "Linked" : "Not linked"} · CompanyCam: ${job.companyCamProjectUrl ? "Linked" : "Not linked"}`,
+    `Calendar: ${job.dueDate ? "In RTS feed" : "No date"} · CompanyCam: ${job.companyCamProjectUrl ? "Linked" : "Not linked"}`,
     `Invoice: ${job.invoiceStatus || "Not started"}`,
     "",
     `Completion notes: ${job.completionNotes || "Not complete yet."}`,

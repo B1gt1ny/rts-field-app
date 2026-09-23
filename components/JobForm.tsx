@@ -171,10 +171,6 @@ export function JobForm({ initialJob }: { initialJob?: Job }) {
       <Textarea label="Parts needed" value={job.partsNeeded} onChange={(v) => set("partsNeeded", v)} wide />
       <Textarea label="Completion notes" value={job.completionNotes} onChange={(v) => set("completionNotes", v)} wide />
       <Select label="Invoice status" value={job.invoiceStatus} options={["Not started", "Needs more info", "Draft", "Ready", "Sent to Billing", "Sent", "On hold", "Paid"]} onChange={(v) => set("invoiceStatus", v)} />
-      <label className="flex min-h-12 items-center gap-3 rounded-xl border border-black/10 bg-white px-4 py-3 sm:col-span-2">
-        <input type="checkbox" className="size-5 accent-forest" checked={Boolean(job.syncToCalendar)} onChange={(e) => set("syncToCalendar", e.target.checked)} />
-        <span><span className="block font-bold">Add this job to my Google Calendar</span><span className="block text-xs text-black/45">Off by default. Only enable it for your own real jobs.</span></span>
-      </label>
     </FormSection>
     {(savedDraft || draftStatus) && <section className="card border-forest/20 bg-forest/5 p-4 sm:p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

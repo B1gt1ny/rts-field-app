@@ -835,7 +835,7 @@ function buildIntegrationNextSteps(integrations: IntegrationStatus, setupStatus:
         ? `Google Calendar connection verified. Target calendar: ${setupStatus.googleCalendarId || "primary"}.`
         : setupStatus.googleCalendarConfigured
           ? setupStatus.googleCalendarError || "Google authorization failed. Reconnect the account and replace the refresh token in Vercel."
-          : "Add Google OAuth credentials in Vercel. Until then, use the safe Google quick-add buttons on real jobs.",
+          : "Subscribe to the read-only RTS calendar feed from Google Calendar. RTS remains the source of truth for scheduling.",
       href: "/schedule",
     },
     {

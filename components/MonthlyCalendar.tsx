@@ -21,7 +21,7 @@ export function MonthlyCalendar({ jobs, today = new Date() }: { jobs: Job[]; tod
     const key = date.toLocaleDateString("en-CA");
     return { date, key, isCurrentMonth: date.getMonth() === today.getMonth(), jobs: activeJobs.filter((job) => job.dueDate === key).sort(compareScheduledJobs) };
   });
-  const linked = jobs.filter((job) => job.googleCalendarEventUrl).length;
+  const linked = jobs.filter((job) => job.dueDate).length;
   const upcomingJobs = activeJobs.filter((job) => job.dueDate && job.dueDate >= todayKey).sort((a, b) => a.dueDate.localeCompare(b.dueDate)).slice(0, 5);
   const unscheduled = activeJobs.filter((job) => !job.dueDate).length;
 
@@ -29,14 +29,14 @@ export function MonthlyCalendar({ jobs, today = new Date() }: { jobs: Job[]; tod
     <div className="mb-4 flex items-start justify-between gap-3 px-4 pt-4 sm:px-6 sm:pt-6 lg:px-8">
       <div>
         <div className="flex items-center gap-2"><CalendarDaysIcon className="size-5 text-forest" /><h2 className="text-xl font-black">Monthly field calendar</h2></div>
-        <p className="mt-1 text-sm text-black/45">Quick schedule view from job due dates. Google-linked jobs are marked.</p>
+        <p className="mt-1 text-sm text-black/45">Quick schedule view from job due dates. Due-dated jobs appear in the RTS calendar feed.</p>
       </div>
       <a href="https://calendar.google.com" target="_blank" className="action-contrast hidden min-h-10 items-center rounded-xl border px-3 text-sm font-black sm:inline-flex">Open Google Calendar</a>
     </div>
     <div className="mb-3 flex items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
       <p className="text-lg font-black">{today.toLocaleDateString("en-US", { month: "long", year: "numeric" })}</p>
       <div className="flex flex-wrap justify-end gap-2 text-xs font-black">
-        <span className="rounded-full bg-emerald-100 px-3 py-1 text-emerald-900">{linked} Google-linked</span>
+        <span className="rounded-full bg-emerald-100 px-3 py-1 text-emerald-900">{linked} in RTS feed</span>
         <Link href="/schedule" className={`rounded-full px-3 py-1 ${unscheduled ? "bg-orange-100 text-orange-900" : "bg-black/5 text-black/45"}`}>{unscheduled} unscheduled</Link>
       </div>
     </div>
@@ -73,8 +73,8 @@ export function MonthlyCalendar({ jobs, today = new Date() }: { jobs: Job[]; tod
       </div>
       <div className="rounded-2xl bg-ink p-4 text-white">
         <p className="text-xs font-black uppercase tracking-widest text-lime">Calendar connection</p>
-        <h3 className="mt-1 text-2xl font-black">{linked ? `${linked} linked` : "Not linked yet"}</h3>
-        <p className="mt-1 text-sm text-white/55">Jobs only go to Google Calendar when you choose “Add this job to my Google Calendar” on a real job.</p>
+        <h3 className="mt-1 text-2xl font-black">{linked ? `${linked} in RTS feed` : "No dated jobs"}</h3>
+        <p className="mt-1 text-sm text-white/55">Due-dated RTS jobs appear in the subscription feed. RTS remains the source of truth.</p>
         <div className="mt-4 grid gap-2">
           <a href="https://calendar.google.com" target="_blank" className="action-contrast inline-flex min-h-11 items-center justify-center rounded-xl border px-4 py-3 text-sm font-black">Open Google Calendar</a>
           <Link href="/settings" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-white/10 px-4 py-3 text-sm font-black text-white">Calendar settings</Link>
