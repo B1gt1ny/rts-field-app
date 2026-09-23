@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import type { Job } from "@/lib/types";
+import type { Job } from "../types";
 
 const businessTimeZone = "America/Chicago";
 
@@ -37,8 +37,8 @@ function eventForJob(job: Job) {
     "BEGIN:VEVENT",
     `UID:job-${escapeText(job.jobId)}@rts-field-app`,
     `DTSTAMP:${timestamp()}`,
-    job.scheduledTime ? `DTSTART;TZID=${businessTimeZone}:${job.dueDate.replace(/-/g, "")}T${job.scheduledTime.replace(":", "")}00` : `DTSTART;VALUE=DATE:${job.dueDate.replace(/-/g, "")}`,
-    !job.scheduledTime && `DTEND;VALUE=DATE:${dateOnlyEnd(job.dueDate)}`,
+    `DTSTART;VALUE=DATE:${job.dueDate.replace(/-/g, "")}`,
+    `DTEND;VALUE=DATE:${dateOnlyEnd(job.dueDate)}`,
     `SUMMARY:${escapeText([job.customerName, job.jobType].filter(Boolean).join(" — ") || job.jobId)}`,
     description && `DESCRIPTION:${escapeText(description)}`,
     [job.address, job.city].filter(Boolean).join(", ") && `LOCATION:${escapeText([job.address, job.city].filter(Boolean).join(", "))}`,
