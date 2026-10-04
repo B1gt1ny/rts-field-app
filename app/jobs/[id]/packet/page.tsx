@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import { CloseoutPacket } from "@/components/CloseoutPacket";
 import { getJob } from "@/lib/jobs";
-import { canServerViewJob } from "@/lib/server-auth";
+import { canServerViewJob, getServerUser } from "@/lib/server-auth";
+import { getUserRole, sanitizeEmployeeJob } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -10,5 +11,6 @@ export default async function JobPacketPage({ params }: { params: Promise<{ id: 
   const job = await getJob(id);
   if (!job) notFound();
   if (!(await canServerViewJob(job))) notFound();
-  return <CloseoutPacket job={job} />;
+  const user = await getServerUser();
+  return <CloseoutPacket job={getUserRole(user) === "Employee" ? sanitizeEmployeeJob(job) : job} />;
 }

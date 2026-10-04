@@ -1,5 +1,6 @@
 import { createServer } from "node:http";
-import { canEmployeeAccessJob, getUserEmployee, getUserRole, hasTrustedAccess, requireRole, type AppUser } from "../lib/auth";
+import { canEmployeeAccessJob, employeeSafeJobPatch, getUserEmployee, getUserRole, hasTrustedAccess, requireRole, sanitizeEmployeeJob, type AppUser } from "../lib/auth";
+import { emptyJob, defaultFactoryCost, type Job } from "../lib/types";
 import { planAuthMigration, validateApprovedMigration } from "../lib/auth-migration";
 
 function check(condition: boolean, message: string) { if (!condition) throw new Error(message); }
@@ -16,8 +17,24 @@ check(getUserRole(manager) === "Manager", "Client metadata must not elevate mana
 check(!hasTrustedAccess({ id: "legacy", user_metadata: { role: "Admin" } }), "Legacy metadata must fail closed");
 check(!hasTrustedAccess({ ...employee, app_metadata: { ...employee.app_metadata, rtsAccessActive: false } }), "Disabled account must fail closed");
 check(!hasTrustedAccess({ ...employee, banned_until: "2999-01-01T00:00:00Z" }), "Banned account with existing token must fail closed");
+check(!canEmployeeAccessJob(null, { fullCrew: true }), "Anonymous user must not gain Full Crew access");
+check(!canEmployeeAccessJob({ ...employee, app_metadata: { ...employee.app_metadata, rtsAccessActive: false } }, { fullCrew: true }), "Disabled user must not gain Full Crew access");
 check(hasTrustedAccess({ ...employee, app_metadata: { ...employee.app_metadata, rtsAccessActive: true } }), "Reactivated account must retain role and link");
 check(getUserRole({ id: "admin", app_metadata: { rtsRole: "Admin" } }) === "Admin", "Trusted admin must remain admin");
+const savedJob: Job = { ...emptyJob, factoryCost: { ...defaultFactoryCost(), workRate: "50", mileageRate: "0.85" }, activityLog: [
+  { id: "private", type: "Note", audience: "Manager", message: "Private", createdAt: "2026-10-01", createdBy: "Manager" },
+  { id: "invoice", type: "Invoice", message: "Billing", createdAt: "2026-10-01", createdBy: "Admin" },
+  { id: "public", type: "Note", audience: "All", message: "Field", createdAt: "2026-10-01", createdBy: "Worker" },
+] };
+const safeJob = sanitizeEmployeeJob(savedJob);
+check(safeJob.activityLog?.length === 1 && safeJob.activityLog[0].id === "public", "Employee response must exclude private and invoice activity");
+check(safeJob.factoryCost?.workRate === "" && savedJob.factoryCost?.workRate === "50", "Sanitization must hide rates without changing saved data");
+const fieldPatch = employeeSafeJobPatch({ factoryCost: { workHours: "8", workRate: "999", mileageRate: "999" }, activityLog: [...safeJob.activityLog!, { ...savedJob.activityLog![0], message: "Forged" }] }, savedJob) as Partial<Job>;
+check(fieldPatch.factoryCost?.workHours === "8" && fieldPatch.factoryCost.workRate === "50" && fieldPatch.factoryCost.mileageRate === "0.85", "Field costs must save effort while preserving admin rates");
+check(fieldPatch.activityLog?.find((entry) => entry.id === "private")?.message === "Private" && fieldPatch.activityLog.some((entry) => entry.id === "invoice"), "Field save must retain hidden history without accepting forged private entries");
+check(!("activityLog" in employeeSafeJobPatch({ activityLog: null }, savedJob)), "Malformed activity patch must not erase history");
+const handoff = employeeSafeJobPatch({ activityLog: [{ ...savedJob.activityLog![0], id: "handoff", createdBy: "Forged Admin" }] }, savedJob, "Worker") as Partial<Job>;
+check(handoff.activityLog?.[0].audience === "Manager" && handoff.activityLog[0].createdBy === "Worker" && handoff.activityLog.length === 4, "Manager-directed field handoff must retain history and use trusted attribution");
 const plan = planAuthMigration([employee]);
 check(plan[0].proposedRole === "Employee" && plan[0].currentRole === "Admin", "Migration plan must expose conflict without trusting it");
 check(planAuthMigration([{ id: "legacy", user_metadata: { role: "Manager", employeeId: "x" } }])[0].proposedRole === null, "Legacy role must require confirmation");

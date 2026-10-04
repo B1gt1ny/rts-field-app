@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { canEmployeeAccessJob, employeeSafeJobPatch, getRequestUser, getUserEmployee, isDatabaseConfigured, requireRole } from "@/lib/auth";
+import { canEmployeeAccessJob, employeeSafeJobPatch, getUserEmployee, requireRole, sanitizeEmployeeJob } from "@/lib/auth";
 import { deleteJob, getJobs, saveJobs } from "@/lib/jobs";
 import { makeChecklist, type Job, type TravelLeg } from "@/lib/types";
 import { syncJobIntegrations } from "@/lib/integrations/sync";
@@ -7,14 +7,12 @@ import { syncJobIntegrations } from "@/lib/integrations/sync";
 type Context = { params: Promise<{ id: string }> };
 
 export async function GET(request: Request, { params }: Context) {
+  const access = await requireRole(request, ["Admin", "Manager", "Employee"]);
+  if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
   const { id } = await params;
   const job = (await getJobs()).find((item) => item.jobId === id);
-  if (job && isDatabaseConfigured()) {
-    const user = await getRequestUser(request);
-    if (!user) return NextResponse.json({ error: "Login is required." }, { status: 401 });
-    if (!canEmployeeAccessJob(user, job)) return NextResponse.json({ error: "This job is not assigned to you." }, { status: 403 });
-  }
-  return job ? NextResponse.json({ ...job, checklist: job.checklist?.length ? job.checklist : makeChecklist() }) : NextResponse.json({ error: "Job not found" }, { status: 404 });
+  if (job && !canEmployeeAccessJob(access.user || null, job)) return NextResponse.json({ error: "This job is not assigned to you." }, { status: 403 });
+  return job ? NextResponse.json({ ...(access.role === "Employee" ? sanitizeEmployeeJob(job) : job), checklist: job.checklist?.length ? job.checklist : makeChecklist() }) : NextResponse.json({ error: "Job not found" }, { status: 404 });
 }
 
 export async function PUT(request: Request, { params }: Context) {
@@ -26,7 +24,10 @@ export async function PUT(request: Request, { params }: Context) {
   const index = jobs.findIndex((item) => item.jobId === id);
   if (index < 0) return NextResponse.json({ error: "Job not found" }, { status: 404 });
   if (!canEmployeeAccessJob(access.user || null, jobs[index])) return NextResponse.json({ error: "This job is not assigned to you." }, { status: 403 });
-  const safeInput = access.role === "Employee" ? employeeSafeJobPatch(input as Record<string, unknown>) as Partial<Job> : input;
+  if (access.role === "Employee" && input.status !== undefined && input.status !== jobs[index].status && !["In Progress", "Needs Inspection"].includes(input.status)) {
+    return NextResponse.json({ error: "Only a manager can complete jobs or change billing status." }, { status: 403 });
+  }
+  const safeInput = access.role === "Employee" ? employeeSafeJobPatch(input as Record<string, unknown>, jobs[index], getUserEmployee(access.user || null).employeeName || access.user?.email || "Employee") as Partial<Job> : input;
   if (access.role === "Employee" && "travelLegs" in safeInput) {
     const employeeName = getUserEmployee(access.user).employeeName || access.user?.email || "";
     const travelLegs = employeeTravelLegs(jobs[index].travelLegs || [], safeInput.travelLegs, employeeName);
@@ -40,7 +41,7 @@ export async function PUT(request: Request, { params }: Context) {
     jobs[index] = synced.job;
     await saveJobs(jobs);
   }
-  return NextResponse.json({ ...jobs[index], integrationWarnings: synced.warnings });
+  return NextResponse.json({ ...(access.role === "Employee" ? sanitizeEmployeeJob(jobs[index]) : jobs[index]), integrationWarnings: synced.warnings });
 }
 
 function employeeTravelLegs(existing: TravelLeg[], input: unknown, employeeName: string) {

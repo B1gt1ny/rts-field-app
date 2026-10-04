@@ -4,7 +4,9 @@ import { createEmployee, getEmployees } from "@/lib/employees";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const access = await requireRole(request, ["Admin", "Manager", "Employee"]);
+  if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
   return NextResponse.json(await getEmployees());
 }
 

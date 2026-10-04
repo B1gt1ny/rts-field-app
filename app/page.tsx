@@ -5,7 +5,7 @@ import { MonthlyCalendar } from "@/components/MonthlyCalendar";
 import { DashboardSnapshotTabs } from "@/components/DashboardSnapshotTabs";
 import { filterServerJobsForUser, getServerUser } from "@/lib/server-auth";
 import { buildJobReminders, formatReminderDate, reminderTone } from "@/lib/reminders";
-import { getUserRole, isDatabaseConfigured } from "@/lib/auth";
+import { getUserRole } from "@/lib/auth";
 import { billingBoardState, intakeCompleteness, paymentFollowUpFor } from "@/lib/job-readiness";
 import { isReceiptBackupMissing } from "@/lib/receipt-backup";
 import type { Job } from "@/lib/types";
@@ -19,7 +19,7 @@ const priorityRank = { Urgent: 0, High: 1, Normal: 2, Low: 3 };
 export default async function Dashboard() {
   const jobs = await filterServerJobsForUser(await getJobs());
   const user = await getServerUser();
-  const role = isDatabaseConfigured() ? getUserRole(user) : "Admin";
+  const role = getUserRole(user);
   const isEmployee = role === "Employee";
   const now = new Date();
   const today = new Date().toLocaleDateString("en-CA");

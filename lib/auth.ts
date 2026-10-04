@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { defaultFactoryCost, type FactoryCostTracker, type Job, type JobActivity } from "./types";
 
 export type UserRole = "Admin" | "Manager" | "Employee";
 export type AppUser = {
@@ -54,6 +55,7 @@ export function getUserEmployee(user: AppUser | null) {
 }
 
 export function canEmployeeAccessJob(user: AppUser | null, job: { assignedCrew?: string; assignedEmployeeIds?: string[]; fullCrew?: boolean }) {
+  if (!hasTrustedAccess(user)) return false;
   if (getUserRole(user) !== "Employee") return true;
   if (job.fullCrew) return true;
   const { employeeId, employeeName } = getUserEmployee(user);
@@ -62,7 +64,19 @@ export function canEmployeeAccessJob(user: AppUser | null, job: { assignedCrew?:
   return false;
 }
 
-export function employeeSafeJobPatch(input: Record<string, unknown>) {
+export function sanitizeEmployeeFactoryCost(cost: FactoryCostTracker): FactoryCostTracker {
+  return { ...cost, mileageRate: "", hourlyRate: "", workRate: "", helperRate: "", perDiemRate: "" };
+}
+
+function employeeVisibleActivity(entry: JobActivity) {
+  return !["Admin", "Manager"].includes(entry.audience || "") && entry.type !== "Invoice";
+}
+
+export function sanitizeEmployeeJob(job: Job): Job {
+  return { ...job, activityLog: (job.activityLog || []).filter(employeeVisibleActivity), factoryCost: job.factoryCost ? sanitizeEmployeeFactoryCost(job.factoryCost) : job.factoryCost };
+}
+
+export function employeeSafeJobPatch(input: Record<string, unknown>, existing?: Job, employeeName = "Employee") {
   const allowed = new Set([
     "checklist",
     "activityLog",
@@ -84,7 +98,25 @@ export function employeeSafeJobPatch(input: Record<string, unknown>) {
     "status",
     "partsNeeded",
   ]);
-  return Object.fromEntries(Object.entries(input).filter(([key]) => allowed.has(key)));
+  const patch = Object.fromEntries(Object.entries(input).filter(([key]) => allowed.has(key)));
+  if (existing && "activityLog" in patch && !Array.isArray(patch.activityLog)) delete patch.activityLog;
+  if (existing && Array.isArray(patch.activityLog)) {
+    const history = existing.activityLog || [];
+    const seen = new Set(history.map((entry) => entry.id));
+    const additions = patch.activityLog.filter((entry): entry is JobActivity => {
+      if (!entry || typeof entry !== "object" || typeof entry.id !== "string" || typeof entry.message !== "string" || seen.has(entry.id) || entry.type === "Invoice") return false;
+      seen.add(entry.id);
+      return true;
+    }).map((entry) => ({ ...entry, createdBy: employeeName, createdAt: new Date().toISOString() }));
+    // Keep all saved history, including notes the employee cannot read. New
+    // manager-directed handoff notes remain valid and use trusted attribution.
+    patch.activityLog = [...additions, ...history];
+  }
+  if (existing && input.factoryCost && typeof input.factoryCost === "object" && !Array.isArray(input.factoryCost)) {
+    const editable = new Set(["tripCount", "miles", "driveTimeHours", "workHours", "helperHours", "perDiemDays", "hotelTotal", "mealTotal", "materialsTotal", "otherReceiptsTotal", "notes"]);
+    patch.factoryCost = { ...(existing.factoryCost || defaultFactoryCost()), ...Object.fromEntries(Object.entries(input.factoryCost).filter(([key, value]) => editable.has(key) && typeof value === "string")) };
+  }
+  return patch;
 }
 
 export async function requireRole(request: Request, allowed: UserRole[]) {

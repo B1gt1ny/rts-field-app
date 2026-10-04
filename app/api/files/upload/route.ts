@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { getUserEmployee, requireRole } from "@/lib/auth";
+import { canEmployeeAccessJob, getUserEmployee, requireRole } from "@/lib/auth";
+import { getJob } from "@/lib/jobs";
 import type { FileCategory, WorkOrderFile } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +21,12 @@ export async function POST(request: Request) {
   const file = formData.get("file");
   if (!(file instanceof File)) return NextResponse.json({ error: "File is required" }, { status: 400 });
 
-  const jobId = cleanSegment(String(formData.get("jobId") || "draft"));
+  const requestedJobId = String(formData.get("jobId") || "draft");
+  if (access.role === "Employee") {
+    const job = await getJob(requestedJobId);
+    if (!job || !canEmployeeAccessJob(access.user || null, job)) return NextResponse.json({ error: "This job is not assigned to you." }, { status: 403 });
+  }
+  const jobId = cleanSegment(requestedJobId);
   const category = String(formData.get("category") || "Other") as FileCategory;
   const caption = String(formData.get("caption") || "").trim();
   const employee = getUserEmployee(access.user || null);

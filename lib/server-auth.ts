@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { authClient, canEmployeeAccessJob, getUserRole, hasTrustedAccess, isDatabaseConfigured, type AppUser, type UserRole } from "./auth";
+import { authClient, canEmployeeAccessJob, getUserRole, hasTrustedAccess, isDatabaseConfigured, sanitizeEmployeeJob, type AppUser, type UserRole } from "./auth";
 import type { Job } from "./types";
 
 export async function getServerUser(): Promise<AppUser | null> {
@@ -14,7 +14,6 @@ export async function getServerUser(): Promise<AppUser | null> {
 }
 
 export async function requireServerRole(allowed: UserRole[]) {
-  if (!isDatabaseConfigured()) return { user: null, role: "Admin" as UserRole, authDisabled: true };
   const user = await getServerUser();
   if (!user) redirect("/login");
   const role = getUserRole(user);
@@ -23,16 +22,14 @@ export async function requireServerRole(allowed: UserRole[]) {
 }
 
 export async function filterServerJobsForUser(jobs: Job[]) {
-  if (!isDatabaseConfigured()) return jobs;
   const user = await getServerUser();
   if (!user) redirect("/login");
   const role = getUserRole(user);
-  if (role === "Employee") return jobs.filter((job) => canEmployeeAccessJob(user, job));
+  if (role === "Employee") return jobs.filter((job) => canEmployeeAccessJob(user, job)).map(sanitizeEmployeeJob);
   return jobs;
 }
 
 export async function canServerViewJob(job: Job) {
-  if (!isDatabaseConfigured()) return true;
   const user = await getServerUser();
   if (!user) redirect("/login");
   return canEmployeeAccessJob(user, job);

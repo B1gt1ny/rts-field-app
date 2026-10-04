@@ -20,12 +20,7 @@ export async function getJobs(): Promise<Job[]> {
   if (!db) return getLocalJobs();
   const { data, error } = await db.from("jobs").select("job_id,data").not("job_id", "like", "\\_\\_%").order("created_at", { ascending: false });
   if (error) throw new Error(`Unable to load jobs: ${error.message}`);
-  if (data.length) return data.map((row) => row.data as Job);
-
-  // Seed a newly-created hosted database with the MVP's mock jobs once.
-  const initialJobs = await getLocalJobs();
-  await saveJobs(initialJobs);
-  return initialJobs;
+  return data.map((row) => row.data as Job);
 }
 
 export async function saveJobs(jobs: Job[]) {
