@@ -185,6 +185,7 @@ export type WorkOrderFile = {
 };
 
 export interface Job {
+  coverPhoto?: { source: "file" | "legacy" | "companycam"; id: string; projectId?: string } | null;
   revision?: string;
   jobId: string;
   source: JobSource;

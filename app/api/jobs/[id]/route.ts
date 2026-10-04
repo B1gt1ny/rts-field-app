@@ -3,6 +3,7 @@ import { canEmployeeAccessJob, employeeSafeJobPatch, getUserEmployee, requireRol
 import { deleteJob, getJobs, getJob, saveJob, saveJobIntegration, JobConflictError } from "@/lib/jobs";
 import { makeChecklist, type Job, type TravelLeg } from "@/lib/types";
 import { syncJobIntegrations } from "@/lib/integrations/sync";
+import { sameCover } from "@/lib/job-cover";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -23,6 +24,8 @@ export async function PUT(request: Request, { params }: Context) {
   const job = await getJob(id);
   if (!job) return NextResponse.json({ error: "Job not found" }, { status: 404 });
   if (!canEmployeeAccessJob(access.user || null, job)) return NextResponse.json({ error: "This job is not assigned to you." }, { status: 403 });
+  if (Object.hasOwn(input, "coverPhoto") && !sameCover(input.coverPhoto, job.coverPhoto)) return NextResponse.json({ error: "Only an admin can change the cover through the cover-photo control." }, { status: access.role === "Admin" ? 400 : 403 });
+  delete input.coverPhoto;
   if (access.role === "Employee" && input.status !== undefined && input.status !== job.status && !["In Progress", "Needs Inspection"].includes(input.status)) {
     return NextResponse.json({ error: "Only a manager can complete jobs or change billing status." }, { status: 403 });
   }

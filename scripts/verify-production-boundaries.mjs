@@ -92,6 +92,8 @@ async function stop() {
 try {
   let base = await start();
   if (process.argv.includes('--serve')) {
+    jobs[0] = { ...jobs[0], phone: '+1 (555) 010-1234', address: '100 Example Road', city: 'Test City', workOrderFiles: [{ id: 'first-photo', fileName: 'Synthetic cover.png', fileType: 'image/png', uploadedAt: '2026-10-01T00:00:00Z', dataUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j7X8AAAAASUVORK5CYII=' }] };
+
     console.log(`Local fixture UI: ${base}`);
     await new Promise(resolve => { process.once('SIGINT', resolve); process.once('SIGTERM', resolve); });
     process.exitCode = 0;
@@ -105,6 +107,18 @@ try {
     return fetch(base + path, { ...init, redirect: 'manual', headers: { ...(user ? { Cookie: `cc-access-token=${user}` } : {}), ...init.headers } });
   };
   const json = value => ({ method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value) });
+  // Cover selection is Admin-only and cannot bypass membership through generic job writes.
+  const coverBefore = writes;
+  for (const actor of ['employee', 'manager', 'admin']) {
+    assert.equal((await request('/api/jobs/own-job', actor, json({ coverPhoto: { source: 'file', id: 'foreign' } }))).status, actor === 'admin' ? 400 : 403);
+    if (actor !== 'employee') assert.equal((await request('/api/jobs', actor, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...jobs[0], jobId: 'cover-bypass', coverPhoto: { source: 'file', id: 'foreign' } }) })).status, 400);
+    assert.equal((await request('/api/jobs/own-job/cover', actor)).status, 200);
+    if (actor !== 'admin') assert.equal((await request('/api/jobs/own-job/cover', actor, json({ coverPhoto: null, expectedRevision: null }))).status, 403);
+  }
+  assert.equal((await request('/api/jobs/other-job/cover', 'employee')).status, 403);
+  assert.equal((await request('/api/jobs/own-job/cover')).status, 401);
+  assert.equal(writes, coverBefore, 'Denied cover changes never write');
+
   for (const user of [undefined, 'disabled']) {
     for (const path of ['/api/employees', '/api/jobs', '/api/jobs/own-job', '/api/admin/users', '/api/files/view?path=own-job/before/a.jpg']) assert.equal((await request(path, user)).status, 401, `${user || 'anonymous'} ${path}`);
   }
@@ -186,6 +200,17 @@ try {
   assert.equal((await request('/api/admin/users', 'admin', json({ userId: users['new-worker'].id, role: 'Employee', employeeId: 'other', accessActive: true }))).status, 200);
   assert.equal((await request('/api/employees', 'new-worker')).status, 200);
   assert.equal(users['new-worker'].app_metadata.rtsEmployeeId, 'other'); assert.equal(JSON.stringify(jobs), historyBeforeDisable);
+  // Admin cover selection survives Manager full-form saves and cannot be cleared by another role.
+  const photoReference = { source: 'file', id: jobs[0].workOrderFiles[0].id };
+  assert.equal((await request('/api/jobs/own-job/cover', 'admin', json({ coverPhoto: photoReference, expectedRevision: jobs[0].revision }))).status, 200);
+  assert.deepEqual(jobs[0].coverPhoto, photoReference);
+  const coverRevision = jobs[0].revision;
+  for (const actor of ['manager', 'employee']) assert.equal((await patchJob(actor, { coverPhoto: null })).status, 403);
+  assert.equal(jobs[0].revision, coverRevision, 'Rejected cover reset does not change job revision');
+  assert.equal((await patchJob('manager', { ...jobs[0], completionNotes: 'Unrelated edit preserves cover' })).status, 200);
+  assert.deepEqual(jobs[0].coverPhoto, photoReference);
+  assert.equal((await request('/api/jobs/own-job/cover', 'admin', json({ coverPhoto: null, expectedRevision: jobs[0].revision }))).status, 200);
+  assert.equal(jobs[0].coverPhoto, null);
   // GET on an empty hosted database must neither seed mocks nor write records.
   jobs = []; const afterSave = writes; assert.deepEqual(await (await request('/api/jobs', 'admin')).json(), []); assert.equal(writes, afterSave);
   const firstJob = await request('/api/jobs', 'admin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ customerName: 'First fixture job', syncToCompanyCam: false }) });

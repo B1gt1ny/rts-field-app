@@ -18,7 +18,8 @@
     "verify:employee-onboarding": "tsc --target ES2020 --module commonjs --moduleResolution node --esModuleInterop --skipLibCheck --outDir node_modules/.cache/rts-employee-onboarding-check scripts/verify-employee-onboarding.ts lib/employee-onboarding.ts lib/types.ts && node node_modules/.cache/rts-employee-onboarding-check/scripts/verify-employee-onboarding.js",
     "verify:auth-boundaries": "tsc --target ES2020 --module commonjs --moduleResolution node --esModuleInterop --skipLibCheck --outDir node_modules/.cache/rts-auth-boundaries-check scripts/verify-auth-boundaries.ts lib/auth.ts lib/auth-migration.ts && node node_modules/.cache/rts-auth-boundaries-check/scripts/verify-auth-boundaries.js",
     "auth:migration-inventory": "tsc --target ES2020 --module commonjs --moduleResolution node --esModuleInterop --skipLibCheck --outDir node_modules/.cache/rts-auth-migration-inventory scripts/auth-migration-inventory.ts lib/auth-migration.ts lib/auth.ts && node node_modules/.cache/rts-auth-migration-inventory/scripts/auth-migration-inventory.js",
-    "verify:privacy-export": "node scripts/verify-privacy-export.mjs"
+    "verify:privacy-export": "node scripts/verify-privacy-export.mjs",
+    "verify:job-cover": "node scripts/verify-job-cover.mjs"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",

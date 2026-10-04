@@ -12,6 +12,8 @@ import { isReceiptBackupMissing } from "@/lib/receipt-backup";
 import { activeCorrectionCategories, billingBlockers, buildCorrectionActivity, checklistProgress, closeoutChecks, correctionCategories, correctionCategoryComplete, correctionResolutionPatch, dispatchBlockers, dispatchReadinessScore, hasActiveCorrections, intakeCompleteness, readinessScore, type CorrectionCategory } from "@/lib/job-readiness";
 import { useAuthUser } from "./AuthGate";
 import { getTravelState, getWorkSession, hasStructuredTravelArrival, structuredTravelLegs, structuredTravelTotals } from "@/lib/field-activity";
+import { JobContactDetails } from "./JobContactDetails";
+import { JobCoverPhoto } from "./JobCoverPhoto";
 
 type CompanyCamState = {
   configured: boolean;
@@ -167,10 +169,11 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
     });
   }
   return <>
-    <div className="mb-5 flex items-start justify-between gap-3">
-      <div>
+    <div className="mb-5 flex flex-col items-start justify-between gap-3 sm:flex-row">
+      <div className="min-w-0">
         <p className="mb-1 text-sm font-extrabold uppercase tracking-widest text-accent">{job.jobId} · {job.source}</p>
         <h1 className="text-3xl font-bold tracking-tight">{job.customerName}</h1>
+        <JobContactDetails job={job} />
         <div className="mt-2 flex flex-wrap items-center gap-2"><StatusBadge status={job.status} />{hasActiveCorrections(job) && <NeedsCorrectionBadge />}<PriorityBadge priority={job.priority} /></div>
         <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold text-content/65">
           <span className="rounded-full bg-sand px-3 py-1">{formatJobDate(job.dueDate)}</span>
@@ -183,7 +186,7 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
         <Link href={`/jobs/${job.jobId}/edit`} className="btn-secondary !px-3 sm:!px-4"><PencilSquareIcon className="size-5" /><span className="hidden sm:inline">Edit</span></Link>
       </div>}
     </div>
-    <JobWorkflowGuide job={job} canManageJob={canManageJob} />
+    <JobWorkflowGuide job={job} canManageJob={canManageJob} cover={<JobCoverPhoto job={job} isAdmin={user?.role === "Admin"} onSaved={patch => setJob(old => ({ ...old, ...patch }))} />} />
     <WorkSessionPanel job={job} saving={saving} canStart={!canManageJob} onStart={startWorkSession} />
     {canManageJob && <ManagerOperationalSummary job={job} />}
     <CorrectionSummary job={job} />
@@ -581,9 +584,8 @@ type JobAction = {
 
 type ProgressState = "complete" | "current" | "upcoming" | "neutral";
 
-function JobWorkflowGuide({ job, canManageJob }: { job: Job; canManageJob: boolean }) {
+function JobWorkflowGuide({ job, canManageJob, cover }: { job: Job; canManageJob: boolean; cover: React.ReactNode }) {
   const primaryAction = getPrimaryJobAction(job, canManageJob);
-  const quickActions = getQuickJobActions(job);
   const moreActions = getMoreJobActions(job, canManageJob);
   const progressSteps = getJobProgressSteps(job);
 
@@ -598,12 +600,7 @@ function JobWorkflowGuide({ job, canManageJob }: { job: Job; canManageJob: boole
           {primaryAction.label}
         </a>
       </div>
-      <div>
-        <p className="mb-2 text-xs font-bold uppercase tracking-widest text-accent">Quick actions</p>
-        <div className="grid grid-cols-2 gap-2">
-          {quickActions.map((action) => <WorkflowAction key={action.label} action={action} />)}
-        </div>
-      </div>
+      {cover}
     </div>
     <div className="border-t border-content/5 px-4 py-3">
       <p className="mb-2 text-xs font-bold uppercase tracking-widest text-accent">Job progress</p>
@@ -647,21 +644,12 @@ function getPrimaryJobAction(job: Job, canManageJob: boolean): JobAction {
   return { label: "Continue Job", detail: "Open the workspace and move the job forward.", href: "#overview", icon: <ClipboardDocumentListIcon /> };
 }
 
-function getQuickJobActions(job: Job): JobAction[] {
-  const mapsUrl = `https://maps.google.com/?q=${encodeURIComponent(`${job.address}, ${job.city}`)}`;
-  const hasLocation = Boolean(job.address?.trim() || job.city?.trim());
-  return [
-    { href: `tel:${job.phone}`, label: "Call", icon: <PhoneIcon />, disabled: !job.phone },
-    { href: mapsUrl, label: "Map", icon: <MapPinIcon />, external: true, disabled: !hasLocation },
-    { href: "#photos", label: "Add Photo", icon: <CameraIcon /> },
-    { href: "#operations", label: "Add Note", icon: <ChatBubbleLeftRightIcon /> },
-  ];
-}
-
 function getMoreJobActions(job: Job, canManageJob: boolean): JobAction[] {
   const customerText = `sms:${job.phone}?&body=${encodeURIComponent(buildCustomerText(job))}`;
   return [
     { href: customerText, label: "Text Customer", icon: <ChatBubbleLeftRightIcon />, disabled: !job.phone },
+    { href: "#photos", label: "Add Photo", icon: <CameraIcon /> },
+    { href: "#operations", label: "Add Note", icon: <ChatBubbleLeftRightIcon /> },
     { href: "#share", label: "Share Job", icon: <ShareIcon /> },
     { href: "/field", label: "Field View", icon: <WrenchScrewdriverIcon /> },
     { href: "#paperwork", label: "Paperwork", icon: <ClipboardDocumentListIcon /> },

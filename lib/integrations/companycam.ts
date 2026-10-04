@@ -58,8 +58,8 @@ export async function getCompanyCamPhotoCount(projectId: string) {
   return (await getCompanyCamPhotos(projectId)).length;
 }
 
-export async function getCompanyCamProjectPhotos(projectId: string): Promise<CompanyCamPhotoReference[]> {
-  const photos = await getCompanyCamPhotos(projectId);
+export async function getCompanyCamProjectPhotos(projectId: string, allPages = false): Promise<CompanyCamPhotoReference[]> {
+  const photos = await getCompanyCamPhotos(projectId, allPages);
   return photos.flatMap((photo) => {
     if (!photo || typeof photo !== "object") return [];
     const record = photo as Record<string, unknown>;
@@ -67,20 +67,43 @@ export async function getCompanyCamProjectPhotos(projectId: string): Promise<Com
     if (!id) return [];
     return [{
       id,
-      thumbnailUrl: safeUrl(stringValue(record.thumbnail_url) || stringValue(record.thumbnailUrl) || stringValue(record.thumbnail)),
-      createdAt: stringValue(record.created_at) || stringValue(record.createdAt),
+      thumbnailUrl: photoImage(record) || safeUrl(stringValue(record.thumbnail_url) || stringValue(record.thumbnailUrl) || stringValue(record.thumbnail)),
+      createdAt: photoDate(record.captured_at ?? record.created_at ?? record.createdAt),
     }];
   });
 }
 
-async function getCompanyCamPhotos(projectId: string): Promise<unknown[]> {
+async function getCompanyCamPhotos(projectId: string, allPages = false): Promise<unknown[]> {
   const requestHeaders = headers();
   if (!requestHeaders) return [];
-  const response = await fetch(`${API_URL}/projects/${projectId}/photos?per_page=100`, { headers: requestHeaders });
-  if (!response.ok) throw new Error(`CompanyCam photo sync failed (${response.status})`);
-  const photos = await response.json() as unknown;
-  if (!Array.isArray(photos)) return [];
-  return photos;
+  const photos: unknown[] = [];
+  const signal = AbortSignal.timeout(10000);
+  // CompanyCam lists newest captures first. The cover needs every page to find the first capture.
+  // Bound large/unexpected responses rather than presenting a partial list as complete.
+  for (let page = 1; page <= 50; page++) {
+    const response = await fetch(`${API_URL}/projects/${encodeURIComponent(projectId)}/photos?per_page=100&page=${page}`, { headers: requestHeaders, signal, cache: "no-store" });
+    if (!response.ok) throw new Error(`CompanyCam photo sync failed (${response.status})`);
+    const batch: unknown = await response.json();
+    if (!Array.isArray(batch)) throw new Error("CompanyCam photo response was invalid.");
+    photos.push(...batch);
+    if (!allPages || batch.length < 100) return photos;
+  }
+  throw new Error("CompanyCam photo collection exceeds the cover-photo limit.");
+}
+
+function photoDate(value: unknown) {
+  const date = typeof value === "number" ? new Date(value * 1000) : new Date(String(value));
+  return Number.isFinite(date.getTime()) ? date.toISOString() : undefined;
+}
+
+function photoImage(record: Record<string, unknown>) {
+  if (!Array.isArray(record.uris)) return undefined;
+  for (const variant of ["web", "thumbnail", "original"]) {
+    const image = record.uris.find(item => item && typeof item === "object" && item.type === variant);
+    const url = image && safeUrl(stringValue(image.url));
+    if (url) return url;
+  }
+  return undefined;
 }
 
 function stringValue(value: unknown) {

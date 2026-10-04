@@ -12,6 +12,7 @@ import { getTravelState, getWorkSession, isTodayJob, todayFieldStatus } from "@/
 import { fieldAttentionItems, fieldNextStep } from "@/lib/field-next-step";
 import { useAuthUser } from "./AuthGate";
 import { StatusBadge } from "./StatusBadge";
+import { JobContactDetails } from "./JobContactDetails";
 
 const activeStatuses = ["New", "Scheduled", "In Progress", "Waiting on Parts", "Needs Inspection"];
 const defaultFieldNoteTemplates = [
@@ -528,6 +529,7 @@ function CurrentJobPanel({ job, employeeName, today, saving, permissions, onStar
         <div className="min-w-0">
           <p className="truncate text-sm font-bold text-content/65">{job.jobId} · {job.priority}</p>
           <h2 className="mt-1 truncate text-2xl font-bold">{job.customerName}</h2>
+          <JobContactDetails job={job} />
           <p className="mt-1 text-sm font-semibold text-content/65">{job.city || "No city"} · {formatDue(job.dueDate)}</p>
         </div>
         <StatusBadge status={job.status} />

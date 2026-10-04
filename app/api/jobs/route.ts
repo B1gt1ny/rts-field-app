@@ -18,6 +18,7 @@ export async function POST(request: Request) {
   const access = await requireRole(request, ["Admin", "Manager"]);
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
   const input = await request.json() as Partial<Job>;
+  if (input.coverPhoto != null) return NextResponse.json({ error: "Choose a cover from the saved job's photos." }, { status: 400 });
   try {
     const job = await createJob({ ...emptyJob, ...input, jobId: input.jobId || "", checklist: input.checklist?.length ? input.checklist : makeChecklist() });
     const synced = await syncJobIntegrations(job);
