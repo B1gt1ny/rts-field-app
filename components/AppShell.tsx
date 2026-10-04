@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowUpTrayIcon, BellAlertIcon, BriefcaseIcon, CalendarDaysIcon, ChatBubbleLeftRightIcon, Cog6ToothIcon, HomeIcon, MoonIcon, PlusIcon, SunIcon, UserCircleIcon, UsersIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { LogoutButton, RoleBadge, useAuthUser } from "./AuthGate";
 
@@ -34,6 +34,40 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [online, setOnline] = useState(true);
   const [dark, setDark] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const mobileDialog = useRef<HTMLDivElement>(null);
+  const menuTrigger = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!mobileMenuOpen || !mobileDialog.current) return;
+    const dialog = mobileDialog.current;
+    const trigger = menuTrigger.current;
+    const focusable = () => Array.from(dialog.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), [tabindex="0"]')).filter(element => element.getClientRects().length > 0);
+    (focusable()[0] || dialog).focus();
+    function handleKey(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setMobileMenuOpen(false);
+      } else if (event.key === "Tab") {
+        const elements = focusable();
+        const first = elements[0];
+        const last = elements[elements.length - 1];
+        if (!first) { event.preventDefault(); dialog.focus(); }
+        else if (!dialog.contains(document.activeElement) || (event.shiftKey ? document.activeElement === first : document.activeElement === last)) {
+          event.preventDefault();
+          (event.shiftKey ? last : first).focus();
+        }
+      }
+    }
+    const desktop = window.matchMedia("(min-width: 1024px)");
+    const closeAtDesktop = () => { if (desktop.matches) setMobileMenuOpen(false); };
+    document.addEventListener("keydown", handleKey);
+    desktop.addEventListener("change", closeAtDesktop);
+    closeAtDesktop();
+    return () => {
+      document.removeEventListener("keydown", handleKey);
+      desktop.removeEventListener("change", closeAtDesktop);
+      if (trigger?.isConnected && trigger.getClientRects().length > 0) trigger.focus();
+    };
+  }, [mobileMenuOpen]);
   useEffect(() => {
     setOnline(navigator.onLine);
     const handleOnline = () => setOnline(true);
@@ -93,9 +127,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     </div>
     <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-content/10 bg-surface/95 px-1 pb-[max(.35rem,env(safe-area-inset-bottom))] pt-1.5 backdrop-blur lg:hidden">
       {visibleMobileNavigation.slice(0, 4).map(({ href, label, icon: Icon }) => { const active = isActiveRoute(pathname, href); return <Link key={href} href={href} aria-current={active ? "page" : undefined} className={`flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-bold ${active ? "bg-forest/15 text-accent" : "text-content/65"}`}><Icon className="size-5" />{label}</Link>; })}
-      <button type="button" onClick={() => setMobileMenuOpen(true)} aria-label="Open all app pages" aria-expanded={mobileMenuOpen} className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-bold text-content/65"><Cog6ToothIcon className="size-5" />More</button>
+      <button ref={menuTrigger} type="button" onClick={() => setMobileMenuOpen(true)} aria-controls="app-pages-dialog" aria-label="Open all app pages" aria-expanded={mobileMenuOpen} className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-bold text-content/65"><Cog6ToothIcon className="size-5" />More</button>
     </nav>
-    {mobileMenuOpen && <div className="fixed inset-0 z-50 bg-black/50 p-3 lg:hidden" role="dialog" aria-modal="true" aria-labelledby="app-pages-title">
+    {mobileMenuOpen && <div ref={mobileDialog} id="app-pages-dialog" tabIndex={-1} className="fixed inset-0 z-50 bg-black/50 p-3 lg:hidden" role="dialog" aria-modal="true" aria-labelledby="app-pages-title">
       <div className="ml-auto flex h-full w-full max-w-sm flex-col rounded-2xl bg-surface shadow-2xl">
         <div className="flex items-center justify-between border-b border-content/10 p-4"><div><p className="eyebrow">RTS Field App</p><h2 id="app-pages-title" className="text-xl font-bold">All pages</h2></div><button type="button" onClick={() => setMobileMenuOpen(false)} className="grid size-11 place-items-center rounded-xl border border-content/10" aria-label="Close all pages"><XMarkIcon className="size-5" /></button></div>
         <nav className="grid gap-1 overflow-y-auto p-3">{mobileMoreLinks.map(([href, label]) => <Link key={href} href={href} onClick={() => setMobileMenuOpen(false)} aria-current={pathname === href ? "page" : undefined} className={`flex min-h-12 items-center rounded-xl px-4 text-sm font-bold ${pathname === href ? "bg-forest text-white" : "hover:bg-sand"}`}>{label}</Link>)}</nav>
