@@ -1452,7 +1452,6 @@ function PartsPanel({ job, saving, onSave }: { job: Job; saving: boolean; onSave
     };
     await onSave({
       partsItems: [part, ...parts],
-      status: job.status === "Complete" ? job.status : "Waiting on Parts",
       partsNeeded: [job.partsNeeded, `${part.quantity} × ${part.name}${part.notes ? ` — ${part.notes}` : ""}`].filter(Boolean).join("\n"),
       activityLog: addJobActivity(job, `Part requested: ${part.quantity} × ${part.name}.`, "Parts"),
     });
@@ -1464,10 +1463,8 @@ function PartsPanel({ job, saving, onSave }: { job: Job; saving: boolean; onSave
   async function updatePart(id: string, status: PartItem["status"]) {
     const current = parts.find((part) => part.id === id);
     const nextParts = parts.map((part) => part.id === id ? { ...part, status } : part);
-    const stillOpen = nextParts.some((part) => ["Needed", "Ordered", "Picked up"].includes(part.status));
     await onSave({
       partsItems: nextParts,
-      status: stillOpen && !["Complete", "Billed", "Paid"].includes(job.status) ? "Waiting on Parts" : job.status,
       activityLog: addJobActivity(job, `Part updated: ${current?.name || "part"} marked ${status}.`, "Parts"),
     });
   }

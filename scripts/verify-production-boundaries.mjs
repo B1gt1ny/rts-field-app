@@ -45,6 +45,7 @@ const mock = createServer(async (req, res) => {
   }
   if (url.pathname.startsWith('/storage/v1/')) {
     if (req.method !== 'GET') writes++;
+    if (url.pathname.startsWith('/storage/v1/object/sign/')) return send({ signedURL: '/object/sign/job-files/fixture' });
     return send({ id: 'job-files', name: 'job-files', public: false, Key: 'fixture' });
   }
   if (req.method !== 'GET') writes++;
@@ -99,6 +100,7 @@ try {
   const restrictedHtml = await restrictedPage.text();
   assert.ok(restrictedPage.headers.get('location') === '/field' || (restrictedHtml.includes('NEXT_REDIRECT') && restrictedHtml.includes('/field')), 'Server must redirect Employee away from Admin settings, including streamed Next redirects');
   assert.equal((await request('/api/jobs/other-job', 'employee')).status, 403);
+  assert.equal((await request('/api/files/view?path=other-job/after/fixture.jpg', 'employee')).status, 403);
   assert.equal((await request('/api/jobs/own-job', 'employee', json({ status: 'Paid' }))).status, 403);
   const visible = await (await request('/api/jobs', 'employee')).json();
   assert.deepEqual(visible.map(j => j.jobId), ['own-job']);
@@ -115,11 +117,16 @@ try {
   // Complete the supported job lifecycle using only in-memory fixture records.
   const patchJob = (actor, value) => request('/api/jobs/own-job', actor, json(value));
   assert.equal((await patchJob('manager', { status: 'Scheduled', dueDate: '2026-10-04' })).status, 200);
+  assert.equal((await patchJob('employee', { partsItems: [{ id: 'fixture-part', name: 'Optional trim', quantity: '1', status: 'Needed', requestedBy: 'Worker', requestedAt: '2026-10-04' }], partsNeeded: 'Optional trim' })).status, 200);
+  assert.equal(jobs[0].status, 'Scheduled', 'Requesting parts must not change job status');
+  assert.equal((await patchJob('employee', { partsItems: [{ ...jobs[0].partsItems[0], status: 'Ordered' }] })).status, 200);
+  assert.equal(jobs[0].status, 'Scheduled', 'Updating parts must not change job status');
   assert.equal((await patchJob('employee', { status: 'In Progress' })).status, 200);
   assert.equal((await patchJob('employee', { travelLegs: [{ id: 'fixture-travel', date: '2026-10-04', from: 'Office', to: 'Fixture site', miles: '12' }] })).status, 200);
   assert.equal(jobs[0].travelLegs[0].employeeName, 'Worker');
   const ownUpload = new FormData(); ownUpload.set('file', new Blob(['fixture photo'], { type: 'image/jpeg' }), 'fixture.jpg'); ownUpload.set('jobId', 'own-job'); ownUpload.set('category', 'After');
   const uploaded = await request('/api/files/upload', 'employee', { method: 'POST', body: ownUpload }); assert.equal(uploaded.status, 201); const attachment = await uploaded.json();
+  const fileView = await request(attachment.dataUrl, 'employee'); assert.equal(fileView.status, 307); assert.ok(fileView.headers.get('location').startsWith(fixtureUrl), 'Assigned file opens through fixture storage only');
   assert.equal((await patchJob('employee', { afterPhotos: [attachment.dataUrl], workOrderFiles: [attachment], completionNotes: 'Fixture field work complete', checklist: [{ id: 'complete', label: 'Work completed', complete: true }] })).status, 200);
   const handoff = { id: 'handoff', type: 'Status', audience: 'Manager', message: 'Ready for review', createdBy: 'Forged', createdAt: '2026-10-04' };
   assert.equal((await patchJob('employee', { status: 'Needs Inspection', activityLog: [handoff] })).status, 200);
