@@ -1,6 +1,6 @@
 name = "standard-worker"
 description = "Use for normal implementation involving several related files, existing business logic, forms, components, filters, calculations, validation, or ordinary application bugs."
-model = "gpt-5.6-terra"
+model = "gpt-6.1-sol"
 model_reasoning_effort = "medium"
 developer_instructions = """
 Implement the assigned requirement using the existing RTS architecture.

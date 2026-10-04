@@ -1,6 +1,6 @@
 name = "cheap-worker"
 description = "Use for small, clear, low-risk tasks such as wording, styling, one-file edits, existing buttons, simple TypeScript fixes, targeted searches, and routine checks."
-model = "gpt-5.6-luna"
+model = "gpt-6-luna"
 model_reasoning_effort = "low"
 developer_instructions = """
 Complete only the assigned task using the fewest tokens and file reads possible.

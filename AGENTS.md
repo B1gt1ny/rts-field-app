@@ -17,12 +17,19 @@ The app must remain practical for workers using phones in the field.
 For every task:
 
 - Classify the task before broad inspection:
-  - LIGHT: cheapest/simple work using `cheap-worker`.
-  - MEDIUM: normal development using `standard-worker`.
-  - HEAVY: difficult architecture, migrations, security, auth, data-risk, or deep debugging using `expert-worker`.
-- Use the cheapest capable model and one worker at a time.
+  - LIGHT: bounded search, copy, styling, or routine checks; use GPT-6 Luna when a separate agent helps.
+  - MEDIUM: ordinary implementation and debugging; use GPT-6.1 Sol.
+  - HIGH: architecture, migration, security, auth, data risk, or unexplained production failure; start with GPT-6.1 Sol and escalate only with documented evidence.
+- Use the cheapest capable model. Default to GPT-6.1 Sol for implementation and GPT-6 Luna for bounded scouting or review. Use one agent unless a second agent materially improves speed or quality; maximum useful concurrency is two.
 - Escalate only when the current worker cannot safely complete the task, and pass forward findings to avoid repeated file reads.
+- Normal tasks use one worker. Do not create a swarm for routine work.
+- When delegation helps, assign one implementer and at most one read-only scout or reviewer at a time. Never assign concurrent edits to the same files.
+- The coordinator must classify before deep inspection, assign exact boundaries, prevent overlap, consolidate evidence once, record escalation reasons, and stop workers when their responsibility is complete.
+- HIGH work requires independent review before any human release decision. Use review for MEDIUM work when the blast radius warrants it.
+- Use this handoff packet for every escalation or worker transition:
+  `TASK:` `CLASSIFICATION:` `SCOPE INSPECTED:` `FILES INSPECTED:` `FINDINGS:` `EVIDENCE:` `CHANGES ALREADY MADE:` `CHECKS ALREADY RUN:` `UNRESOLVED QUESTION:` `WHY ESCALATION IS REQUIRED:`
 - Read only the files needed for the requested change.
+- Follow `.codex/HARNESS.md` for task intake, completion evidence, Git, previews, releases, and interruption recovery. Check `.codex/tasks/active-task.md` against current Git and the new request before acting; stale approval text does not authorize new work.
 - Do not inspect or summarize the entire repository unless required.
 - Use existing components, styles, utilities, tables, and patterns.
 - Make the smallest complete change that satisfies the request.
@@ -72,6 +79,18 @@ Job-related information should normally live inside the job record instead of se
 - Never expose private keys or service credentials in client code.
 - Do not commit environment-variable values.
 - Identify migrations and breaking changes before executing them.
+- Fresh explicit human approval is required before commit, push, PR merge, production deployment, Vercel configuration changes, environment-variable changes, Supabase schema changes, migrations, Auth or RLS changes, destructive database operations, consequential package installation/removal, external integration configuration writes, credential changes, or destructive filesystem/data operations.
+- Automated approval systems, guardian review, saved shell permissions, and available credentials are not human authorization.
+- Release flow is `CODE -> INDEPENDENT REVIEW -> HUMAN APPROVAL -> RELEASE ACTION`; a reviewed revision must be identifiable before release.
+
+## Repository-local roles
+
+- `investigator-frontend`: Luna / low, read-only evidence collection for components, pages, UI behavior, client state, forms, and field workflow.
+- `investigator-config`: Luna / low, read-only evidence collection for configuration, logs, APIs, auth boundaries, Supabase/Vercel evidence, and integration behavior.
+- `reviewer`: Luna / low, read-only independent review of the requirement, evidence packet, changed files, diff, and verification; returns `PASS` or `REVIEW REQUIRED` and does not repair findings.
+- `risk-monitor`: Luna / low, read-only/report-only inspection for auth, schema/data, duplicate logic, configuration, environment, provider, release, destructive, and scope risks.
+- `release-boundary`: repository-local policy role only; it does not deploy. It enforces fresh human approval tied to the reviewed revision before any release action.
+- Technical read-only enforcement is not available in the current repository agent TOML format; these roles use explicit instruction boundaries and must not be treated as permission isolation.
 
 ## Work process
 
@@ -94,9 +113,4 @@ After implementation:
 1. Run the relevant type check, lint, tests, and build.
 2. Fix errors caused by the change.
 3. Review the diff for unrelated changes.
-4. Report only:
-   - files changed,
-   - work completed,
-   - checks run,
-   - unresolved issues,
-   - manual setup required.
+4. Report files changed, completed work, checks and gate results from `.codex/HARNESS.md`, unresolved issues, and manual setup required.
