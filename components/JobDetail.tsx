@@ -169,7 +169,7 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
     });
   }
   return <>
-    <div className="mb-5 flex flex-col items-start justify-between gap-3 sm:flex-row">
+    <div className="mb-5 grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)_auto]">
       <div className="min-w-0">
         <p className="mb-1 text-sm font-extrabold uppercase tracking-widest text-accent">{job.jobId} · {job.source}</p>
         <h1 className="text-3xl font-bold tracking-tight">{job.customerName}</h1>
@@ -180,13 +180,16 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
           <span className="rounded-full bg-sand px-3 py-1">{job.assignedCrew || "Unassigned"}</span>
         </div>
       </div>
-      {canManageJob && <div className="flex gap-2 print:hidden">
+      <div className="order-3 min-w-0 lg:order-2 print:hidden">
+        <JobCoverPhoto job={job} isAdmin={user?.role === "Admin"} onSaved={patch => setJob(old => ({ ...old, ...patch }))} />
+      </div>
+      {canManageJob && <div className="order-2 flex gap-2 lg:order-3 print:hidden">
         <Link href={`/jobs/${job.jobId}/packet`} className="btn-secondary !px-3 sm:!px-4"><ClipboardDocumentListIcon className="size-5" /><span className="hidden sm:inline">Packet</span></Link>
         <button type="button" onClick={() => window.print()} className="btn-secondary !px-3 sm:!px-4"><PrinterIcon className="size-5" /><span className="hidden sm:inline">Print</span></button>
         <Link href={`/jobs/${job.jobId}/edit`} className="btn-secondary !px-3 sm:!px-4"><PencilSquareIcon className="size-5" /><span className="hidden sm:inline">Edit</span></Link>
       </div>}
     </div>
-    <JobWorkflowGuide job={job} canManageJob={canManageJob} cover={<JobCoverPhoto job={job} isAdmin={user?.role === "Admin"} onSaved={patch => setJob(old => ({ ...old, ...patch }))} />} />
+    <JobWorkflowGuide job={job} canManageJob={canManageJob} />
     <WorkSessionPanel job={job} saving={saving} canStart={!canManageJob} onStart={startWorkSession} />
     {canManageJob && <ManagerOperationalSummary job={job} />}
     <CorrectionSummary job={job} />
@@ -584,13 +587,13 @@ type JobAction = {
 
 type ProgressState = "complete" | "current" | "upcoming" | "neutral";
 
-function JobWorkflowGuide({ job, canManageJob, cover }: { job: Job; canManageJob: boolean; cover: React.ReactNode }) {
+function JobWorkflowGuide({ job, canManageJob }: { job: Job; canManageJob: boolean }) {
   const primaryAction = getPrimaryJobAction(job, canManageJob);
   const moreActions = getMoreJobActions(job, canManageJob);
   const progressSteps = getJobProgressSteps(job);
 
   return <section className="card mb-5 overflow-hidden print:hidden">
-    <div className="grid gap-4 p-4 lg:grid-cols-[1fr_.75fr]">
+    <div className="p-4">
       <div className="rounded-2xl bg-ink p-4 text-white">
         <p className="text-xs font-bold uppercase tracking-widest text-lime">Next action</p>
         <h2 className="mt-1 text-2xl font-bold">{primaryAction.label}</h2>
@@ -600,7 +603,6 @@ function JobWorkflowGuide({ job, canManageJob, cover }: { job: Job; canManageJob
           {primaryAction.label}
         </a>
       </div>
-      {cover}
     </div>
     <div className="border-t border-content/5 px-4 py-3">
       <p className="mb-2 text-xs font-bold uppercase tracking-widest text-accent">Job progress</p>
