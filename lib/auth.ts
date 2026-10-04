@@ -88,7 +88,7 @@ export function employeeSafeJobPatch(input: Record<string, unknown>) {
 }
 
 export async function requireRole(request: Request, allowed: UserRole[]) {
-  if (!isDatabaseConfigured()) return { ok: true, role: "Admin" as UserRole, user: null, authDisabled: true };
+  if (!isDatabaseConfigured()) return { ok: false, status: 503, error: "Authorization service is not configured." };
   const user = await getRequestUser(request);
   if (!user) return { ok: false, status: 401, error: "Login is required." };
   const role = getUserRole(user);
