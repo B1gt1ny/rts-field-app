@@ -37,6 +37,28 @@ export function buildWorkOrderExtractionSchema(): WorkOrderExtractionSchema {
   };
 }
 
+// Raw Responses API text is nested in assistant message content. The SDK's
+// aggregated output_text convenience property is not part of our fetch response.
+export function getWorkOrderResponseText(response: unknown): string | undefined {
+  if (!response || typeof response !== "object") return undefined;
+  const result = response as Record<string, unknown>;
+  if (result.status !== "completed" || !Array.isArray(result.output)) return undefined;
+  const text: string[] = [];
+  for (const item of result.output) {
+    if (!item || typeof item !== "object" || item.type !== "message") continue;
+    if (item.role !== "assistant" || item.status !== "completed" || !Array.isArray(item.content)) return undefined;
+    for (const content of item.content) {
+      if (!content || typeof content !== "object") return undefined;
+      if (content.type === "refusal") return undefined;
+      if (content.type === "output_text") {
+        if (typeof content.text !== "string") return undefined;
+        text.push(content.text);
+      }
+    }
+  }
+  return text.length ? text.join("") : undefined;
+}
+
 export function validateWorkOrderProposal(output: string | undefined): AIWorkOrderImport | null | "invalid" {
   let parsed: unknown;
   try { parsed = JSON.parse(output || "{}"); } catch { return "invalid"; }
