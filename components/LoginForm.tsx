@@ -35,19 +35,19 @@ export function LoginForm() {
     }
   }
 
-  return <div className="grid min-h-screen place-items-center bg-sand p-4">
-    <form onSubmit={login} className="card w-full max-w-md p-5 sm:p-7">
+  return <div className="login-surface grid min-h-screen place-items-center p-4 sm:p-8">
+    <form onSubmit={login} className="card w-full max-w-md p-6 shadow-2xl sm:p-8">
       <div className="mb-6 flex items-start gap-3">
         <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-lime text-ink"><ShieldCheckIcon className="size-7" /></span>
         <div>
-          <p className="text-sm font-black uppercase tracking-widest text-forest">Secure access</p>
-          <h1 className="text-3xl font-black">Field Service</h1>
-          <p className="mt-1 text-sm text-black/50">Sign in to Field App.</p>
+          <p className="text-sm font-bold uppercase tracking-widest text-accent">Secure access</p>
+          <h1 className="mt-1 text-3xl font-bold tracking-tight">RTS Field App</h1>
+          <p className="mt-1 text-sm text-content/65">RTS Land Solutions · Field operations</p>
         </div>
       </div>
-      <label><span className="label">Email</span><input className="field" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required /></label>
-      <label className="mt-4 block"><span className="label">Password</span><input className="field" type="password" value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
-      {message && <p className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-700">{message}</p>}
+      <label><span className="label">Email</span><input className="field" type="email" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} required /></label>
+      <label className="mt-4 block"><span className="label">Password</span><input className="field" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
+      {message && <p role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-700">{message}</p>}
       <button disabled={loading} className="btn-primary mt-5 w-full">{loading ? "Signing in…" : "Sign In"}</button>
     </form>
   </div>;

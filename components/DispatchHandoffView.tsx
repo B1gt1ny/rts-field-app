@@ -41,18 +41,18 @@ export function DispatchHandoffView({ jobs, employees, focusJobId }: { jobs: Job
 
   return <div className="mx-auto max-w-7xl space-y-5">
     {focusJob && <section className="card border-forest/20 bg-forest/5 p-4 sm:p-5" aria-live="polite">
-      <p className="text-xs font-black uppercase tracking-widest text-forest">Calendar intake saved</p>
-      <h2 className="mt-1 text-lg font-black">{focusJob.customerName} is ready for dispatch review.</h2>
-      <p className="mt-1 text-sm font-semibold text-black/55">Confirm the crew, date, scope, and contact details before sending the team.</p>
-      <div className="mt-3 flex flex-wrap gap-2"><Link href={`/jobs/${focusJob.jobId}/edit`} className="min-h-11 rounded-xl bg-forest px-4 py-2 text-sm font-black text-white">Confirm assignment</Link><Link href={`/jobs/${focusJob.jobId}`} className="min-h-11 rounded-xl border border-black/10 bg-white px-4 py-2 text-sm font-black text-ink">Open job</Link></div>
+      <p className="text-xs font-bold uppercase tracking-widest text-accent">Calendar intake saved</p>
+      <h2 className="mt-1 text-lg font-bold">{focusJob.customerName} is ready for dispatch review.</h2>
+      <p className="mt-1 text-sm font-semibold text-content/65">Confirm the crew, date, scope, and contact details before sending the team.</p>
+      <div className="mt-3 flex flex-wrap gap-2"><Link href={`/jobs/${focusJob.jobId}/edit`} className="min-h-11 rounded-xl bg-forest px-4 py-2 text-sm font-bold text-white">Confirm assignment</Link><Link href={`/jobs/${focusJob.jobId}`} className="min-h-11 rounded-xl border border-content/10 bg-surface px-4 py-2 text-sm font-bold text-content">Open job</Link></div>
     </section>}
-    <section className="rounded-3xl bg-ink p-5 text-white sm:p-7">
+    <section className="rounded-2xl bg-ink p-5 text-white sm:p-7">
       <div className="flex items-start gap-3">
         <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-lime text-ink"><UserGroupIcon className="size-7" /></span>
         <div>
-          <p className="text-xs font-black uppercase tracking-widest text-lime">Manager dispatch</p>
-          <h1 className="text-3xl font-black">Dispatch Handoff</h1>
-          <p className="mt-1 text-sm text-white/55">A practical handoff board for who should handle the next issue.</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-lime">Manager dispatch</p>
+          <h1 className="text-3xl font-bold">Dispatch Handoff</h1>
+          <p className="mt-1 text-sm text-white/65">A practical handoff board for who should handle the next issue.</p>
         </div>
       </div>
       <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -66,61 +66,61 @@ export function DispatchHandoffView({ jobs, employees, focusJobId }: { jobs: Job
     <section className="card overflow-hidden">
       <div className="flex items-start gap-3 bg-orange-50 p-4 text-orange-950">
         <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-orange-100"><ExclamationTriangleIcon className="size-5" /></span>
-        <div><h2 className="text-lg font-black">Today dispatch warnings</h2><p className="text-sm font-semibold text-orange-900/70">Confirmed assignment and workload gaps only.</p></div>
+        <div><h2 className="text-lg font-bold">Today dispatch warnings</h2><p className="text-sm font-semibold text-orange-900">Confirmed assignment and workload gaps only.</p></div>
       </div>
-      <div className="divide-y divide-black/5">
-        {warnings.length ? warnings.map((warning) => <Link key={warning.id} href={warning.href} className="block p-4 hover:bg-black/[.02]"><h3 className="font-black">{warning.title}</h3><p className="mt-1 text-sm font-semibold text-black/50">{warning.detail}</p></Link>) : <p className="p-5 text-center text-sm font-semibold text-black/35">No confirmed dispatch warnings for today.</p>}
+      <div className="divide-y divide-content/5">
+        {warnings.length ? warnings.map((warning) => <Link key={warning.id} href={warning.href} className="block p-4 hover:bg-content/[.02]"><h3 className="font-bold">{warning.title}</h3><p className="mt-1 text-sm font-semibold text-content/65">{warning.detail}</p></Link>) : <p className="p-5 text-center text-sm font-semibold text-content/65">No confirmed dispatch warnings for today.</p>}
       </div>
     </section>
 
     <section className="grid gap-3 lg:grid-cols-[1.25fr_.75fr]">
       <div className="card overflow-hidden">
         <div className="flex items-center justify-between gap-3 bg-sand p-4">
-          <div><h2 className="text-lg font-black">Next handoffs</h2><p className="text-sm font-semibold text-black/45">Open the job edit screen to make or change the actual assignment.</p></div>
-          <Link href="/crew" className="text-sm font-black text-forest">Crew board</Link>
+          <div><h2 className="text-lg font-bold">Next handoffs</h2><p className="text-sm font-semibold text-content/65">Open the job edit screen to make or change the actual assignment.</p></div>
+          <Link href="/crew" className="text-sm font-bold text-accent">Crew board</Link>
         </div>
-        <div className="divide-y divide-black/5">
-          {rows.length ? rows.map((row) => <div key={row.id} className="p-4 hover:bg-black/[.02]">
+        <div className="divide-y divide-content/5">
+          {rows.length ? rows.map((row) => <div key={row.id} className="p-4 hover:bg-content/[.02]">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="truncate text-xs font-black uppercase tracking-wide text-forest">{row.job.jobId} · {row.job.customerName} · {row.job.city}</p>
-                <h3 className="mt-1 font-black">{row.title}</h3>
-                <p className="mt-1 text-sm font-semibold text-black/50">{row.detail}</p>
+                <p className="truncate text-xs font-bold uppercase tracking-wide text-accent">{row.job.jobId} · {row.job.customerName} · {row.job.city}</p>
+                <h3 className="mt-1 font-bold">{row.title}</h3>
+                <p className="mt-1 text-sm font-semibold text-content/65">{row.detail}</p>
               </div>
-              <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-black ${row.priority === "High" ? "bg-orange-100 text-orange-900" : row.priority === "Low" ? "bg-black/5 text-black/45" : "bg-blue-100 text-blue-900"}`}>{row.priority}</span>
+              <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${row.priority === "High" ? "bg-orange-100 text-orange-900" : row.priority === "Low" ? "bg-content/5 text-content/65" : "bg-blue-100 text-blue-900"}`}>{row.priority}</span>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
               <StatusBadge status={row.job.status} />
               <PriorityBadge priority={row.job.priority} />
-              <span className="rounded-full bg-sand px-3 py-1 text-xs font-black text-black/55">{row.reason}</span>
-              <span className="rounded-full bg-lime px-3 py-1 text-xs font-black text-ink">Suggest: {row.suggestedEmployee?.name || "Add employee"}</span>
+              <span className="rounded-full bg-sand px-3 py-1 text-xs font-bold text-content/65">{row.reason}</span>
+              <span className="rounded-full bg-lime px-3 py-1 text-xs font-bold text-ink">Suggest: {row.suggestedEmployee?.name || "Add employee"}</span>
             </div>
             <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-6">
-              <Link href={`/jobs/${row.job.jobId}/edit`} className="min-h-11 rounded-xl bg-forest px-3 py-2 text-center text-sm font-black text-white">Assign / edit</Link>
-              <Link href={row.href} className="min-h-11 rounded-xl border border-black/10 bg-white px-3 py-2 text-center text-sm font-black text-ink">Open issue</Link>
-              <Link href={`/jobs/${row.job.jobId}`} className="min-h-11 rounded-xl bg-sand px-3 py-2 text-center text-sm font-black text-ink">Open job</Link>
-              {row.job.phone && <a href={`tel:${row.job.phone}`} className="inline-flex min-h-11 items-center justify-center gap-1 rounded-xl bg-white px-3 py-2 text-center text-sm font-black text-ink"><PhoneIcon className="size-4" />Call</a>}
-              {(row.job.address || row.job.city) && <a href={`https://maps.google.com/?q=${encodeURIComponent(`${row.job.address}, ${row.job.city}`)}`} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center justify-center gap-1 rounded-xl bg-ink px-3 py-2 text-center text-sm font-black text-white"><MapPinIcon className="size-4" />Map</a>}
-              <Link href="/field" className="min-h-11 rounded-xl bg-ink px-3 py-2 text-center text-sm font-black text-white">Field view</Link>
+              <Link href={`/jobs/${row.job.jobId}/edit`} className="min-h-11 rounded-xl bg-forest px-3 py-2 text-center text-sm font-bold text-white">Assign / edit</Link>
+              <Link href={row.href} className="min-h-11 rounded-xl border border-content/10 bg-surface px-3 py-2 text-center text-sm font-bold text-content">Open issue</Link>
+              <Link href={`/jobs/${row.job.jobId}`} className="min-h-11 rounded-xl bg-sand px-3 py-2 text-center text-sm font-bold text-content">Open job</Link>
+              {row.job.phone && <a href={`tel:${row.job.phone}`} className="inline-flex min-h-11 items-center justify-center gap-1 rounded-xl bg-surface px-3 py-2 text-center text-sm font-bold text-content"><PhoneIcon className="size-4" />Call</a>}
+              {(row.job.address || row.job.city) && <a href={`https://maps.google.com/?q=${encodeURIComponent(`${row.job.address}, ${row.job.city}`)}`} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center justify-center gap-1 rounded-xl bg-ink px-3 py-2 text-center text-sm font-bold text-white"><MapPinIcon className="size-4" />Map</a>}
+              <Link href="/field" className="min-h-11 rounded-xl bg-ink px-3 py-2 text-center text-sm font-bold text-white">Field view</Link>
             </div>
-          </div>) : <p className="p-8 text-center text-sm font-semibold text-black/35">No dispatch handoffs right now.</p>}
+          </div>) : <p className="p-8 text-center text-sm font-semibold text-content/65">No dispatch handoffs right now.</p>}
         </div>
       </div>
 
       <div className="space-y-3">
         <section className="card overflow-hidden">
-          <div className="bg-sand p-4"><h2 className="font-black">Employee load today</h2><p className="text-sm font-semibold text-black/45">Suggested handoffs favor the lightest today load.</p></div>
-          <div className="divide-y divide-black/5">
-            {loads.length ? loads.map(({ employee, assigned, todayJobs }) => <Link key={employee.id} href="/crew" className="flex items-center justify-between gap-3 p-4 hover:bg-black/[.02]">
-              <div><p className="font-black">{employee.name}</p><p className="text-xs font-semibold text-black/45">{todayJobs.length} today · {assigned.length} active</p></div>
-              <span className="grid size-10 place-items-center rounded-full bg-forest text-sm font-black text-white">{employee.name.slice(0, 2).toUpperCase()}</span>
-            </Link>) : <p className="p-6 text-center text-sm font-semibold text-black/35">No active employees.</p>}
+          <div className="bg-sand p-4"><h2 className="font-bold">Employee load today</h2><p className="text-sm font-semibold text-content/65">Suggested handoffs favor the lightest today load.</p></div>
+          <div className="divide-y divide-content/5">
+            {loads.length ? loads.map(({ employee, assigned, todayJobs }) => <Link key={employee.id} href="/crew" className="flex items-center justify-between gap-3 p-4 hover:bg-content/[.02]">
+              <div><p className="font-bold">{employee.name}</p><p className="text-xs font-semibold text-content/65">{todayJobs.length} today · {assigned.length} active</p></div>
+              <span className="grid size-10 place-items-center rounded-full bg-forest text-sm font-bold text-white">{employee.name.slice(0, 2).toUpperCase()}</span>
+            </Link>) : <p className="p-6 text-center text-sm font-semibold text-content/65">No active employees.</p>}
           </div>
         </section>
         <section className="card p-4">
           <div className="mb-3 grid size-10 place-items-center rounded-xl bg-orange-100 text-orange-900"><ExclamationTriangleIcon className="size-5" /></div>
-          <h2 className="font-black">Simple rule</h2>
-          <p className="mt-1 text-sm font-semibold text-black/50">This board recommends a handoff. It does not automatically reassign jobs, text employees, or add calendar events.</p>
+          <h2 className="font-bold">Simple rule</h2>
+          <p className="mt-1 text-sm font-semibold text-content/65">This board recommends a handoff. It does not automatically reassign jobs, text employees, or add calendar events.</p>
         </section>
       </div>
     </section>
@@ -232,5 +232,5 @@ function formatDate(date: string) {
 }
 
 function HeroMetric({ label, value }: { label: string; value: number }) {
-  return <div className="rounded-2xl bg-white/10 p-4"><p className="text-3xl font-black">{value}</p><p className="mt-1 text-xs font-bold text-white/55">{label}</p></div>;
+  return <div className="rounded-2xl bg-white/10 p-4"><p className="text-3xl font-bold">{value}</p><p className="mt-1 text-xs font-bold text-white/65">{label}</p></div>;
 }

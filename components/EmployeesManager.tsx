@@ -34,10 +34,10 @@ export function EmployeesManager() {
     setEmployees((old) => old.map((employee) => employee.id === id ? result : employee));
   }
   return <>
-    <div className="mb-6 flex items-end justify-between gap-3"><div><p className="mb-1 text-sm font-extrabold uppercase tracking-widest text-forest">Team</p><h1 className="text-3xl font-black">Employees</h1><p className="mt-2 text-black/50">Add names used for daily job assignments.</p></div><Link href="/crew" className="btn-secondary">View assignments</Link></div>
+    <div className="mb-6 flex items-end justify-between gap-3"><div><p className="mb-1 text-sm font-extrabold uppercase tracking-widest text-accent">Team</p><h1 className="text-3xl font-bold">Employees</h1><p className="mt-2 text-content/65">Add names used for daily job assignments.</p></div><Link href="/crew" className="btn-secondary">View assignments</Link></div>
     <form onSubmit={addEmployee} className="card mb-5 flex gap-2 p-4"><label className="flex-1"><span className="label">Employee name</span><input className="field" value={name} onChange={(event) => setName(event.target.value)} placeholder="Enter a name" /></label><button disabled={saving || !name.trim()} className="btn-primary self-end">{saving ? "Adding…" : "Add employee"}</button></form>
     {error && <p role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 font-bold text-red-700">{error}</p>}
-    <div className="space-y-3">{loading ? <p className="card p-6 text-center text-black/45">Loading employees…</p> : employees.map((employee) => <EmployeeRow key={employee.id} employee={employee} onUpdate={update} />)}</div>
+    <div className="space-y-3">{loading ? <p className="card p-6 text-center text-content/65">Loading employees…</p> : employees.map((employee) => <EmployeeRow key={employee.id} employee={employee} onUpdate={update} />)}</div>
   </>;
 }
 
@@ -45,5 +45,5 @@ function EmployeeRow({ employee, onUpdate }: { employee: Employee; onUpdate: (id
   const [name, setName] = useState(employee.name);
   const [saving, setSaving] = useState(false);
   async function saveName() { if (!name.trim() || name.trim() === employee.name) return; setSaving(true); await onUpdate(employee.id, { name }); setSaving(false); }
-  return <section className={`card p-4 ${employee.active ? "" : "opacity-60"}`}><div className="flex flex-col gap-3 sm:flex-row sm:items-end"><label className="flex-1"><span className="label">Name</span><input className="field" value={name} onChange={(event) => setName(event.target.value)} /></label><button type="button" onClick={saveName} disabled={saving || !name.trim() || name.trim() === employee.name} className="btn-secondary">{saving ? "Saving…" : "Save name"}</button><button type="button" onClick={() => onUpdate(employee.id, { active: !employee.active })} className={`min-h-12 rounded-xl px-4 font-black ${employee.active ? "border border-red-200 text-red-700" : "bg-forest text-white"}`}>{employee.active ? "Mark inactive" : "Reactivate"}</button></div></section>;
+  return <section className={`card p-4 ${employee.active ? "" : "opacity-60"}`}><div className="flex flex-col gap-3 sm:flex-row sm:items-end"><label className="flex-1"><span className="label">Name</span><input className="field" value={name} onChange={(event) => setName(event.target.value)} /></label><button type="button" onClick={saveName} disabled={saving || !name.trim() || name.trim() === employee.name} className="btn-secondary">{saving ? "Saving…" : "Save name"}</button><button type="button" onClick={() => onUpdate(employee.id, { active: !employee.active })} className={`min-h-12 rounded-xl px-4 font-bold ${employee.active ? "border border-red-200 text-red-700" : "bg-forest text-white"}`}>{employee.active ? "Mark inactive" : "Reactivate"}</button></div></section>;
 }

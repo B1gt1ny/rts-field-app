@@ -169,38 +169,38 @@ export function WorkOrderImport() {
       <div className="mb-4 flex items-start gap-3">
         <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-lime text-ink"><ArrowUpTrayIcon className="size-6" /></span>
         <div>
-          <p className="text-sm font-extrabold uppercase tracking-widest text-forest">Work order import</p>
-          <h1 className="text-3xl font-black">Create customer profile from paperwork</h1>
-          <p className="mt-1 text-sm text-black/50">Upload a work-order PDF or image, review the proposed values, then apply them to the Job Form.</p>
+          <p className="text-sm font-extrabold uppercase tracking-widest text-accent">Work order import</p>
+          <h1 className="text-3xl font-bold">Create customer profile from paperwork</h1>
+          <p className="mt-1 text-sm text-content/65">Upload a work-order PDF or image, review the proposed values, then apply them to the Job Form.</p>
         </div>
       </div>
-      <label className="flex min-h-32 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-black/15 bg-sand p-4 text-center">
-        <DocumentTextIcon className="mb-2 size-8 text-forest" />
-        <span className="font-black">{file ? file.fileName : "Tap to upload work order"}</span>
-        <span className="mt-1 text-xs font-semibold text-black/45">PDF, JPG, PNG, or WEBP. Files stay private until you choose Extract.</span>
+      <label className="flex min-h-32 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-content/15 bg-sand p-4 text-center">
+        <DocumentTextIcon className="mb-2 size-8 text-accent" />
+        <span className="font-bold">{file ? file.fileName : "Tap to upload work order"}</span>
+        <span className="mt-1 text-xs font-semibold text-content/65">PDF, JPG, PNG, or WEBP. Files stay private until you choose Extract.</span>
         <input type="file" className="hidden" accept="application/pdf,image/jpeg,image/png,image/webp" onChange={(event) => onFileSelected(event.target.files?.[0])} />
       </label>
-      {file && <div className="mt-3 rounded-xl bg-white p-3 text-sm font-semibold text-black/55">Saved with profile: {file.fileName} · {(file.fileSize / 1024).toFixed(1)} KB</div>}
+      {file && <div className="mt-3 rounded-xl bg-surface p-3 text-sm font-semibold text-content/65">Saved with profile: {file.fileName} · {(file.fileSize / 1024).toFixed(1)} KB</div>}
       <button type="button" onClick={extractWorkOrder} disabled={!file || extracting || !extractionReady} className="btn-primary mt-3 w-full disabled:opacity-50">{extracting ? "Extracting…" : "Extract to preview"}</button>
       <div className="mt-4">
         <div className="flex items-center justify-between gap-3">
           <label className="label">Work order text</label>
-          <span className="text-xs font-black uppercase tracking-wide text-black/35">{workOrderText.trim().split(/\s+/).filter(Boolean).length} words</span>
+          <span className="text-xs font-bold uppercase tracking-wide text-content/65">{workOrderText.trim().split(/\s+/).filter(Boolean).length} words</span>
         </div>
         <textarea className="field min-h-36 resize-y" value={workOrderText} onChange={(event) => updateWorkOrderText(event.target.value)} placeholder="Paste copied work-order text here if the upload is a photo or PDF. Later this is where OCR/AI extraction can plug in." />
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
-          <button type="button" onClick={applyParsed} disabled={!workOrderText.trim()} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-black/10 bg-white px-4 py-3 font-black disabled:opacity-50"><SparklesIcon className="size-5" /> Auto-fill from text</button>
-          <button type="button" onClick={copyImportSummary} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-black/10 bg-white px-4 py-3 font-black"><ClipboardDocumentListIcon className="size-5" /> {copied ? "Summary Copied" : "Copy Import Summary"}</button>
+          <button type="button" onClick={applyParsed} disabled={!workOrderText.trim()} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-content/10 bg-surface px-4 py-3 font-bold disabled:opacity-50"><SparklesIcon className="size-5" /> Auto-fill from text</button>
+          <button type="button" onClick={copyImportSummary} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-content/10 bg-surface px-4 py-3 font-bold"><ClipboardDocumentListIcon className="size-5" /> {copied ? "Summary Copied" : "Copy Import Summary"}</button>
         </div>
       </div>
       <DetectedFieldsPanel parsed={parsedPreview} onApply={applyParsed} />
-      <div className="mt-4 rounded-2xl border border-black/10 bg-white p-4">
+      <div className="mt-4 rounded-2xl border border-content/10 bg-surface p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="font-black">AI extraction status</h2>
-            <p className="mt-1 text-sm text-black/50">True photo/PDF extraction is ready to plug in after an OpenAI API key is connected. For now, pasted text parsing and file storage are working.</p>
+            <h2 className="font-bold">AI extraction status</h2>
+            <p className="mt-1 text-sm text-content/65">True photo/PDF extraction is ready to plug in after an OpenAI API key is connected. For now, pasted text parsing and file storage are working.</p>
           </div>
-          <span className={`rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-wide ${extractionReady ? "bg-forest text-white" : "bg-orange-100 text-orange-800"}`}>{extractionReady ? "Key connected" : "Key needed"}</span>
+          <span className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wide ${extractionReady ? "bg-forest text-white" : "bg-orange-100 text-orange-800"}`}>{extractionReady ? "Key connected" : "Key needed"}</span>
         </div>
       </div>
     </section>
@@ -208,24 +208,24 @@ export function WorkOrderImport() {
     {(savedDraft || draftStatus) && <section className="card border-forest/20 bg-forest/5 p-4 sm:p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="font-black text-forest">Import draft protection</h2>
-          <p className="mt-1 text-sm font-semibold text-black/55">{savedDraft ? `A saved import draft from ${formatDraftTime(savedDraft.savedAt)} is available on this phone.` : draftStatus || "Import autosave is ready."}</p>
+          <h2 className="font-bold text-accent">Import draft protection</h2>
+          <p className="mt-1 text-sm font-semibold text-content/65">{savedDraft ? `A saved import draft from ${formatDraftTime(savedDraft.savedAt)} is available on this phone.` : draftStatus || "Import autosave is ready."}</p>
         </div>
         {savedDraft && <div className="grid gap-2 sm:grid-cols-2">
-          <button type="button" onClick={restoreDraft} className="min-h-11 rounded-xl bg-forest px-4 py-2 font-black text-white">Restore Draft</button>
-          <button type="button" onClick={discardDraft} className="min-h-11 rounded-xl border border-black/10 bg-white px-4 py-2 font-black text-ink">Discard</button>
+          <button type="button" onClick={restoreDraft} className="min-h-11 rounded-xl bg-forest px-4 py-2 font-bold text-white">Restore Draft</button>
+          <button type="button" onClick={discardDraft} className="min-h-11 rounded-xl border border-content/10 bg-surface px-4 py-2 font-bold text-content">Discard</button>
         </div>}
       </div>
     </section>}
 
     <div className="grid gap-5 lg:grid-cols-[1fr_.65fr]">
     <section className="card p-4 sm:p-6">
-      <h2 className="mb-1 text-lg font-black">Detected customer profile</h2>
-      <p className="mb-5 text-sm text-black/45">Review and edit before saving. This becomes the job/customer record.</p>
+      <h2 className="mb-1 text-lg font-bold">Detected customer profile</h2>
+      <p className="mb-5 text-sm text-content/65">Review and edit before saving. This becomes the job/customer record.</p>
       <div className="grid gap-4 sm:grid-cols-2">
         <Select label="Source" value={draft.source} options={["Dealer", "Factory", "Individual"]} onChange={(value) => updateDraft((old) => ({ ...old, source: value as ImportDraft["source"] }))} />
         <div className="sm:col-span-2 grid grid-cols-3 gap-2">
-          {(["Dealer", "Factory", "Individual"] as ImportDraft["source"][]).map((source) => <button key={source} type="button" onClick={() => setSourcePreset(source)} className={`min-h-11 rounded-xl px-3 py-2 text-sm font-black ${draft.source === source ? "bg-forest text-white" : "bg-sand text-ink"}`}>{source}</button>)}
+          {(["Dealer", "Factory", "Individual"] as ImportDraft["source"][]).map((source) => <button key={source} type="button" onClick={() => setSourcePreset(source)} className={`min-h-11 rounded-xl px-3 py-2 text-sm font-bold ${draft.source === source ? "bg-forest text-white" : "bg-sand text-content"}`}>{source}</button>)}
         </div>
         {draft.source === "Dealer" && <Input label="Dealer name" value={draft.dealerName} onChange={(value) => updateDraft((old) => ({ ...old, dealerName: value }))} />}
         {draft.source === "Factory" && <Input label="Factory work order #" value={draft.factoryWorkOrderNumber} onChange={(value) => updateDraft((old) => ({ ...old, factoryWorkOrderNumber: value }))} />}
@@ -243,30 +243,30 @@ export function WorkOrderImport() {
     </section>
 
     <aside className="card h-fit p-4 sm:p-6">
-      <h2 className="text-lg font-black">Import review</h2>
-      <p className="mt-1 text-sm text-black/45">Green means the profile is field-ready. Orange means review before dispatch.</p>
+      <h2 className="text-lg font-bold">Import review</h2>
+      <p className="mt-1 text-sm text-content/65">Green means the profile is field-ready. Orange means review before dispatch.</p>
       <div className="mt-4 space-y-2">
         {review.items.map((item) => <div key={item.label} className={`rounded-xl p-3 ${item.ok ? "bg-forest/5" : "bg-orange-50"}`}>
-          <p className={`text-xs font-black uppercase tracking-wide ${item.ok ? "text-forest" : "text-orange-800"}`}>{item.ok ? "Ready" : "Review"}</p>
-          <p className="font-black">{item.label}</p>
-          <p className="text-xs font-semibold text-black/45">{item.detail}</p>
+          <p className={`text-xs font-bold uppercase tracking-wide ${item.ok ? "text-accent" : "text-orange-800"}`}>{item.ok ? "Ready" : "Review"}</p>
+          <p className="font-bold">{item.label}</p>
+          <p className="text-xs font-semibold text-content/65">{item.detail}</p>
         </div>)}
       </div>
       <div className="mt-4 rounded-xl bg-sand p-3">
-        <p className="text-xs font-black uppercase tracking-wide text-black/35">Import score</p>
-        <p className="mt-1 text-3xl font-black">{review.score}%</p>
-        <p className="text-xs font-semibold text-black/45">{review.readyCount} of {review.items.length} checks ready</p>
+        <p className="text-xs font-bold uppercase tracking-wide text-content/65">Import score</p>
+        <p className="mt-1 text-3xl font-bold">{review.score}%</p>
+        <p className="text-xs font-semibold text-content/65">{review.readyCount} of {review.items.length} checks ready</p>
       </div>
-      <div className="mt-4 rounded-xl border border-black/10 bg-white p-3">
-        <p className="text-xs font-black uppercase tracking-wide text-black/35">Duplicate check hints</p>
-        <p className="mt-1 text-sm font-semibold text-black/55">Before saving, check existing jobs for the same phone, address, factory work order, or customer name. The new profile will still be editable after creation.</p>
-        <a href={`/jobs?search=${encodeURIComponent(draft.phone || draft.address || draft.customerName)}`} className="mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-sand px-3 py-2 text-xs font-black text-forest">Search existing jobs</a>
+      <div className="mt-4 rounded-xl border border-content/10 bg-surface p-3">
+        <p className="text-xs font-bold uppercase tracking-wide text-content/65">Duplicate check hints</p>
+        <p className="mt-1 text-sm font-semibold text-content/65">Before saving, check existing jobs for the same phone, address, factory work order, or customer name. The new profile will still be editable after creation.</p>
+        <a href={`/jobs?search=${encodeURIComponent(draft.phone || draft.address || draft.customerName)}`} className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-sand px-3 py-2 text-xs font-bold text-accent">Search existing jobs</a>
       </div>
     </aside>
     </div>
 
     {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 font-bold text-red-700">{error}</p>}
-    <div className="sticky bottom-20 z-10 rounded-2xl border border-black/10 bg-white/95 p-3 shadow-xl backdrop-blur lg:bottom-4">
+    <div className="sticky bottom-20 z-10 rounded-2xl border border-content/10 bg-surface/95 p-3 shadow-xl backdrop-blur lg:bottom-4">
       <button className="btn-primary w-full">Continue to Job Form</button>
     </div>
   </form>;
@@ -363,21 +363,21 @@ function DetectedFieldsPanel({ parsed, onApply }: { parsed: Partial<ImportDraft>
     ["Parts", parsed.partsNeeded ? "Detected" : ""],
   ].filter(([, value]) => Boolean(value));
 
-  return <div className="mt-4 rounded-2xl border border-black/10 bg-white p-4">
+  return <div className="mt-4 rounded-2xl border border-content/10 bg-surface p-4">
     <div className="flex items-start justify-between gap-3">
       <div>
-        <h2 className="font-black">Detected text fields</h2>
-        <p className="mt-1 text-sm font-semibold text-black/45">This is rule-based text detection, not AI. Review before saving.</p>
+        <h2 className="font-bold">Detected text fields</h2>
+        <p className="mt-1 text-sm font-semibold text-content/65">This is rule-based text detection, not AI. Review before saving.</p>
       </div>
-      <span className="rounded-full bg-sand px-3 py-1 text-xs font-black text-black/45">{rows.length} found</span>
+      <span className="rounded-full bg-sand px-3 py-1 text-xs font-bold text-content/65">{rows.length} found</span>
     </div>
     {rows.length ? <div className="mt-3 grid gap-2 sm:grid-cols-2">
       {rows.map(([label, value]) => <div key={label} className="rounded-xl bg-sand p-3">
-        <p className="text-xs font-black uppercase tracking-wide text-black/35">{label}</p>
-        <p className="mt-1 truncate font-black">{value}</p>
+        <p className="text-xs font-bold uppercase tracking-wide text-content/65">{label}</p>
+        <p className="mt-1 truncate font-bold">{value}</p>
       </div>)}
     </div> : <p className="mt-3 rounded-xl bg-orange-50 p-3 text-sm font-bold text-orange-800">No fields detected yet. Paste work-order text or fill the customer profile manually.</p>}
-    <button type="button" onClick={onApply} disabled={!rows.length} className="mt-3 min-h-11 w-full rounded-xl bg-forest px-4 py-2 font-black text-white disabled:opacity-50">Apply detected fields</button>
+    <button type="button" onClick={onApply} disabled={!rows.length} className="mt-3 min-h-11 w-full rounded-xl bg-forest px-4 py-2 font-bold text-white disabled:opacity-50">Apply detected fields</button>
   </div>;
 }
 

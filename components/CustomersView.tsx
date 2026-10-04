@@ -23,9 +23,9 @@ export function CustomersView({ jobs }: { jobs: Job[] }) {
     <div className="flex items-start gap-3">
       <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-lime text-ink"><UserCircleIcon className="size-7" /></span>
       <div>
-        <p className="text-sm font-extrabold uppercase tracking-widest text-forest">Customer profiles</p>
-        <h1 className="text-3xl font-black">Customers</h1>
-        <p className="mt-1 text-sm text-black/50">Grouped customer history from job records. Open the latest job for full paperwork, photos, parts, and billing details.</p>
+        <p className="text-sm font-extrabold uppercase tracking-widest text-accent">Customer profiles</p>
+        <h1 className="text-3xl font-bold">Customers</h1>
+        <p className="mt-1 text-sm text-content/65">Grouped customer history from job records. Open the latest job for full paperwork, photos, parts, and billing details.</p>
       </div>
     </div>
 
@@ -40,18 +40,18 @@ export function CustomersView({ jobs }: { jobs: Job[] }) {
 
     <section className="card overflow-hidden">
       <div className="bg-ink p-4 text-white">
-        <p className="text-xs font-black uppercase tracking-widest text-lime">Customer command</p>
-        <h2 className="mt-1 text-2xl font-black">Who needs attention?</h2>
-        <p className="mt-1 text-sm text-white/55">Phone-first customer list for repeat jobs, open parts, follow-ups, and billing risk.</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-lime">Customer command</p>
+        <h2 className="mt-1 text-2xl font-bold">Who needs attention?</h2>
+        <p className="mt-1 text-sm text-white/65">Phone-first customer list for repeat jobs, open parts, follow-ups, and billing risk.</p>
       </div>
       <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-3">
         {customers.filter((customer) => customerRisk(customer).score > 0).slice(0, 6).map((customer) => <AttentionCustomer key={customer.key} customer={customer} />)}
-        {!customers.some((customer) => customerRisk(customer).score > 0) && <p className="rounded-2xl bg-sand p-4 text-sm font-bold text-black/45 md:col-span-2 xl:col-span-3">No customers need special attention right now.</p>}
+        {!customers.some((customer) => customerRisk(customer).score > 0) && <p className="rounded-2xl bg-sand p-4 text-sm font-bold text-content/65 md:col-span-2 xl:col-span-3">No customers need special attention right now.</p>}
       </div>
     </section>
 
     <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-      {customers.length ? customers.map((customer) => <CustomerCard key={customer.key} customer={customer} />) : <div className="card p-8 text-center md:col-span-2 xl:col-span-3"><p className="font-black">No customers found.</p></div>}
+      {customers.length ? customers.map((customer) => <CustomerCard key={customer.key} customer={customer} />) : <div className="card p-8 text-center md:col-span-2 xl:col-span-3"><p className="font-bold">No customers found.</p></div>}
     </section>
   </div>;
 }
@@ -65,12 +65,12 @@ function CustomerCard({ customer }: { customer: CustomerGroup }) {
   return <div className="card p-4">
     <Link href={`/jobs/${latest.jobId}`} className="block">
       <div className="flex items-start justify-between gap-3">
-        <p className="text-xs font-black uppercase tracking-wide text-forest">{customer.jobs.length} {customer.jobs.length === 1 ? "job" : "jobs"} · {activeCount} active</p>
-        {risk.score > 0 && <span className="rounded-full bg-orange-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-orange-800">{risk.score} flags</span>}
+        <p className="text-xs font-bold uppercase tracking-wide text-accent">{customer.jobs.length} {customer.jobs.length === 1 ? "job" : "jobs"} · {activeCount} active</p>
+        {risk.score > 0 && <span className="rounded-full bg-orange-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-orange-800">{risk.score} flags</span>}
       </div>
-      <h2 className="mt-1 text-xl font-black">{customer.name}</h2>
-      <p className="mt-1 text-sm font-semibold text-black/50">{customer.address}, {customer.city}</p>
-      <div className="mt-3 flex flex-wrap gap-2"><StatusBadge status={latest.status} /><span className="rounded-full bg-sand px-3 py-1 text-xs font-black text-black/45">Latest: {latest.jobId}</span></div>
+      <h2 className="mt-1 text-xl font-bold">{customer.name}</h2>
+      <p className="mt-1 text-sm font-semibold text-content/65">{customer.address}, {customer.city}</p>
+      <div className="mt-3 flex flex-wrap gap-2"><StatusBadge status={latest.status} /><span className="rounded-full bg-sand px-3 py-1 text-xs font-bold text-content/65">Latest: {latest.jobId}</span></div>
     </Link>
     {(risk.reasons.length > 0 || followUps > 0 || partsCount > 0) && <div className="mt-4 grid grid-cols-3 gap-2">
       <MiniFlag label="Parts" value={partsCount} icon={<WrenchScrewdriverIcon />} hot={partsCount > 0} />
@@ -78,18 +78,18 @@ function CustomerCard({ customer }: { customer: CustomerGroup }) {
       <MiniFlag label="Billing" value={customer.jobs.filter((job) => needsInvoiceAttention(job)).length} icon={<BanknotesIcon />} hot={customer.jobs.some((job) => needsInvoiceAttention(job))} />
     </div>}
     <div className="mt-4 grid grid-cols-3 gap-2">
-      <a href={`tel:${customer.phone}`} className={`min-h-11 rounded-xl px-2 py-2 text-center text-xs font-black ${customer.phone ? "bg-forest text-white" : "pointer-events-none bg-black/5 text-black/25"}`}><PhoneIcon className="mx-auto mb-0.5 size-4" />Call</a>
-      <a href={`sms:${customer.phone}`} className={`min-h-11 rounded-xl px-2 py-2 text-center text-xs font-black ${customer.phone ? "bg-lime text-ink" : "pointer-events-none bg-black/5 text-black/25"}`}>Text</a>
-      <a href={`https://maps.google.com/?q=${encodeURIComponent(`${customer.address}, ${customer.city}`)}`} target="_blank" className="min-h-11 rounded-xl bg-ink px-2 py-2 text-center text-xs font-black text-white"><MapPinIcon className="mx-auto mb-0.5 size-4" />Map</a>
+      <a href={`tel:${customer.phone}`} className={`min-h-11 rounded-xl px-2 py-2 text-center text-xs font-bold ${customer.phone ? "bg-forest text-white" : "pointer-events-none bg-content/5 text-content/65"}`}><PhoneIcon className="mx-auto mb-0.5 size-4" />Call</a>
+      <a href={`sms:${customer.phone}`} className={`min-h-11 rounded-xl px-2 py-2 text-center text-xs font-bold ${customer.phone ? "bg-lime text-ink" : "pointer-events-none bg-content/5 text-content/65"}`}>Text</a>
+      <a href={`https://maps.google.com/?q=${encodeURIComponent(`${customer.address}, ${customer.city}`)}`} target="_blank" className="min-h-11 rounded-xl bg-ink px-2 py-2 text-center text-xs font-bold text-white"><MapPinIcon className="mx-auto mb-0.5 size-4" />Map</a>
     </div>
     <div className="mt-2 grid grid-cols-3 gap-2">
-      <Link href={`/jobs/${latest.jobId}`} className="min-h-11 rounded-xl border border-black/10 bg-white px-2 py-2 text-center text-xs font-black text-ink">Profile</Link>
-      <Link href={`/jobs/${latest.jobId}#paperwork`} className="min-h-11 rounded-xl border border-black/10 bg-white px-2 py-2 text-center text-xs font-black text-ink"><ClipboardDocumentListIcon className="mx-auto mb-0.5 size-4" />Files</Link>
-      <Link href={`/jobs/${latest.jobId}#billing-handoff`} className="min-h-11 rounded-xl border border-black/10 bg-white px-2 py-2 text-center text-xs font-black text-ink"><BanknotesIcon className="mx-auto mb-0.5 size-4" />Billing</Link>
+      <Link href={`/jobs/${latest.jobId}`} className="min-h-11 rounded-xl border border-content/10 bg-surface px-2 py-2 text-center text-xs font-bold text-content">Profile</Link>
+      <Link href={`/jobs/${latest.jobId}#paperwork`} className="min-h-11 rounded-xl border border-content/10 bg-surface px-2 py-2 text-center text-xs font-bold text-content"><ClipboardDocumentListIcon className="mx-auto mb-0.5 size-4" />Files</Link>
+      <Link href={`/jobs/${latest.jobId}#billing-handoff`} className="min-h-11 rounded-xl border border-content/10 bg-surface px-2 py-2 text-center text-xs font-bold text-content"><BanknotesIcon className="mx-auto mb-0.5 size-4" />Billing</Link>
     </div>
     {customer.jobs.length > 1 && <div className="mt-4 rounded-xl bg-sand p-3">
-      <p className="mb-2 text-xs font-black uppercase tracking-wide text-black/35">Recent history</p>
-      <div className="space-y-1">{customer.jobs.slice(0, 3).map((job) => <Link key={job.jobId} href={`/jobs/${job.jobId}`} className="flex justify-between gap-2 text-xs font-bold text-black/55"><span>{job.jobId}</span><span>{job.status}</span></Link>)}</div>
+      <p className="mb-2 text-xs font-bold uppercase tracking-wide text-content/65">Recent history</p>
+      <div className="space-y-1">{customer.jobs.slice(0, 3).map((job) => <Link key={job.jobId} href={`/jobs/${job.jobId}`} className="flex justify-between gap-2 text-xs font-bold text-content/65"><span>{job.jobId}</span><span>{job.status}</span></Link>)}</div>
     </div>}
   </div>;
 }
@@ -100,23 +100,23 @@ function AttentionCustomer({ customer }: { customer: CustomerGroup }) {
   return <Link href={`/jobs/${latest.jobId}`} className="rounded-2xl border border-orange-200 bg-orange-50 p-4">
     <div className="flex items-start justify-between gap-3">
       <div>
-        <p className="text-xs font-black uppercase tracking-wide text-orange-800">{risk.score} attention flag{risk.score === 1 ? "" : "s"}</p>
-        <h3 className="mt-1 text-lg font-black">{customer.name}</h3>
-        <p className="mt-1 text-xs font-semibold text-black/45">{customer.jobs.length} job{customer.jobs.length === 1 ? "" : "s"} · latest {latest.jobId}</p>
+        <p className="text-xs font-bold uppercase tracking-wide text-orange-800">{risk.score} attention flag{risk.score === 1 ? "" : "s"}</p>
+        <h3 className="mt-1 text-lg font-bold">{customer.name}</h3>
+        <p className="mt-1 text-xs font-semibold text-content/65">{customer.jobs.length} job{customer.jobs.length === 1 ? "" : "s"} · latest {latest.jobId}</p>
       </div>
       <ExclamationTriangleIcon className="size-6 shrink-0 text-orange-700" />
     </div>
     <div className="mt-3 flex flex-wrap gap-2">
-      {risk.reasons.slice(0, 3).map((reason) => <span key={reason} className="rounded-full bg-white px-2.5 py-1 text-[11px] font-black text-orange-900">{reason}</span>)}
+      {risk.reasons.slice(0, 3).map((reason) => <span key={reason} className="rounded-full bg-surface px-2.5 py-1 text-[11px] font-bold text-orange-900">{reason}</span>)}
     </div>
   </Link>;
 }
 
 function MiniFlag({ label, value, icon, hot }: { label: string; value: number; icon: React.ReactNode; hot: boolean }) {
-  return <div className={`rounded-xl p-3 ${hot ? "bg-orange-50 text-orange-900" : "bg-sand text-black/40"}`}>
+  return <div className={`rounded-xl p-3 ${hot ? "bg-orange-50 text-orange-900" : "bg-sand text-content/65"}`}>
     <div className="[&>svg]:size-5">{icon}</div>
-    <p className="mt-1 text-xl font-black">{value}</p>
-    <p className="text-[10px] font-black uppercase tracking-wide">{label}</p>
+    <p className="mt-1 text-xl font-bold">{value}</p>
+    <p className="text-[10px] font-bold uppercase tracking-wide">{label}</p>
   </div>;
 }
 
@@ -177,7 +177,7 @@ function normalizeKey(value: string) {
 function Metric({ label, value, tone = "neutral" }: { label: string; value: number; tone?: "neutral" | "green" | "orange" }) {
   const toneClass = tone === "green" ? "bg-forest/5" : tone === "orange" ? "bg-orange-50" : "";
   return <div className={`card p-4 ${toneClass}`}>
-    <p className="text-3xl font-black">{value}</p>
-    <p className="mt-1 text-xs font-bold text-black/45">{label}</p>
+    <p className="text-3xl font-bold">{value}</p>
+    <p className="mt-1 text-xs font-bold text-content/65">{label}</p>
   </div>;
 }

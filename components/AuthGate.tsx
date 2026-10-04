@@ -39,7 +39,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   }, [authRequired, pathname, router]);
 
   if (pathname === "/login") return <>{children}</>;
-  if (loading) return <div className="grid min-h-screen place-items-center bg-sand p-6"><p className="font-black text-black/45">Checking access…</p></div>;
+  if (loading) return <div className="grid min-h-screen place-items-center bg-sand p-6"><div role="status" className="card flex items-center gap-3 p-5"><ShieldCheckIcon className="size-6 text-accent" /><p className="font-semibold text-content/75">Checking access…</p></div></div>;
   if (authRequired && !user) return null;
 
   return <AuthContext.Provider value={user}>
@@ -59,11 +59,11 @@ export function LogoutButton() {
     await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
     router.replace("/login");
   }
-  return <button type="button" onClick={logout} className="btn-secondary !min-h-10 !px-3 !py-2"><ArrowRightOnRectangleIcon className="size-5" /><span className="hidden sm:inline">Logout</span></button>;
+  return <button type="button" onClick={logout} className="btn-secondary !min-h-11 !px-3 !py-2"><ArrowRightOnRectangleIcon className="size-5" /><span className="hidden sm:inline">Logout</span></button>;
 }
 
 export function RoleBadge() {
   const user = useAuthUser();
   if (!user) return null;
-  return <span className="hidden items-center gap-1.5 rounded-full bg-white px-3 py-2 text-xs font-black text-forest sm:inline-flex"><ShieldCheckIcon className="size-4" />{user.role}</span>;
+  return <span className="hidden items-center gap-1.5 rounded-full bg-surface px-3 py-2 text-xs font-bold text-accent sm:inline-flex"><ShieldCheckIcon className="size-4" />{user.role}</span>;
 }

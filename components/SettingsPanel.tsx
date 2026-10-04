@@ -345,20 +345,20 @@ export function SettingsPanel() {
     <div className="flex items-start gap-3">
       <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-lime text-ink"><Cog6ToothIcon className="size-6" /></span>
       <div>
-        <p className="text-sm font-extrabold uppercase tracking-widest text-forest">Admin Settings</p>
-        <h1 className="text-3xl font-black">Admin console & connected apps</h1>
-        <p className="mt-1 text-sm text-black/50">Admin-only area for company details, app connections, normal preferences, and crew merchandise requests.</p>
+        <p className="text-sm font-extrabold uppercase tracking-widest text-accent">Admin Settings</p>
+        <h1 className="text-3xl font-bold">Admin console & connected apps</h1>
+        <p className="mt-1 text-sm text-content/65">Admin-only area for company details, app connections, normal preferences, and crew merchandise requests.</p>
       </div>
     </div>
 
-    {saved && <p className="rounded-xl border border-forest/20 bg-forest/5 p-3 text-sm font-bold text-forest">{saved}</p>}
-    {loading && <p className="rounded-xl border border-black/10 bg-white p-3 text-sm font-bold text-black/45">Loading admin settings…</p>}
+    {saved && <p className="rounded-xl border border-forest/20 bg-forest/5 p-3 text-sm font-bold text-accent">{saved}</p>}
+    {loading && <p className="rounded-xl border border-content/10 bg-surface p-3 text-sm font-bold text-content/65">Loading admin settings…</p>}
 
     <section className="card overflow-hidden">
       <div className="grid lg:grid-cols-[.9fr_1.1fr]">
         <div className="bg-ink p-5 text-white sm:p-6">
-          <p className="text-xs font-black uppercase tracking-widest text-lime">Field Service setup</p>
-          <h2 className="mt-2 text-2xl font-black">{setupPercent}% ready</h2>
+          <p className="text-xs font-bold uppercase tracking-widest text-lime">Field Service setup</p>
+          <h2 className="mt-2 text-2xl font-bold">{setupPercent}% ready</h2>
           <p className="mt-2 text-sm text-white/60">{setupComplete} of {setupChecklist.length} admin setup items are complete. This is the quick admin checklist for daily field use.</p>
           <div className="mt-5 h-3 overflow-hidden rounded-full bg-white/10">
             <div className="h-full rounded-full bg-lime transition-all" style={{ width: `${setupPercent}%` }} />
@@ -371,7 +371,7 @@ export function SettingsPanel() {
         </div>
         <div className="grid gap-3 p-4 sm:grid-cols-2 sm:p-6">
           {setupChecklist.map((item) => <div key={item.title} className={`rounded-2xl border p-3 ${item.done ? "border-forest/20 bg-forest/5" : "border-orange-200 bg-orange-50"}`}>
-            <p className={`text-[11px] font-black uppercase tracking-wide ${item.done ? "text-forest" : "text-orange-800"}`}>{item.done ? "Done" : "Needs setup"}</p>
+            <p className={`text-[11px] font-bold uppercase tracking-wide ${item.done ? "text-accent" : "text-orange-800"}`}>{item.done ? "Done" : "Needs setup"}</p>
             <p className="mt-1 font-extrabold">{item.title}</p>
           </div>)}
         </div>
@@ -381,48 +381,48 @@ export function SettingsPanel() {
     <section className="grid gap-5 lg:grid-cols-[.9fr_1.1fr]">
       <div className="card overflow-hidden">
         <div className="bg-sand p-4">
-          <h2 className="text-lg font-black">Platform readiness</h2>
-          <p className="mt-1 text-sm font-semibold text-black/45">The boring-but-important setup pieces that make the app independent from the Mac.</p>
+          <h2 className="text-lg font-bold">Platform readiness</h2>
+          <p className="mt-1 text-sm font-semibold text-content/65">The boring-but-important setup pieces that make the app independent from the Mac.</p>
         </div>
-        <div className="divide-y divide-black/5">
+        <div className="divide-y divide-content/5">
           {platformChecklist.map((item) => <ReadinessRow key={item.title} title={item.title} detail={item.detail} done={item.done} />)}
         </div>
         <div className="p-4">
-          <div className="h-3 overflow-hidden rounded-full bg-black/5">
+          <div className="h-3 overflow-hidden rounded-full bg-content/5">
             <div className="h-full rounded-full bg-forest transition-all" style={{ width: `${Math.round((platformComplete / platformChecklist.length) * 100)}%` }} />
           </div>
-          <p className="mt-2 text-xs font-black uppercase tracking-wide text-black/40">{platformComplete} of {platformChecklist.length} platform items ready</p>
+          <p className="mt-2 text-xs font-bold uppercase tracking-wide text-content/65">{platformComplete} of {platformChecklist.length} platform items ready</p>
         </div>
       </div>
 
       <div className="card overflow-hidden">
         <div className="bg-ink p-4 text-white">
-          <h2 className="text-lg font-black">Next integration moves</h2>
-          <p className="mt-1 text-sm font-semibold text-white/55">Safe setup checklist. These are staging steps; they do not create calendar events, projects, invoices, or messages.</p>
+          <h2 className="text-lg font-bold">Next integration moves</h2>
+          <p className="mt-1 text-sm font-semibold text-white/65">Safe setup checklist. These are staging steps; they do not create calendar events, projects, invoices, or messages.</p>
         </div>
-        <div className="divide-y divide-black/5">
+        <div className="divide-y divide-content/5">
           {integrationNextSteps.map((step) => <div key={step.title} className="p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="font-black">{step.title}</p>
-                <p className="mt-1 text-sm font-semibold text-black/50">{step.detail}</p>
+                <p className="font-bold">{step.title}</p>
+                <p className="mt-1 text-sm font-semibold text-content/65">{step.detail}</p>
               </div>
-              <span className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide ${step.done ? "bg-forest text-white" : "bg-orange-100 text-orange-800"}`}>{step.done ? "Ready" : "Needed"}</span>
+              <span className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wide ${step.done ? "bg-forest text-white" : "bg-orange-100 text-orange-800"}`}>{step.done ? "Ready" : "Needed"}</span>
             </div>
-            <Link href={step.href} className="mt-3 inline-flex min-h-10 items-center justify-center rounded-xl bg-sand px-3 py-2 text-xs font-black text-forest">Open related app area</Link>
+            <Link href={step.href} className="mt-3 inline-flex min-h-11 items-center justify-center rounded-xl bg-sand px-3 py-2 text-xs font-bold text-accent">Open related app area</Link>
           </div>)}
         </div>
       </div>
     </section>
 
     <section className="card p-4 sm:p-6">
-      <h2 className="text-lg font-black">Admin shortcuts</h2>
-      <p className="mt-1 text-sm text-black/45">Fast buttons for the parts of the app an owner or manager touches most.</p>
+      <h2 className="text-lg font-bold">Admin shortcuts</h2>
+      <p className="mt-1 text-sm text-content/65">Fast buttons for the parts of the app an owner or manager touches most.</p>
       <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {adminShortcuts.map(({ href, title, description, icon: Icon }) => <Link key={href} href={href} className="group rounded-2xl border border-black/10 bg-sand p-4 transition hover:-translate-y-0.5 hover:bg-white hover:shadow-sm">
-          <span className="grid size-11 place-items-center rounded-xl bg-white text-forest group-hover:bg-forest group-hover:text-white"><Icon className="size-5" /></span>
-          <p className="mt-3 font-black">{title}</p>
-          <p className="mt-1 text-sm text-black/50">{description}</p>
+        {adminShortcuts.map(({ href, title, description, icon: Icon }) => <Link key={href} href={href} className="group rounded-2xl border border-content/10 bg-sand p-4 transition hover:-translate-y-0.5 hover:bg-surface hover:shadow-sm">
+          <span className="grid size-11 place-items-center rounded-xl bg-surface text-accent group-hover:bg-forest group-hover:text-white"><Icon className="size-5" /></span>
+          <p className="mt-3 font-bold">{title}</p>
+          <p className="mt-1 text-sm text-content/65">{description}</p>
         </Link>)}
       </div>
     </section>
@@ -430,12 +430,12 @@ export function SettingsPanel() {
     <section className="card p-4 sm:p-6">
       <div className="flex items-start gap-3">
         <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-forest text-white"><CalendarDaysIcon className="size-5" /></span>
-        <div><h2 className="text-lg font-black">RTS calendar subscription</h2><p className="mt-1 text-sm text-black/45">Read-only calendar — scheduling changes must be made in RTS.</p></div>
+        <div><h2 className="text-lg font-bold">RTS calendar subscription</h2><p className="mt-1 text-sm text-content/65">Read-only calendar — scheduling changes must be made in RTS.</p></div>
       </div>
-      <p className="mt-4 text-sm font-semibold text-black/55">Copy this private link into Google Calendar under Other calendars → From URL. Google Calendar changes do not sync back to RTS.</p>
+      <p className="mt-4 text-sm font-semibold text-content/65">Copy this private link into Google Calendar under Other calendars → From URL. Google Calendar changes do not sync back to RTS.</p>
       <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-        <button type="button" onClick={() => void copyCalendarLink()} className="min-h-11 rounded-xl bg-forest px-4 py-3 text-sm font-black text-white">{copiedCalendarLink ? "Copied" : "Copy Calendar Link"}</button>
-        <button type="button" onClick={() => void regenerateCalendarLink()} className="min-h-11 rounded-xl border border-black/10 bg-white px-4 py-3 text-sm font-black text-ink">Regenerate / Revoke Link</button>
+        <button type="button" onClick={() => void copyCalendarLink()} className="min-h-11 rounded-xl bg-forest px-4 py-3 text-sm font-bold text-white">{copiedCalendarLink ? "Copied" : "Copy Calendar Link"}</button>
+        <button type="button" onClick={() => void regenerateCalendarLink()} className="min-h-11 rounded-xl border border-content/10 bg-surface px-4 py-3 text-sm font-bold text-content">Regenerate / Revoke Link</button>
       </div>
     </section>
 
@@ -444,8 +444,8 @@ export function SettingsPanel() {
     <section className="card overflow-hidden">
       <div className="grid lg:grid-cols-[.85fr_1.15fr]">
         <div className="bg-forest p-5 text-white sm:p-6">
-          <p className="text-xs font-black uppercase tracking-widest text-lime">Employee rollout</p>
-          <h2 className="mt-1 text-2xl font-black">{rolloutComplete}/{rolloutChecklist.length} ready</h2>
+          <p className="text-xs font-bold uppercase tracking-widest text-lime">Employee rollout</p>
+          <h2 className="mt-1 text-2xl font-bold">{rolloutComplete}/{rolloutChecklist.length} ready</h2>
           <p className="mt-2 text-sm text-white/65">Use this when you are getting crew members onto the phone app and making sure their login only shows assigned field work.</p>
           <div className="mt-5 h-3 overflow-hidden rounded-full bg-white/15">
             <div className="h-full rounded-full bg-lime transition-all" style={{ width: `${Math.round((rolloutComplete / rolloutChecklist.length) * 100)}%` }} />
@@ -458,17 +458,17 @@ export function SettingsPanel() {
         <div className="p-4 sm:p-6">
           <div className="grid gap-3 sm:grid-cols-2">
             {rolloutChecklist.map((item) => <div key={item.title} className={`rounded-2xl border p-3 ${item.done ? "border-forest/20 bg-forest/5" : "border-orange-200 bg-orange-50"}`}>
-              <p className={`text-[11px] font-black uppercase tracking-wide ${item.done ? "text-forest" : "text-orange-800"}`}>{item.done ? "Ready" : "Needs work"}</p>
+              <p className={`text-[11px] font-bold uppercase tracking-wide ${item.done ? "text-accent" : "text-orange-800"}`}>{item.done ? "Ready" : "Needs work"}</p>
               <p className="mt-1 font-extrabold">{item.title}</p>
-              <p className="mt-1 text-xs font-semibold text-black/45">{item.detail}</p>
+              <p className="mt-1 text-xs font-semibold text-content/65">{item.detail}</p>
             </div>)}
           </div>
           <div className="mt-4 grid gap-2 sm:grid-cols-3">
-            <button type="button" onClick={copyCrewInvite} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-forest px-4 py-3 text-sm font-black text-white"><ClipboardDocumentIcon className="size-5" />{copiedInvite ? "Copied" : "Copy Invite"}</button>
-            <Link href="/install" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-black/10 bg-white px-4 py-3 text-sm font-black text-ink"><DevicePhoneMobileIcon className="size-5" />Install Help</Link>
-            <Link href="/field" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-ink px-4 py-3 text-sm font-black text-white"><ArrowTopRightOnSquareIcon className="size-5" />Preview Field</Link>
+            <button type="button" onClick={copyCrewInvite} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-forest px-4 py-3 text-sm font-bold text-white"><ClipboardDocumentIcon className="size-5" />{copiedInvite ? "Copied" : "Copy Invite"}</button>
+            <Link href="/install" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-content/10 bg-surface px-4 py-3 text-sm font-bold text-content"><DevicePhoneMobileIcon className="size-5" />Install Help</Link>
+            <Link href="/field" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-ink px-4 py-3 text-sm font-bold text-white"><ArrowTopRightOnSquareIcon className="size-5" />Preview Field</Link>
           </div>
-          <p className="mt-3 rounded-xl bg-sand p-3 text-xs font-semibold text-black/45">Invite text does not include passwords. Give each employee their temporary password separately or have them change it after first login.</p>
+          <p className="mt-3 rounded-xl bg-sand p-3 text-xs font-semibold text-content/65">Invite text does not include passwords. Give each employee their temporary password separately or have them change it after first login.</p>
         </div>
       </div>
     </section>
@@ -476,25 +476,25 @@ export function SettingsPanel() {
     <section className="card p-4 sm:p-6">
       <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-lg font-black">Connected apps</h2>
-          <p className="mt-1 text-sm text-black/45">These are the services this field app is being built to replace or connect with.</p>
+          <h2 className="text-lg font-bold">Connected apps</h2>
+          <p className="mt-1 text-sm text-content/65">These are the services this field app is being built to replace or connect with.</p>
         </div>
-        <span className="rounded-full bg-forest/10 px-3 py-2 text-xs font-black uppercase tracking-wide text-forest">{connectedCount} connected</span>
+        <span className="rounded-full bg-forest/10 px-3 py-2 text-xs font-bold uppercase tracking-wide text-accent">{connectedCount} connected</span>
       </div>
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {integrationCards.map(({ key, name, stage, description, icon: Icon, action, appPath, safety }) => {
           const connected = Boolean(integrations[key]);
-          return <div key={key} className="rounded-2xl border border-black/10 bg-sand p-4">
+          return <div key={key} className="rounded-2xl border border-content/10 bg-sand p-4">
             <div className="mb-3 flex items-start justify-between gap-3">
-              <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${connected ? "bg-forest text-white" : "bg-white text-forest"}`}><Icon className="size-5" /></span>
-              <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wide ${connected ? "bg-forest text-white" : "bg-orange-100 text-orange-800"}`}>{connected ? "Connected" : "Setup needed"}</span>
+              <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${connected ? "bg-forest text-white" : "bg-surface text-accent"}`}><Icon className="size-5" /></span>
+              <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${connected ? "bg-forest text-white" : "bg-orange-100 text-orange-800"}`}>{connected ? "Connected" : "Setup needed"}</span>
             </div>
-            <h3 className="font-black">{name}</h3>
-            <p className="mt-1 text-xs font-black uppercase tracking-wide text-forest">{stage}</p>
-            <p className="mt-1 text-sm text-black/55">{description}</p>
-            <p className={`mt-3 rounded-xl p-3 text-xs font-bold ${key === "googleCalendar" && setupStatus.googleCalendarError ? "bg-red-50 text-red-800" : "bg-white text-black/45"}`}>{key === "googleCalendar" && setupStatus.googleCalendarError ? setupStatus.googleCalendarError : action}</p>
-            <p className="mt-2 rounded-xl bg-white/70 p-3 text-xs font-semibold text-black/45">{safety}</p>
-            <Link href={appPath} className="mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-ink px-3 py-2 text-xs font-black text-white">Open workflow</Link>
+            <h3 className="font-bold">{name}</h3>
+            <p className="mt-1 text-xs font-bold uppercase tracking-wide text-accent">{stage}</p>
+            <p className="mt-1 text-sm text-content/65">{description}</p>
+            <p className={`mt-3 rounded-xl p-3 text-xs font-bold ${key === "googleCalendar" && setupStatus.googleCalendarError ? "bg-red-50 text-red-800" : "bg-surface text-content/65"}`}>{key === "googleCalendar" && setupStatus.googleCalendarError ? setupStatus.googleCalendarError : action}</p>
+            <p className="mt-2 rounded-xl bg-surface/70 p-3 text-xs font-semibold text-content/65">{safety}</p>
+            <Link href={appPath} className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-ink px-3 py-2 text-xs font-bold text-white">Open workflow</Link>
           </div>;
         })}
       </div>
@@ -503,44 +503,44 @@ export function SettingsPanel() {
     <section className="card p-4 sm:p-6">
       <div className="mb-5 flex items-start gap-3">
         <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-forest text-white"><Cog6ToothIcon className="size-5" /></span>
-        <div><h2 className="text-lg font-black">User access & roles</h2><p className="text-sm text-black/45">Admin creates app logins and assigns Admin, Manager, or Employee access. Employee accounts are linked to their crew record here.</p></div>
+        <div><h2 className="text-lg font-bold">User access & roles</h2><p className="text-sm text-content/65">Admin creates app logins and assigns Admin, Manager, or Employee access. Employee accounts are linked to their crew record here.</p></div>
       </div>
-      <div className={`mb-4 rounded-xl p-3 text-sm font-semibold ${employeesWithoutLogins.length ? "bg-orange-50 text-orange-900" : "bg-forest/10 text-forest"}`}>
-        <p className="font-black">{employeesWithoutLogins.length ? `${employeesWithoutLogins.length} employee${employeesWithoutLogins.length === 1 ? "" : "s"} need${employeesWithoutLogins.length === 1 ? "s" : ""} a login` : "All active employees have a linked login"}</p>
+      <div className={`mb-4 rounded-xl p-3 text-sm font-semibold ${employeesWithoutLogins.length ? "bg-orange-50 text-orange-900" : "bg-forest/10 text-accent"}`}>
+        <p className="font-bold">{employeesWithoutLogins.length ? `${employeesWithoutLogins.length} employee${employeesWithoutLogins.length === 1 ? "" : "s"} need${employeesWithoutLogins.length === 1 ? "s" : ""} a login` : "All active employees have a linked login"}</p>
         {employeesWithoutLogins.length ? <p className="mt-1 text-xs">{employeesWithoutLogins.map((employee) => employee.name).join(", ")}</p> : null}
       </div>
       <div className="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {employees.map((employee) => {
           const linked = linkedEmployeeUser(users, employee.id);
           const status = employeeOnboardingStatus(employee, users);
-          const tone = status === "Ready" ? "bg-forest/10 text-forest" : status === "Never signed in" ? "bg-blue-50 text-blue-900" : "bg-orange-50 text-orange-900";
-          return <div key={employee.id} className="rounded-xl border border-black/10 bg-sand p-3">
-            <div className="flex items-start justify-between gap-2"><div><p className="font-black">{employee.name}</p><p className="mt-1 text-xs font-semibold text-black/50">{linked?.email || "No linked login"}</p></div><span className={`rounded-full px-2 py-1 text-[10px] font-black uppercase ${tone}`}>{status}</span></div>
-            {!linked && <button type="button" onClick={() => { setNewUserRole("Employee"); setNewUserEmployeeId(employee.id); document.getElementById("create-employee-login")?.scrollIntoView({ behavior: "smooth", block: "center" }); }} className="mt-3 min-h-10 w-full rounded-lg bg-ink px-3 py-2 text-xs font-black text-white">Create {employee.name}'s login</button>}
+          const tone = status === "Ready" ? "bg-forest/10 text-accent" : status === "Never signed in" ? "bg-blue-50 text-blue-900" : "bg-orange-50 text-orange-900";
+          return <div key={employee.id} className="rounded-xl border border-content/10 bg-sand p-3">
+            <div className="flex items-start justify-between gap-2"><div><p className="font-bold">{employee.name}</p><p className="mt-1 text-xs font-semibold text-content/65">{linked?.email || "No linked login"}</p></div><span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ${tone}`}>{status}</span></div>
+            {!linked && <button type="button" onClick={() => { setNewUserRole("Employee"); setNewUserEmployeeId(employee.id); document.getElementById("create-employee-login")?.scrollIntoView({ behavior: "smooth", block: "center" }); }} className="mt-3 min-h-11 w-full rounded-lg bg-ink px-3 py-2 text-xs font-bold text-white">Create {employee.name}'s login</button>}
           </div>;
         })}
       </div>
-      <form id="create-employee-login" onSubmit={createUser} className="grid gap-3 rounded-2xl border border-black/10 bg-white p-4 lg:grid-cols-[1fr_1fr_.7fr_.9fr_auto]">
+      <form id="create-employee-login" onSubmit={createUser} className="grid gap-3 rounded-2xl border border-content/10 bg-surface p-4 lg:grid-cols-[1fr_1fr_.7fr_.9fr_auto]">
         <Input label="Email" name="email" placeholder="employee@email.com" />
         <Input label="One-time temporary password" name="password" placeholder="At least 8 characters" />
         <Select label="Role" name="role" value={newUserRole} onChange={(value) => { const role = value as UserRole; setNewUserRole(role); if (role !== "Employee") setNewUserEmployeeId(""); }} options={["Employee", "Manager", "Admin"]} />
         <Select label="Linked employee" name="employeeId" value={newUserEmployeeId} onChange={setNewUserEmployeeId} disabled={newUserRole !== "Employee"} options={["", ...employees.map((employee) => employee.id)]} optionLabels={Object.fromEntries([["", newUserRole === "Employee" ? "Choose employee" : "Admin/Manager not linked"], ...employees.map((employee) => [employee.id, employee.name])])} />
         <button className="btn-primary self-end">Create Login</button>
       </form>
-      <p className="mt-3 text-xs font-semibold text-black/45">The temporary password is sent once to Supabase Auth, never saved in employee records, and cannot be viewed here again. Give it to the employee separately and have them change it from My Account after first sign-in.</p>
+      <p className="mt-3 text-xs font-semibold text-content/65">The temporary password is sent once to Supabase Auth, never saved in employee records, and cannot be viewed here again. Give it to the employee separately and have them change it from My Account after first sign-in.</p>
       <div className="mt-5 space-y-2">
         {users.length ? users.map((user) => <div key={user.id} className="flex flex-col gap-3 rounded-xl bg-sand p-3 sm:flex-row sm:items-center sm:justify-between">
-          <div><p className="font-black">{user.email}</p><p className="text-xs font-semibold text-black/45">{user.employeeName ? `Linked to ${user.employeeName}` : "No employee linked"} · {user.lastSignInAt ? `Last sign in: ${new Date(user.lastSignInAt).toLocaleDateString()}` : "No sign-in yet"}</p></div>
+          <div><p className="font-bold">{user.email}</p><p className="text-xs font-semibold text-content/65">{user.employeeName ? `Linked to ${user.employeeName}` : "No employee linked"} · {user.lastSignInAt ? `Last sign in: ${new Date(user.lastSignInAt).toLocaleDateString()}` : "No sign-in yet"}</p></div>
           <div className="grid gap-2 sm:grid-cols-2">
-            <select className="field !min-h-10 !w-auto !py-2 text-sm font-bold" value={user.role} onChange={(event) => updateUserAccess(user.id, { role: event.target.value as UserRole })}>
+            <select className="field !min-h-11 !w-auto !py-2 text-sm font-bold" value={user.role} onChange={(event) => updateUserAccess(user.id, { role: event.target.value as UserRole })}>
               {(["Employee", "Manager", "Admin"] as UserRole[]).map((role) => <option key={role}>{role}</option>)}
             </select>
-            <select className="field !min-h-10 !w-auto !py-2 text-sm font-bold" value={user.employeeId || ""} onChange={(event) => updateUserAccess(user.id, { employeeId: event.target.value })}>
+            <select className="field !min-h-11 !w-auto !py-2 text-sm font-bold" value={user.employeeId || ""} onChange={(event) => updateUserAccess(user.id, { employeeId: event.target.value })}>
               <option value="">Not linked</option>
               {employees.map((employee) => <option key={employee.id} value={employee.id}>{employee.name}</option>)}
             </select>
           </div>
-        </div>) : <p className="rounded-xl bg-sand p-3 text-sm font-semibold text-black/45">No users loaded yet. If this stays empty, confirm Supabase Auth env vars are set.</p>}
+        </div>) : <p className="rounded-xl bg-sand p-3 text-sm font-semibold text-content/65">No users loaded yet. If this stays empty, confirm Supabase Auth env vars are set.</p>}
       </div>
     </section>
 
@@ -548,7 +548,7 @@ export function SettingsPanel() {
       <section className="card p-4 sm:p-6">
         <div className="mb-5 flex items-start gap-3">
           <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-blue-100 text-blue-800"><BuildingOffice2Icon className="size-5" /></span>
-          <div><h2 className="text-lg font-black">Company details</h2><p className="text-sm text-black/45">Used for profiles, printouts, invoices, and future multi-business setup.</p></div>
+          <div><h2 className="text-lg font-bold">Company details</h2><p className="text-sm text-content/65">Used for profiles, printouts, invoices, and future multi-business setup.</p></div>
         </div>
         <form onSubmit={saveCompany} className="grid gap-4 sm:grid-cols-2">
           <Input label="App display name" value={company.appDisplayName} onChange={(value) => set("appDisplayName", value)} />
@@ -573,7 +573,7 @@ export function SettingsPanel() {
       <section className="card p-4 sm:p-6">
         <div className="mb-5 flex items-start gap-3">
           <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-orange-100 text-orange-800"><BellAlertIcon className="size-5" /></span>
-          <div><h2 className="text-lg font-black">General app options</h2><p className="text-sm text-black/45">Normal settings most field apps need.</p></div>
+          <div><h2 className="text-lg font-bold">General app options</h2><p className="text-sm text-content/65">Normal settings most field apps need.</p></div>
         </div>
         <div className="space-y-3">
           <Toggle title="Large field buttons" description="Keep mobile buttons easy to hit with gloves or one hand." defaultChecked />
@@ -587,7 +587,7 @@ export function SettingsPanel() {
     <section className="card p-4 sm:p-6">
       <div className="mb-5 flex items-start gap-3">
         <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-lime text-ink"><DocumentTextIcon className="size-5" /></span>
-        <div><h2 className="text-lg font-black">Field app option editors</h2><p className="text-sm text-black/45">Admin-controlled lists for job forms, priorities, statuses, and completion checklists.</p></div>
+        <div><h2 className="text-lg font-bold">Field app option editors</h2><p className="text-sm text-content/65">Admin-controlled lists for job forms, priorities, statuses, and completion checklists.</p></div>
       </div>
       <form onSubmit={saveCompany} className="grid gap-4 lg:grid-cols-2">
         <ListEditor label="Job types" values={company.jobTypeOptions} onChange={(values) => set("jobTypeOptions", values)} placeholder="Trim out, Service, Warranty..." />
@@ -596,12 +596,12 @@ export function SettingsPanel() {
         <ListEditor label="Default checklist" values={company.checklistOptions} onChange={(values) => set("checklistOptions", values)} placeholder="One checklist item per line" />
         <ListEditor label="Employee quick note buttons" values={company.employeeFieldNoteTemplates} onChange={(values) => set("employeeFieldNoteTemplates", values)} placeholder="Arrived | Crew arrived on site. | Time" />
         <Textarea label="Customer text template" value={company.customerTextTemplate} onChange={(value) => set("customerTextTemplate", value)} placeholder="Example: Company update for {customerName}: crew is on your job {jobId}." />
-        <p className="rounded-xl bg-sand p-3 text-xs font-semibold text-black/45 lg:col-span-2">Available placeholders: {"{customerName}"}, {"{jobId}"}, {"{jobType}"}, and {"{dueDate}"}. This controls the Text button employees see in the field app.</p>
-        <p className="rounded-xl bg-sand p-3 text-xs font-semibold text-black/45 lg:col-span-2">Quick note format: Button label | message saved to job | type. Good types: Note, Status, Customer, Parts, Time.</p>
+        <p className="rounded-xl bg-sand p-3 text-xs font-semibold text-content/65 lg:col-span-2">Available placeholders: {"{customerName}"}, {"{jobId}"}, {"{jobType}"}, and {"{dueDate}"}. This controls the Text button employees see in the field app.</p>
+        <p className="rounded-xl bg-sand p-3 text-xs font-semibold text-content/65 lg:col-span-2">Quick note format: Button label | message saved to job | type. Good types: Note, Status, Customer, Parts, Time.</p>
         <Textarea label="Factory cost instructions" value={company.factoryCostInstructions} onChange={(value) => set("factoryCostInstructions", value)} placeholder="Tell employees what to enter on factory cost cards" />
-        <div className="rounded-2xl border border-black/10 bg-white p-4 lg:col-span-2">
-          <h3 className="font-black">Factory cost defaults</h3>
-          <p className="mt-1 text-sm font-semibold text-black/45">Pre-fill common rates on factory job cost trackers. Jobs with saved numbers keep their own totals.</p>
+        <div className="rounded-2xl border border-content/10 bg-surface p-4 lg:col-span-2">
+          <h3 className="font-bold">Factory cost defaults</h3>
+          <p className="mt-1 text-sm font-semibold text-content/65">Pre-fill common rates on factory job cost trackers. Jobs with saved numbers keep their own totals.</p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Input label="Mileage rate" value={company.factoryCostDefaults?.mileageRate || ""} onChange={(value) => setFactoryCostDefault("mileageRate", value)} placeholder="0.67" />
             <Input label="Drive time rate" value={company.factoryCostDefaults?.hourlyRate || ""} onChange={(value) => setFactoryCostDefault("hourlyRate", value)} placeholder="0" />
@@ -610,9 +610,9 @@ export function SettingsPanel() {
             <Input label="Per diem rate" value={company.factoryCostDefaults?.perDiemRate || ""} onChange={(value) => setFactoryCostDefault("perDiemRate", value)} placeholder="0" />
           </div>
         </div>
-        <div className="rounded-2xl border border-black/10 bg-white p-4 lg:col-span-2">
-          <h3 className="font-black">Employee field permissions</h3>
-          <p className="mt-1 text-sm font-semibold text-black/45">Saved admin controls for what crew members can do from the phone field app.</p>
+        <div className="rounded-2xl border border-content/10 bg-surface p-4 lg:col-span-2">
+          <h3 className="font-bold">Employee field permissions</h3>
+          <p className="mt-1 text-sm font-semibold text-content/65">Saved admin controls for what crew members can do from the phone field app.</p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <PermissionToggle title="Need Help" description="Show employee buttons to log a manager follow-up and call field support." checked={company.employeeCanRequestHelp} onChange={(value) => set("employeeCanRequestHelp", value)} />
             <PermissionToggle title="Start jobs" description="Allow employees to move assigned jobs into In Progress and create a time entry." checked={company.employeeCanStartJobs} onChange={(value) => set("employeeCanStartJobs", value)} />
@@ -627,44 +627,44 @@ export function SettingsPanel() {
             <PermissionToggle title="Completed jobs" description="Show completed, billed, and paid jobs in the employee field app list." checked={company.showCompletedJobsInFieldApp} onChange={(value) => set("showCompletedJobsInFieldApp", value)} />
           </div>
         </div>
-        <label className="flex min-h-14 items-center gap-3 rounded-xl border border-black/10 bg-sand p-3 lg:col-span-2">
+        <label className="flex min-h-14 items-center gap-3 rounded-xl border border-content/10 bg-sand p-3 lg:col-span-2">
           <input type="checkbox" checked={company.requireAfterPhotosToComplete} onChange={(event) => set("requireAfterPhotosToComplete", event.target.checked)} className="size-5 accent-forest" />
-          <span><span className="block font-black">Require after photos before completing jobs</span><span className="block text-xs font-semibold text-black/45">This controls the manager completion workflow.</span></span>
+          <span><span className="block font-bold">Require after photos before completing jobs</span><span className="block text-xs font-semibold text-content/65">This controls the manager completion workflow.</span></span>
         </label>
-        <label className="flex min-h-14 items-center gap-3 rounded-xl border border-black/10 bg-sand p-3 lg:col-span-2">
+        <label className="flex min-h-14 items-center gap-3 rounded-xl border border-content/10 bg-sand p-3 lg:col-span-2">
           <input type="checkbox" checked={company.requireBeforePhotosForReview} onChange={(event) => set("requireBeforePhotosForReview", event.target.checked)} className="size-5 accent-forest" />
-          <span><span className="block font-black">Require before photos before sending</span><span className="block text-xs font-semibold text-black/45">Employees must add before photos before sending field work to manager review.</span></span>
+          <span><span className="block font-bold">Require before photos before sending</span><span className="block text-xs font-semibold text-content/65">Employees must add before photos before sending field work to manager review.</span></span>
         </label>
-        <label className="flex min-h-14 items-center gap-3 rounded-xl border border-black/10 bg-sand p-3 lg:col-span-2">
+        <label className="flex min-h-14 items-center gap-3 rounded-xl border border-content/10 bg-sand p-3 lg:col-span-2">
           <input type="checkbox" checked={company.requireSerialTagPhotoForReview} onChange={(event) => set("requireSerialTagPhotoForReview", event.target.checked)} className="size-5 accent-forest" />
-          <span><span className="block font-black">Require serial/VIN photo before sending</span><span className="block text-xs font-semibold text-black/45">Employees must add serial/VIN tag proof before manager review.</span></span>
+          <span><span className="block font-bold">Require serial/VIN photo before sending</span><span className="block text-xs font-semibold text-content/65">Employees must add serial/VIN tag proof before manager review.</span></span>
         </label>
-        <label className="flex min-h-14 items-center gap-3 rounded-xl border border-black/10 bg-sand p-3 lg:col-span-2">
+        <label className="flex min-h-14 items-center gap-3 rounded-xl border border-content/10 bg-sand p-3 lg:col-span-2">
           <input type="checkbox" checked={company.requireDamagePhotosForReview} onChange={(event) => set("requireDamagePhotosForReview", event.target.checked)} className="size-5 accent-forest" />
-          <span><span className="block font-black">Require damage photos before sending</span><span className="block text-xs font-semibold text-black/45">Turn this on for businesses that need damage proof on every reviewed job.</span></span>
+          <span><span className="block font-bold">Require damage photos before sending</span><span className="block text-xs font-semibold text-content/65">Turn this on for businesses that need damage proof on every reviewed job.</span></span>
         </label>
-        <label className="flex min-h-14 items-center gap-3 rounded-xl border border-black/10 bg-sand p-3 lg:col-span-2">
+        <label className="flex min-h-14 items-center gap-3 rounded-xl border border-content/10 bg-sand p-3 lg:col-span-2">
           <input type="checkbox" checked={company.requireAfterPhotosForReview} onChange={(event) => set("requireAfterPhotosForReview", event.target.checked)} className="size-5 accent-forest" />
-          <span><span className="block font-black">Require after photos before sending</span><span className="block text-xs font-semibold text-black/45">Employees must add after photos before sending field work to manager review.</span></span>
+          <span><span className="block font-bold">Require after photos before sending</span><span className="block text-xs font-semibold text-content/65">Employees must add after photos before sending field work to manager review.</span></span>
         </label>
-        <label className="flex min-h-14 items-center gap-3 rounded-xl border border-black/10 bg-sand p-3 lg:col-span-2">
+        <label className="flex min-h-14 items-center gap-3 rounded-xl border border-content/10 bg-sand p-3 lg:col-span-2">
           <input type="checkbox" checked={company.requireCompletionNotesForReview} onChange={(event) => set("requireCompletionNotesForReview", event.target.checked)} className="size-5 accent-forest" />
-          <span><span className="block font-black">Require completion notes before sending</span><span className="block text-xs font-semibold text-black/45">Employees must add notes explaining what was finished before manager review.</span></span>
+          <span><span className="block font-bold">Require completion notes before sending</span><span className="block text-xs font-semibold text-content/65">Employees must add notes explaining what was finished before manager review.</span></span>
         </label>
-        <label className="flex min-h-14 items-center gap-3 rounded-xl border border-black/10 bg-sand p-3 lg:col-span-2">
+        <label className="flex min-h-14 items-center gap-3 rounded-xl border border-content/10 bg-sand p-3 lg:col-span-2">
           <input type="checkbox" checked={company.requireWorkCompleteForReview} onChange={(event) => set("requireWorkCompleteForReview", event.target.checked)} className="size-5 accent-forest" />
-          <span><span className="block font-black">Require work completed before sending</span><span className="block text-xs font-semibold text-black/45">Employees must mark Work completed or move the job to a completion status before manager review.</span></span>
+          <span><span className="block font-bold">Require work completed before sending</span><span className="block text-xs font-semibold text-content/65">Employees must mark Work completed or move the job to a completion status before manager review.</span></span>
         </label>
         <div className="flex min-h-14 items-center gap-3 rounded-xl border border-forest/10 bg-forest/5 p-3 lg:col-span-2">
-          <span><span className="block font-black">Parts tracking is optional</span><span className="block text-xs font-semibold text-black/45">Open parts stay visible, but they do not block sending or billing.</span></span>
+          <span><span className="block font-bold">Parts tracking is optional</span><span className="block text-xs font-semibold text-content/65">Open parts stay visible, but they do not block sending or billing.</span></span>
         </div>
-        <label className="flex min-h-14 items-center gap-3 rounded-xl border border-black/10 bg-sand p-3 lg:col-span-2">
+        <label className="flex min-h-14 items-center gap-3 rounded-xl border border-content/10 bg-sand p-3 lg:col-span-2">
           <input type="checkbox" checked={company.requireFactoryCostsForReview} onChange={(event) => set("requireFactoryCostsForReview", event.target.checked)} className="size-5 accent-forest" />
-          <span><span className="block font-black">Require factory costs before sending</span><span className="block text-xs font-semibold text-black/45">Factory jobs must have cost entries before employees can send them to manager review.</span></span>
+          <span><span className="block font-bold">Require factory costs before sending</span><span className="block text-xs font-semibold text-content/65">Factory jobs must have cost entries before employees can send them to manager review.</span></span>
         </label>
-        <label className="flex min-h-14 items-center gap-3 rounded-xl border border-black/10 bg-sand p-3 lg:col-span-2">
+        <label className="flex min-h-14 items-center gap-3 rounded-xl border border-content/10 bg-sand p-3 lg:col-span-2">
           <input type="checkbox" checked={company.requireReceiptBackupForReview} onChange={(event) => set("requireReceiptBackupForReview", event.target.checked)} className="size-5 accent-forest" />
-          <span><span className="block font-black">Require receipt backup before sending</span><span className="block text-xs font-semibold text-black/45">If a job has receipt or factory receipt dollars, employees must add receipt backup before sending it to the manager.</span></span>
+          <span><span className="block font-bold">Require receipt backup before sending</span><span className="block text-xs font-semibold text-content/65">If a job has receipt or factory receipt dollars, employees must add receipt backup before sending it to the manager.</span></span>
         </label>
         <button className="btn-primary lg:col-span-2">Save Field App Options</button>
       </form>
@@ -673,22 +673,22 @@ export function SettingsPanel() {
     <section className="card p-4 sm:p-6">
       <div className="mb-5 flex items-start gap-3">
         <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-red-100 text-red-800"><BellAlertIcon className="size-5" /></span>
-        <div><h2 className="text-lg font-black">Cleanup tools</h2><p className="text-sm text-black/45">Admin-only helper for removing obvious smoke/test/sample/demo records after verification.</p></div>
+        <div><h2 className="text-lg font-bold">Cleanup tools</h2><p className="text-sm text-content/65">Admin-only helper for removing obvious smoke/test/sample/demo records after verification.</p></div>
       </div>
       <div className="grid gap-3 sm:grid-cols-[auto_1fr] sm:items-center">
         <button type="button" onClick={previewCleanup} className="btn-secondary">Preview Test Data</button>
-        <p className="text-sm font-semibold text-black/45">Preview first. Delete requires typing an exact confirmation phrase.</p>
+        <p className="text-sm font-semibold text-content/65">Preview first. Delete requires typing an exact confirmation phrase.</p>
       </div>
       {cleanup && <div className="mt-4 rounded-2xl bg-sand p-4">
-        <p className="font-black">{cleanup.testJobs.length} test jobs · {cleanup.smokeTestFiles.length} smoke-test files found</p>
-        <div className="mt-2 max-h-32 overflow-auto text-sm text-black/55">
+        <p className="font-bold">{cleanup.testJobs.length} test jobs · {cleanup.smokeTestFiles.length} smoke-test files found</p>
+        <div className="mt-2 max-h-32 overflow-auto text-sm text-content/65">
           {cleanup.testJobs.map((job) => <p key={job.jobId}>{job.jobId} — {job.customerName}</p>)}
           {cleanup.smokeTestFiles.map((file) => <p key={file}>{file}</p>)}
           {!cleanup.testJobs.length && !cleanup.smokeTestFiles.length && <p>No obvious test records found.</p>}
         </div>
         {(cleanup.testJobs.length > 0 || cleanup.smokeTestFiles.length > 0) && <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_auto]">
           <input className="field" value={cleanupConfirm} onChange={(event) => setCleanupConfirm(event.target.value)} placeholder="Type DELETE TEST DATA" />
-          <button type="button" onClick={runCleanup} className="min-h-12 rounded-xl bg-red-600 px-4 py-3 font-black text-white">Delete Test Data</button>
+          <button type="button" onClick={runCleanup} className="min-h-12 rounded-xl bg-red-600 px-4 py-3 font-bold text-white">Delete Test Data</button>
         </div>}
       </div>}
     </section>
@@ -698,11 +698,11 @@ export function SettingsPanel() {
         <div className="flex items-start gap-3">
           <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-lime text-ink"><ShoppingBagIcon className="size-6" /></span>
           <div>
-            <h2 className="text-2xl font-black">Crew merchandise</h2>
+            <h2 className="text-2xl font-bold">Crew merchandise</h2>
             <p className="mt-1 text-sm text-white/60">Crew members can request shirts, hats, cups, hoodies, or safety gear.</p>
           </div>
         </div>
-        {company.merchandiseLink && <a href={company.merchandiseLink} target="_blank" className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-lime px-4 py-3 font-black text-ink sm:w-auto">Open company shop <ArrowTopRightOnSquareIcon className="size-5" /></a>}
+        {company.merchandiseLink && <a href={company.merchandiseLink} target="_blank" className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-lime px-4 py-3 font-bold text-ink sm:w-auto">Open company shop <ArrowTopRightOnSquareIcon className="size-5" /></a>}
       </div>
       <div className="grid gap-5 p-4 sm:p-6 lg:grid-cols-[.9fr_1fr]">
         <form onSubmit={submitMerch} className="grid gap-3">
@@ -719,16 +719,16 @@ export function SettingsPanel() {
           <button className="btn-primary">Submit Merch Request</button>
         </form>
         <div>
-          <h3 className="mb-3 font-black">Recent requests</h3>
+          <h3 className="mb-3 font-bold">Recent requests</h3>
           <div className="space-y-2">
             {merchSummary.length ? merchSummary.map((request) => <div key={request.id} className="rounded-xl bg-sand p-3">
-              <div className="flex justify-between gap-3"><p className="font-extrabold">{request.quantity}× {request.item}</p><p className="text-xs font-bold text-black/40">{new Date(request.createdAt).toLocaleDateString()}</p></div>
-              <p className="text-sm font-semibold text-black/55">{[request.size, request.color, request.requestedBy].filter(Boolean).join(" · ") || "No details"}</p>
-              {request.notes && <p className="mt-1 text-xs text-black/50">{request.notes}</p>}
+              <div className="flex justify-between gap-3"><p className="font-extrabold">{request.quantity}× {request.item}</p><p className="text-xs font-bold text-content/65">{new Date(request.createdAt).toLocaleDateString()}</p></div>
+              <p className="text-sm font-semibold text-content/65">{[request.size, request.color, request.requestedBy].filter(Boolean).join(" · ") || "No details"}</p>
+              {request.notes && <p className="mt-1 text-xs text-content/65">{request.notes}</p>}
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                {(["Requested", "Approved", "Ordered", "Received"] as MerchRequestStatus[]).map((status) => <button key={status} type="button" onClick={() => updateRequestStatus(request.id, status)} className={`rounded-full px-3 py-1 text-[11px] font-black ${request.status === status ? "bg-forest text-white" : "bg-white text-black/45"}`}>{status}</button>)}
+                {(["Requested", "Approved", "Ordered", "Received"] as MerchRequestStatus[]).map((status) => <button key={status} type="button" onClick={() => updateRequestStatus(request.id, status)} className={`rounded-full px-3 py-1 text-[11px] font-bold ${request.status === status ? "bg-forest text-white" : "bg-surface text-content/65"}`}>{status}</button>)}
               </div>
-            </div>) : <p className="rounded-xl bg-sand p-3 text-sm font-semibold text-black/45">No merchandise requests yet.</p>}
+            </div>) : <p className="rounded-xl bg-sand p-3 text-sm font-semibold text-content/65">No merchandise requests yet.</p>}
           </div>
         </div>
       </div>
@@ -738,18 +738,18 @@ export function SettingsPanel() {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return <div className="rounded-2xl bg-white/10 p-3">
-    <p className="text-2xl font-black text-lime">{value}</p>
-    <p className="text-[11px] font-black uppercase tracking-wide text-white/45">{label}</p>
+    <p className="text-2xl font-bold text-lime">{value}</p>
+    <p className="text-[11px] font-bold uppercase tracking-wide text-white/65">{label}</p>
   </div>;
 }
 
 function ReadinessRow({ title, detail, done }: { title: string; detail: string; done: boolean }) {
   return <div className="flex items-start justify-between gap-3 p-4">
     <div>
-      <p className="font-black">{title}</p>
-      <p className="mt-1 text-sm font-semibold text-black/50">{detail}</p>
+      <p className="font-bold">{title}</p>
+      <p className="mt-1 text-sm font-semibold text-content/65">{detail}</p>
     </div>
-    <span className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide ${done ? "bg-forest text-white" : "bg-orange-100 text-orange-800"}`}>{done ? "Ready" : "Needed"}</span>
+    <span className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wide ${done ? "bg-forest text-white" : "bg-orange-100 text-orange-800"}`}>{done ? "Ready" : "Needed"}</span>
   </div>;
 }
 
@@ -757,7 +757,7 @@ function AdminControlMap({ employees, users }: { employees: number; users: numbe
   const roleCards = [
     { title: "Admin", detail: "Company settings, users, employees, integrations, cleanup, billing, and full job control.", tone: "bg-ink text-white" },
     { title: "Manager", detail: "Jobs, scheduling, dispatch, employees, communication, documents, inspection, and billing queues.", tone: "bg-forest text-white" },
-    { title: "Employee", detail: "Assigned field jobs, checklist, photos/files, notes, time log, sign-off, and Ready Review.", tone: "bg-sand text-ink" },
+    { title: "Employee", detail: "Assigned field jobs, checklist, photos/files, notes, time log, sign-off, and Ready Review.", tone: "bg-sand text-content" },
   ];
   const adminRules = [
     { title: "Real jobs only for external apps", detail: "CompanyCam and Google Calendar stay job-by-job. Do not sync sample/mock jobs.", href: "/schedule" },
@@ -767,8 +767,8 @@ function AdminControlMap({ employees, users }: { employees: number; users: numbe
   ];
   return <section className="card overflow-hidden">
     <div className="bg-ink p-5 text-white sm:p-6">
-      <p className="text-xs font-black uppercase tracking-widest text-lime">Admin control map</p>
-      <h2 className="mt-1 text-2xl font-black">Employee-friendly app, admin-controlled setup</h2>
+      <p className="text-xs font-bold uppercase tracking-widest text-lime">Admin control map</p>
+      <h2 className="mt-1 text-2xl font-bold">Employee-friendly app, admin-controlled setup</h2>
       <p className="mt-1 text-sm text-white/60">Use this as the plain-English owner screen for deciding who can do what and what still needs setup.</p>
       <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
         <Stat label="Active employees" value={String(employees)} />
@@ -779,21 +779,21 @@ function AdminControlMap({ employees, users }: { employees: number; users: numbe
     </div>
     <div className="grid gap-4 p-4 lg:grid-cols-[.85fr_1.15fr] sm:p-6">
       <div>
-        <h3 className="mb-3 font-black">Role split</h3>
+        <h3 className="mb-3 font-bold">Role split</h3>
         <div className="grid gap-3">
           {roleCards.map((card) => <div key={card.title} className={`rounded-2xl p-4 ${card.tone}`}>
-            <p className="text-lg font-black">{card.title}</p>
-            <p className={`mt-1 text-sm font-semibold ${card.title === "Employee" ? "text-black/55" : "text-white/65"}`}>{card.detail}</p>
+            <p className="text-lg font-bold">{card.title}</p>
+            <p className={`mt-1 text-sm font-semibold ${card.title === "Employee" ? "text-content/65" : "text-white/65"}`}>{card.detail}</p>
           </div>)}
         </div>
       </div>
       <div>
-        <h3 className="mb-3 font-black">Operating rules</h3>
+        <h3 className="mb-3 font-bold">Operating rules</h3>
         <div className="grid gap-3 sm:grid-cols-2">
-          {adminRules.map((rule) => <Link key={rule.title} href={rule.href} className="rounded-2xl border border-black/10 bg-sand p-4 active:scale-[.99]">
-            <p className="font-black">{rule.title}</p>
-            <p className="mt-1 text-sm font-semibold text-black/50">{rule.detail}</p>
-            <span className="mt-3 inline-flex min-h-9 items-center rounded-xl bg-white px-3 py-2 text-xs font-black text-forest">Open setup area</span>
+          {adminRules.map((rule) => <Link key={rule.title} href={rule.href} className="rounded-2xl border border-content/10 bg-sand p-4 active:scale-[.99]">
+            <p className="font-bold">{rule.title}</p>
+            <p className="mt-1 text-sm font-semibold text-content/65">{rule.detail}</p>
+            <span className="mt-3 inline-flex min-h-11 items-center rounded-xl bg-surface px-3 py-2 text-xs font-bold text-accent">Open setup area</span>
           </Link>)}
         </div>
       </div>
@@ -881,20 +881,20 @@ function ListEditor({ label, values, onChange, placeholder }: { label: string; v
   return <label>
     <span className="label">{label}</span>
     <textarea className="field min-h-36 resize-y" value={(values || []).join("\n")} placeholder={placeholder} onChange={(event) => onChange(event.target.value.split("\n").map((item) => item.trim()).filter(Boolean))} />
-    <span className="mt-1 block text-xs font-semibold text-black/40">One option per line.</span>
+    <span className="mt-1 block text-xs font-semibold text-content/65">One option per line.</span>
   </label>;
 }
 
 function Toggle({ title, description, defaultChecked }: { title: string; description: string; defaultChecked?: boolean }) {
-  return <label className="flex min-h-14 items-center gap-3 rounded-xl border border-black/10 bg-sand p-3">
+  return <label className="flex min-h-14 items-center gap-3 rounded-xl border border-content/10 bg-sand p-3">
     <input type="checkbox" defaultChecked={defaultChecked} className="size-5 accent-forest" />
-    <span><span className="block font-black">{title}</span><span className="block text-xs font-semibold text-black/45">{description}</span></span>
+    <span><span className="block font-bold">{title}</span><span className="block text-xs font-semibold text-content/65">{description}</span></span>
   </label>;
 }
 
 function PermissionToggle({ title, description, checked, onChange }: { title: string; description: string; checked: boolean; onChange: (value: boolean) => void }) {
   return <label className={`flex min-h-16 items-center gap-3 rounded-xl border p-3 ${checked ? "border-forest/20 bg-forest/5" : "border-orange-200 bg-orange-50"}`}>
     <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} className="size-5 accent-forest" />
-    <span><span className="block font-black">{title}</span><span className="block text-xs font-semibold text-black/45">{description}</span></span>
+    <span><span className="block font-bold">{title}</span><span className="block text-xs font-semibold text-content/65">{description}</span></span>
   </label>;
 }

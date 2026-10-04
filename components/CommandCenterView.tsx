@@ -47,13 +47,13 @@ export function CommandCenterView({ jobs }: { jobs: Job[] }) {
   const summary = buildTodaySummary(todayJobs, employeeReviews, today);
 
   return <div className="mx-auto max-w-6xl space-y-4">
-    <section className="rounded-3xl bg-ink p-5 text-white sm:p-7">
+    <section className="rounded-2xl bg-ink p-5 text-white sm:p-7">
       <div className="flex items-start gap-3">
         <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-lime text-ink"><ClockIcon className="size-7" /></span>
         <div className="min-w-0">
-          <p className="text-xs font-black uppercase tracking-widest text-lime">{formatToday(today)}</p>
-          <h1 className="mt-1 text-3xl font-black">Daily Review</h1>
-          <p className="mt-1 text-sm text-white/55">Today&apos;s active employee work, open closeout items, and manager review needs.</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-lime">{formatToday(today)}</p>
+          <h1 className="mt-1 text-3xl font-bold">Daily Review</h1>
+          <p className="mt-1 text-sm text-white/65">Today&apos;s active employee work, open closeout items, and manager review needs.</p>
         </div>
       </div>
       <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
@@ -70,10 +70,10 @@ export function CommandCenterView({ jobs }: { jobs: Job[] }) {
     <section className="space-y-3">
       <div className="flex items-end justify-between gap-3 px-1">
         <div>
-          <h2 className="text-lg font-black">Employee Cards</h2>
-          <p className="text-sm font-semibold text-black/45">One card per employee active on today&apos;s jobs.</p>
+          <h2 className="text-lg font-bold">Employee Cards</h2>
+          <p className="text-sm font-semibold text-content/65">One card per employee active on today&apos;s jobs.</p>
         </div>
-        <span className="rounded-full bg-sand px-3 py-1 text-xs font-black text-black/45">{employeeReviews.length} working</span>
+        <span className="rounded-full bg-sand px-3 py-1 text-xs font-bold text-content/65">{employeeReviews.length} working</span>
       </div>
       <div className="grid gap-3">
         {employeeReviews.length ? employeeReviews.map((employee) => <EmployeeCard key={employee.name} employee={employee} />) : <Empty text="No employees are assigned to or logging time on today&apos;s work." />}
@@ -83,12 +83,12 @@ export function CommandCenterView({ jobs }: { jobs: Job[] }) {
     <section className="card overflow-hidden">
       <div className="flex items-center justify-between gap-3 bg-sand p-4">
         <div>
-          <h2 className="text-lg font-black">Today&apos;s Action Items</h2>
-          <p className="text-sm font-semibold text-black/45">Showing up to 10 problems from today&apos;s active work.</p>
+          <h2 className="text-lg font-bold">Today&apos;s Action Items</h2>
+          <p className="text-sm font-semibold text-content/65">Showing up to 10 problems from today&apos;s active work.</p>
         </div>
-        <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-black/45">{issues.length}</span>
+        <span className="rounded-full bg-surface px-3 py-1 text-xs font-bold text-content/65">{issues.length}</span>
       </div>
-      <div className="divide-y divide-black/5">
+      <div className="divide-y divide-content/5">
         {issues.length ? issues.map((issue) => <IssueRow key={issue.id} issue={issue} />) : <Empty text="No actionable problems are open for today." />}
       </div>
     </section>
@@ -101,8 +101,8 @@ function EmployeeCard({ employee }: { employee: EmployeeReview }) {
   return <Link href={href} className="card block p-4 transition active:scale-[.99]">
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0">
-        <p className="truncate text-xl font-black">{employee.name}</p>
-        <p className="mt-1 text-sm font-bold text-black/45">{employee.jobs.length} Job{employee.jobs.length === 1 ? "" : "s"}</p>
+        <p className="truncate text-xl font-bold">{employee.name}</p>
+        <p className="mt-1 text-sm font-bold text-content/65">{employee.jobs.length} Job{employee.jobs.length === 1 ? "" : "s"}</p>
       </div>
       {employee.activeJob && <div className="flex flex-wrap justify-end gap-2"><StatusBadge status={employee.activeJob.status} />{hasActiveCorrections(employee.activeJob) && <NeedsCorrectionBadge />}</div>}
     </div>
@@ -116,25 +116,25 @@ function EmployeeCard({ employee }: { employee: EmployeeReview }) {
       <CardMetric label="Open Jobs" value={employee.openJobs} />
       <CardMetric label="Missing Closeout" value={employee.missingCloseout} />
     </div>
-    {employee.activeJob && <p className="mt-3 truncate text-xs font-black uppercase tracking-wide text-forest">{employee.activeJob.jobId} · {employee.activeJob.customerName}</p>}
+    {employee.activeJob && <p className="mt-3 truncate text-xs font-bold uppercase tracking-wide text-accent">{employee.activeJob.jobId} · {employee.activeJob.customerName}</p>}
   </Link>;
 }
 
 function IssueRow({ issue }: { issue: DailyIssue }) {
-  return <div className="p-4 hover:bg-black/[.02]">
+  return <div className="p-4 hover:bg-content/[.02]">
     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
       <Link href={issue.href} className="flex min-w-0 flex-1 items-start gap-3">
         <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-xl bg-orange-100 text-orange-900"><ExclamationTriangleIcon className="size-5" /></span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-xs font-black uppercase tracking-wide text-forest">{issue.employee} · {issue.job.jobId}</p>
-          <h3 className="mt-1 font-black">{issue.title}</h3>
-          <p className="mt-1 text-sm font-semibold text-black/50">{issue.detail}</p>
+          <p className="truncate text-xs font-bold uppercase tracking-wide text-accent">{issue.employee} · {issue.job.jobId}</p>
+          <h3 className="mt-1 font-bold">{issue.title}</h3>
+          <p className="mt-1 text-sm font-semibold text-content/65">{issue.detail}</p>
         </div>
       </Link>
       <div className="flex shrink-0 items-center gap-2">
         <StatusBadge status={issue.job.status} />
         {hasActiveCorrections(issue.job) && <NeedsCorrectionBadge />}
-        <Link href={`/jobs/${issue.job.jobId}`} className="rounded-xl bg-forest px-3 py-2 text-sm font-black text-white">Open job</Link>
+        <Link href={`/jobs/${issue.job.jobId}`} className="rounded-xl bg-forest px-3 py-2 text-sm font-bold text-white">Open job</Link>
       </div>
     </div>
   </div>;
@@ -142,20 +142,20 @@ function IssueRow({ issue }: { issue: DailyIssue }) {
 
 function SummaryCard({ label, value }: { label: string; value: string | number }) {
   return <div className="rounded-2xl bg-white/10 p-3">
-    <p className="text-2xl font-black">{value}</p>
-    <p className="mt-1 text-xs font-bold text-white/55">{label}</p>
+    <p className="text-2xl font-bold">{value}</p>
+    <p className="mt-1 text-xs font-bold text-white/65">{label}</p>
   </div>;
 }
 
 function CardMetric({ label, value }: { label: string; value: string | number }) {
   return <div className="rounded-2xl bg-sand p-3">
-    <p className="text-lg font-black">{value || "—"}</p>
-    <p className="mt-0.5 text-[11px] font-black uppercase tracking-wide text-black/40">{label}</p>
+    <p className="text-lg font-bold">{value || "—"}</p>
+    <p className="mt-0.5 text-[11px] font-bold uppercase tracking-wide text-content/65">{label}</p>
   </div>;
 }
 
 function Empty({ text }: { text: string }) {
-  return <p className="p-5 text-center text-sm font-semibold text-black/35">{text}</p>;
+  return <p className="p-5 text-center text-sm font-semibold text-content/65">{text}</p>;
 }
 
 function NeedsCorrectionBadge() {

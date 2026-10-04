@@ -71,36 +71,36 @@ export function JobsView({ title, description, preset = {} }: { title: string; d
   }
 
   return <>
-    <div className="mb-6"><p className="eyebrow mb-2">Field operations</p><h1 className="text-3xl font-black tracking-tight sm:text-4xl">{title}</h1><p className="mt-2 max-w-2xl text-sm leading-relaxed text-black/50 sm:text-base">{description}</p></div>
+    <div className="mb-6"><p className="eyebrow mb-2">Field operations</p><h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{title}</h1><p className="mt-2 max-w-2xl text-sm leading-relaxed text-content/65 sm:text-base">{description}</p></div>
     <section className="card mb-5 overflow-hidden">
       <div className="flex items-center justify-between gap-3 bg-sand/80 p-4 sm:p-5">
         <div>
-          <h2 className="text-lg font-black">Ready to Schedule</h2>
-          <p className="text-sm font-semibold text-black/45">Active jobs with complete intake and no scheduled date.</p>
+          <h2 className="text-lg font-bold">Ready to Schedule</h2>
+          <p className="text-sm font-semibold text-content/65">Active jobs with complete intake and no scheduled date.</p>
         </div>
-        <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-forest">{readyToSchedule.length}</span>
+        <span className="rounded-full bg-surface px-3 py-1 text-xs font-bold text-accent">{readyToSchedule.length}</span>
       </div>
-      <div className="divide-y divide-black/5">
+      <div className="divide-y divide-content/5">
         {readyToSchedule.length ? readyToSchedule.map((job) => <div key={job.jobId} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
-            <p className="truncate font-black">{job.customerName?.trim() || "Customer not recorded"} <span className="text-black/40">— {job.jobId}</span></p>
-            <p className="mt-1 text-sm font-semibold text-black/50">{job.jobType?.trim() || "Work type not recorded"} · {job.city?.trim() || "City not recorded"}</p>
-            <p className="mt-1 truncate text-xs font-semibold text-black/40">{job.address?.trim() || "Address not recorded"}{job.factoryWorkOrderNumber?.trim() ? ` · Work order ${job.factoryWorkOrderNumber}` : ""}</p>
+            <p className="truncate font-bold">{job.customerName?.trim() || "Customer not recorded"} <span className="text-content/65">— {job.jobId}</span></p>
+            <p className="mt-1 text-sm font-semibold text-content/65">{job.jobType?.trim() || "Work type not recorded"} · {job.city?.trim() || "City not recorded"}</p>
+            <p className="mt-1 truncate text-xs font-semibold text-content/65">{job.address?.trim() || "Address not recorded"}{job.factoryWorkOrderNumber?.trim() ? ` · Work order ${job.factoryWorkOrderNumber}` : ""}</p>
           </div>
           <div className="flex shrink-0 gap-2">
-            <Link href={`/jobs/${job.jobId}`} className="btn-secondary min-h-11 !px-3 !py-2 text-sm !font-black text-forest">Open job</Link>
-            <Link href={`/jobs/${job.jobId}/edit`} className="btn-primary min-h-11 !px-3 !py-2 text-sm !font-black">Schedule / edit</Link>
+            <Link href={`/jobs/${job.jobId}`} className="btn-secondary min-h-11 !px-3 !py-2 text-sm !font-bold text-accent">Open job</Link>
+            <Link href={`/jobs/${job.jobId}/edit`} className="btn-primary min-h-11 !px-3 !py-2 text-sm !font-bold">Schedule / edit</Link>
           </div>
-        </div>) : <div className="p-5 text-center text-sm font-semibold text-black/45">No active jobs are ready to schedule.</div>}
+        </div>) : <div className="p-5 text-center text-sm font-semibold text-content/65">No active jobs are ready to schedule.</div>}
       </div>
     </section>
     <section className="card mb-5 overflow-hidden">
       <div className="bg-ink p-4 text-white">
-        <p className="text-xs font-black uppercase tracking-widest text-lime">Job command filters</p>
-        <h2 className="mt-1 text-2xl font-black">Find the job that needs you next</h2>
-        <p className="mt-1 text-sm text-white/55">One-tap manager filters for overdue work, unscheduled jobs, parts, follow-ups, billing, and high priority work.</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-lime">Job command filters</p>
+        <h2 className="mt-1 text-2xl font-bold">Find the job that needs you next</h2>
+        <p className="mt-1 text-sm text-white/65">One-tap manager filters for overdue work, unscheduled jobs, parts, follow-ups, billing, and high priority work.</p>
       </div>
-      <div className="flex gap-2 overflow-x-auto bg-white/70 p-3" role="tablist" aria-label="Job command filters">
+      <div className="flex gap-2 overflow-x-auto bg-surface/70 p-3" role="tablist" aria-label="Job command filters">
         <QuickFilterTab label="Overdue" value="overdue" count={counts.overdue} active={quickFilter === "overdue"} onClick={setQuickFilter} icon={<ExclamationTriangleIcon />} />
         <QuickFilterTab label="Unscheduled" value="unscheduled" count={counts.unscheduled} active={quickFilter === "unscheduled"} onClick={setQuickFilter} icon={<CalendarDaysIcon />} />
         <QuickFilterTab label="Parts" value="parts" count={counts.parts} active={quickFilter === "parts"} onClick={setQuickFilter} icon={<WrenchScrewdriverIcon />} />
@@ -112,27 +112,27 @@ export function JobsView({ title, description, preset = {} }: { title: string; d
     <section className="card mb-5 overflow-hidden">
       <div className="flex items-center justify-between gap-3 bg-orange-50 p-4">
         <div>
-          <h2 className="text-lg font-black">Intake Needs Attention</h2>
-          <p className="text-sm font-semibold text-orange-900/65">Active jobs missing core information before scheduling and dispatch.</p>
+          <h2 className="text-lg font-bold">Intake Needs Attention</h2>
+          <p className="text-sm font-semibold text-orange-900">Active jobs missing core information before scheduling and dispatch.</p>
         </div>
-        <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-orange-900">{intakeNeedsAttention.length}</span>
+        <span className="rounded-full bg-surface px-3 py-1 text-xs font-bold text-orange-900">{intakeNeedsAttention.length}</span>
       </div>
-      <div className="divide-y divide-black/5">
+      <div className="divide-y divide-content/5">
         {intakeNeedsAttention.length ? intakeNeedsAttention.map(({ job, missing }) => <div key={job.jobId} className="p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
-              <p className="truncate font-black">{job.customerName?.trim() || "Customer not recorded"} <span className="text-black/40">— {job.jobId}</span></p>
-              <p className="mt-1 text-sm font-semibold text-black/50">{job.jobType?.trim() || "Work type not recorded"}</p>
-              <p className="mt-2 text-sm font-black text-orange-900">{missing.length} missing</p>
-              <p className="mt-1 text-sm font-semibold text-black/55">{missing.map((check) => check.label).join(" · ")}</p>
+              <p className="truncate font-bold">{job.customerName?.trim() || "Customer not recorded"} <span className="text-content/65">— {job.jobId}</span></p>
+              <p className="mt-1 text-sm font-semibold text-content/65">{job.jobType?.trim() || "Work type not recorded"}</p>
+              <p className="mt-2 text-sm font-bold text-orange-900">{missing.length} missing</p>
+              <p className="mt-1 text-sm font-semibold text-content/65">{missing.map((check) => check.label).join(" · ")}</p>
             </div>
-            <Link href={`/jobs/${job.jobId}/edit`} className="btn-primary min-h-11 shrink-0 !px-4 !py-2 text-sm !font-black">Edit job</Link>
+            <Link href={`/jobs/${job.jobId}/edit`} className="btn-primary min-h-11 shrink-0 !px-4 !py-2 text-sm !font-bold">Edit job</Link>
           </div>
-        </div>) : <div className="p-5 text-center text-sm font-semibold text-black/45">All active jobs have core intake information.</div>}
+        </div>) : <div className="p-5 text-center text-sm font-semibold text-content/65">All active jobs have core intake information.</div>}
       </div>
     </section>
     <section className="card mb-5 p-3 sm:p-4">
-      <div className="relative mb-3"><MagnifyingGlassIcon className="absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-black/35" /><input value={search} onChange={(e) => setSearch(e.target.value)} className="field !pl-11" placeholder="Search customer, job ID, city..." /></div>
+      <div className="relative mb-3"><MagnifyingGlassIcon className="absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-content/65" /><input value={search} onChange={(e) => setSearch(e.target.value)} className="field !pl-11" placeholder="Search customer, job ID, city..." /></div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
         <Filter value={status} onChange={setStatus} label="All statuses" options={[...statuses]} />
         <Filter value={source} onChange={setSource} label="All sources" options={[...sources]} />
@@ -150,8 +150,8 @@ export function JobsView({ title, description, preset = {} }: { title: string; d
         {sortMode !== "dueDate" && <ActiveChip label={`Sorted by ${sortMode}`} onClear={() => setSortMode("dueDate")} />}
       </div>}
     </section>
-    <div className="mb-3 flex items-center justify-between"><p className="text-sm font-bold text-black/45">{loading ? "Loading jobs…" : `${filtered.length} ${filtered.length === 1 ? "job" : "jobs"}`}</p><button type="button" onClick={clearFilters} className="text-sm font-black text-forest">Clear</button></div>
-    {!loading && filtered.length === 0 ? <div className="card py-16 text-center"><p className="font-extrabold">No jobs match these filters</p><button onClick={clearFilters} className="mt-2 text-sm font-bold text-forest">Clear filters</button></div> : <div className="card divide-y divide-black/5 overflow-hidden">{filtered.map((job) => <ExpandableJobRow key={job.jobId} job={job} />)}</div>}
+    <div className="mb-3 flex items-center justify-between"><p className="text-sm font-bold text-content/65">{loading ? "Loading jobs…" : `${filtered.length} ${filtered.length === 1 ? "job" : "jobs"}`}</p><button type="button" onClick={clearFilters} className="text-sm font-bold text-accent">Clear</button></div>
+    {!loading && filtered.length === 0 ? <div className="card py-16 text-center"><p className="font-extrabold">No jobs match these filters</p><button onClick={clearFilters} className="mt-2 text-sm font-bold text-accent">Clear filters</button></div> : <div className="card divide-y divide-content/5 overflow-hidden">{filtered.map((job) => <ExpandableJobRow key={job.jobId} job={job} />)}</div>}
   </>;
 }
 
@@ -159,19 +159,19 @@ function ExpandableJobRow({ job }: { job: Job }) {
   const dueDate = job.dueDate ? new Date(`${job.dueDate}T12:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Not scheduled";
   const primaryAction = job.status === "In Progress" ? "Continue job" : "Open job";
 
-  return <details className="group bg-white open:bg-sand/35">
+  return <details className="group bg-surface open:bg-sand/35">
     <summary className="flex min-h-20 cursor-pointer list-none items-center gap-3 p-3 transition hover:bg-sand/40 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-forest/10 sm:p-4 [&::-webkit-details-marker]:hidden">
       <div className="min-w-0 flex-1">
         <div className="flex min-w-0 items-center gap-2">
-          <p className="truncate text-sm font-black sm:text-base">{job.customerName?.trim() || "Customer not recorded"}</p>
-          <span className="shrink-0 text-xs font-black text-black/35">{job.jobId}</span>
+          <p className="truncate text-sm font-bold sm:text-base">{job.customerName?.trim() || "Customer not recorded"}</p>
+          <span className="shrink-0 text-xs font-bold text-content/65">{job.jobId}</span>
         </div>
-        <p className="mt-1 truncate text-xs font-semibold text-black/45">{job.city?.trim() || "City not recorded"} · {dueDate}</p>
+        <p className="mt-1 truncate text-xs font-semibold text-content/65">{job.city?.trim() || "City not recorded"} · {dueDate}</p>
       </div>
       <StatusBadge status={job.status} />
-      <ChevronDownIcon className="size-5 shrink-0 text-black/35 transition-transform group-open:rotate-180" aria-hidden="true" />
+      <ChevronDownIcon className="size-5 shrink-0 text-content/65 transition-transform group-open:rotate-180" aria-hidden="true" />
     </summary>
-    <div className="border-t border-black/5 px-4 pb-4 pt-3 sm:px-5 sm:pb-5">
+    <div className="border-t border-content/5 px-4 pb-4 pt-3 sm:px-5 sm:pb-5">
       <div className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
         <JobDetail label="Work type" value={job.jobType || "Not recorded"} />
         <JobDetail label="Address" value={[job.address, job.city].filter(Boolean).join(", ") || "Not recorded"} />
@@ -179,17 +179,17 @@ function ExpandableJobRow({ job }: { job: Job }) {
         <JobDetail label="Source" value={job.source || "Not recorded"} />
         <JobDetail label="Work order" value={job.factoryWorkOrderNumber || "Not recorded"} />
         <div>
-          <p className="text-xs font-black uppercase tracking-wide text-black/35">Priority</p>
+          <p className="text-xs font-bold uppercase tracking-wide text-content/65">Priority</p>
           <div className="mt-1"><PriorityBadge priority={job.priority} /></div>
         </div>
       </div>
-      {job.scopeNotes?.trim() && <div className="mt-4 rounded-xl bg-white p-3 ring-1 ring-black/5">
-        <p className="text-xs font-black uppercase tracking-wide text-black/35">Scope</p>
-        <p className="mt-1 line-clamp-3 text-sm font-semibold leading-relaxed text-black/60">{job.scopeNotes}</p>
+      {job.scopeNotes?.trim() && <div className="mt-4 rounded-xl bg-surface p-3 ring-1 ring-black/5">
+        <p className="text-xs font-bold uppercase tracking-wide text-content/65">Scope</p>
+        <p className="mt-1 line-clamp-3 text-sm font-semibold leading-relaxed text-content/65">{job.scopeNotes}</p>
       </div>}
       <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
-        <Link href={`/jobs/${job.jobId}/edit`} className="btn-secondary min-h-11 justify-center !px-4 !py-2 text-sm !font-black text-forest">Edit / schedule</Link>
-        <Link href={`/jobs/${job.jobId}`} className="btn-primary min-h-11 justify-center !px-4 !py-2 text-sm !font-black">{primaryAction}</Link>
+        <Link href={`/jobs/${job.jobId}/edit`} className="btn-secondary min-h-11 justify-center !px-4 !py-2 text-sm !font-bold text-accent">Edit / schedule</Link>
+        <Link href={`/jobs/${job.jobId}`} className="btn-primary min-h-11 justify-center !px-4 !py-2 text-sm !font-bold">{primaryAction}</Link>
       </div>
     </div>
   </details>;
@@ -197,19 +197,19 @@ function ExpandableJobRow({ job }: { job: Job }) {
 
 function JobDetail({ label, value }: { label: string; value: string }) {
   return <div className="min-w-0">
-    <p className="text-xs font-black uppercase tracking-wide text-black/35">{label}</p>
-    <p className="mt-1 truncate font-bold text-black/65">{value}</p>
+    <p className="text-xs font-bold uppercase tracking-wide text-content/65">{label}</p>
+    <p className="mt-1 truncate font-bold text-content/65">{value}</p>
   </div>;
 }
 
 function QuickFilterTab({ label, value, count, active, onClick, icon }: { label: string; value: QuickFilter; count: number; active: boolean; onClick: (value: QuickFilter) => void; icon: React.ReactNode }) {
-  return <button type="button" role="tab" aria-selected={active} onClick={() => onClick(active ? "" : value)} className={`inline-flex min-h-12 shrink-0 items-center gap-2 rounded-xl border px-3 text-sm font-black transition active:scale-[.98] ${active ? "border-forest bg-forest text-white shadow-forest/15" : "border-black/10 bg-sand/70 text-ink hover:border-forest/20 hover:bg-white"}`}>
-    <span className={`grid size-7 place-items-center rounded-lg ${active ? "bg-white/15" : "bg-white text-forest"} [&>svg]:size-4`}>{icon}</span><span>{label}</span><span className={`rounded-full px-2 py-0.5 text-xs ${active ? "bg-white/15" : "bg-black/5 text-black/50"}`}>{count}</span>
+  return <button type="button" role="tab" aria-selected={active} onClick={() => onClick(active ? "" : value)} className={`inline-flex min-h-12 shrink-0 items-center gap-2 rounded-xl border px-3 text-sm font-bold transition active:scale-[.98] ${active ? "border-forest bg-forest text-white shadow-forest/15" : "border-content/10 bg-sand/70 text-content hover:border-forest/20 hover:bg-surface"}`}>
+    <span className={`grid size-7 place-items-center rounded-lg ${active ? "bg-white/15" : "bg-surface text-accent"} [&>svg]:size-4`}>{icon}</span><span>{label}</span><span className={`rounded-full px-2 py-0.5 text-xs ${active ? "bg-white/15" : "bg-content/5 text-content/65"}`}>{count}</span>
   </button>;
 }
 
 function ActiveChip({ label, onClear }: { label: string; onClear: () => void }) {
-  return <button type="button" onClick={onClear} className="rounded-full border border-forest/10 bg-forest/10 px-3 py-1.5 text-xs font-black text-forest transition hover:bg-forest/15">{label} ×</button>;
+  return <button type="button" onClick={onClear} className="rounded-full border border-forest/10 bg-forest/10 px-3 py-1.5 text-xs font-bold text-accent transition hover:bg-forest/15">{label} ×</button>;
 }
 
 function Filter({ value, onChange, label, options, optionLabels = {} }: { value: string; onChange: (value: string) => void; label: string; options: string[]; optionLabels?: Record<string, string> }) {

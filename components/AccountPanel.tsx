@@ -37,16 +37,16 @@ export function AccountPanel() {
     <div className="flex items-start gap-3">
       <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-lime text-ink"><UserCircleIcon className="size-7" /></span>
       <div>
-        <p className="text-sm font-extrabold uppercase tracking-widest text-forest">Account</p>
-        <h1 className="text-3xl font-black">My login</h1>
-        <p className="mt-1 text-sm text-black/50">Manage your Company Command access from your phone.</p>
+        <p className="text-sm font-extrabold uppercase tracking-widest text-accent">Account</p>
+        <h1 className="text-3xl font-bold">My login</h1>
+        <p className="mt-1 text-sm text-content/65">Manage your Company Command access from your phone.</p>
       </div>
     </div>
 
-    {message && <p className="rounded-xl border border-forest/20 bg-forest/5 p-3 text-sm font-bold text-forest">{message}</p>}
+    {message && <p className="rounded-xl border border-forest/20 bg-forest/5 p-3 text-sm font-bold text-accent">{message}</p>}
 
     <section className="card p-4 sm:p-6">
-      <h2 className="mb-3 text-lg font-black">Profile</h2>
+      <h2 className="mb-3 text-lg font-bold">Profile</h2>
       <div className="grid gap-3 sm:grid-cols-2">
         <Info label="Email" value={user?.email || "Not loaded"} />
         <Info label="Role" value={user?.role || "Employee"} />
@@ -58,8 +58,8 @@ export function AccountPanel() {
       <div className="mb-5 flex items-start gap-3">
         <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-ink text-lime"><KeyIcon className="size-5" /></span>
         <div>
-          <h2 className="text-lg font-black">Change password</h2>
-          <p className="text-sm text-black/45">Use at least 8 characters. A longer phrase is better.</p>
+          <h2 className="text-lg font-bold">Change password</h2>
+          <p className="text-sm text-content/65">Use at least 8 characters. A longer phrase is better.</p>
         </div>
       </div>
       <form onSubmit={changePassword} className="grid gap-3">
@@ -73,7 +73,7 @@ export function AccountPanel() {
 
 function Info({ label, value }: { label: string; value: string }) {
   return <div className="rounded-xl bg-sand p-3">
-    <p className="text-xs font-black uppercase tracking-wide text-black/35">{label}</p>
-    <p className="mt-1 font-black">{value}</p>
+    <p className="text-xs font-bold uppercase tracking-wide text-content/65">{label}</p>
+    <p className="mt-1 font-bold">{value}</p>
   </div>;
 }

@@ -5,12 +5,15 @@ export default {
   theme: {
     extend: {
       colors: {
-        ink: "#101617",
-        forest: "#167a5b",
-        lime: "#f6c85f",
-        sand: "#f2f1ed",
+        ink: "#142033",
+        forest: "#2563eb",
+        lime: "#c8dbff",
+        sand: "rgb(var(--canvas) / <alpha-value>)",
+        surface: "rgb(var(--surface) / <alpha-value>)",
+        content: "rgb(var(--content) / <alpha-value>)",
+        accent: "rgb(var(--accent) / <alpha-value>)",
       },
-      boxShadow: { card: "0 1px 2px rgba(23,33,28,.06), 0 8px 24px rgba(23,33,28,.05)" },
+      boxShadow: { card: "0 1px 2px rgba(10,20,35,.04), 0 8px 24px rgba(10,20,35,.04)" },
     },
   },
   plugins: [],

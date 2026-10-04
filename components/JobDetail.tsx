@@ -160,10 +160,10 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
   return <>
     <div className="mb-5 flex items-start justify-between gap-3">
       <div>
-        <p className="mb-1 text-sm font-extrabold uppercase tracking-widest text-forest">{job.jobId} · {job.source}</p>
-        <h1 className="text-3xl font-black tracking-tight">{job.customerName}</h1>
+        <p className="mb-1 text-sm font-extrabold uppercase tracking-widest text-accent">{job.jobId} · {job.source}</p>
+        <h1 className="text-3xl font-bold tracking-tight">{job.customerName}</h1>
         <div className="mt-2 flex flex-wrap items-center gap-2"><StatusBadge status={job.status} />{hasActiveCorrections(job) && <NeedsCorrectionBadge />}<PriorityBadge priority={job.priority} /></div>
-        <div className="mt-3 flex flex-wrap gap-2 text-xs font-black text-black/45">
+        <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold text-content/65">
           <span className="rounded-full bg-sand px-3 py-1">{formatJobDate(job.dueDate)}</span>
           <span className="rounded-full bg-sand px-3 py-1">{job.assignedCrew || "Unassigned"}</span>
         </div>
@@ -193,7 +193,7 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
       <WorkspaceSection id="photos" title="Photos" summary={`${photoTotal(job)} saved`} openSection={openSection} setOpenSection={setOpenSection}>
         <PhotoUploadPanel job={job} saving={saving} onSave={saveJobPatch} />
         {canManageJob && <details id="companycam" className="scroll-mt-24">
-          <summary className="cursor-pointer rounded-xl border border-black/10 bg-white px-4 py-3 text-lg font-black">More actions / CompanyCam fallback</summary>
+          <summary className="cursor-pointer rounded-xl border border-content/10 bg-surface px-4 py-3 text-lg font-bold">More actions / CompanyCam fallback</summary>
           <div className="mt-4">
             <CompanyCamPanel job={job} status={companyCam} setStatus={setCompanyCam} onJobSynced={setJob} />
           </div>
@@ -210,7 +210,7 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
         <CommunicationHandoffPanel job={job} saving={saving} onSave={saveJobPatch} />
         <OperationsPanel job={job} setJob={setJob} mode="notes" />
         <OfflineDraftPanel job={job} saving={saving} onSave={saveJobPatch} />
-        {job.completionNotes && <section className="card p-4 sm:p-6"><h2 className="mb-2 text-lg font-black">Completion notes</h2><p className="text-black/65">{job.completionNotes}</p></section>}
+        {job.completionNotes && <section className="card p-4 sm:p-6"><h2 className="mb-2 text-lg font-bold">Completion notes</h2><p className="text-content/65">{job.completionNotes}</p></section>}
       </WorkspaceSection>
       <WorkspaceSection id="time" title="Time" summary={`${job.timeEntries?.length || 0} entries`} openSection={openSection} setOpenSection={setOpenSection}>
         <TimeLogPanel job={job} saving={saving} onSave={saveJobPatch} />
@@ -265,8 +265,8 @@ function ManagerOperationalSummary({ job }: { job: Job }) {
   ];
 
   return <section className="card mb-5 p-4 sm:p-5">
-    <div className="mb-4"><p className="text-xs font-black uppercase tracking-widest text-forest">Manager review</p><h2 className="mt-1 text-lg font-black">Operational summary</h2><p className="mt-1 text-sm text-black/50">Read-only job totals from existing field logs, helper tracking, and receipts.</p></div>
-    <div className="grid gap-2 sm:grid-cols-5">{metrics.map((metric) => <div key={metric.label} className="rounded-xl bg-sand p-3"><p className="text-xs font-bold uppercase tracking-wide text-black/45">{metric.label}</p><p className="mt-1 font-black text-ink">{metric.value}</p></div>)}</div>
+    <div className="mb-4"><p className="text-xs font-bold uppercase tracking-widest text-accent">Manager review</p><h2 className="mt-1 text-lg font-bold">Operational summary</h2><p className="mt-1 text-sm text-content/65">Read-only job totals from existing field logs, helper tracking, and receipts.</p></div>
+    <div className="grid gap-2 sm:grid-cols-5">{metrics.map((metric) => <div key={metric.label} className="rounded-xl bg-sand p-3"><p className="text-xs font-bold uppercase tracking-wide text-content/65">{metric.label}</p><p className="mt-1 font-bold text-content">{metric.value}</p></div>)}</div>
   </section>;
 }
 
@@ -318,8 +318,8 @@ function CorrectionSummary({ job }: { job: Job }) {
   if (!categories.length) return null;
   return <section className="card mb-5 p-4 sm:p-5">
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div><p className="text-xs font-black uppercase tracking-widest text-orange-700">Needs Correction</p><h2 className="mt-1 text-lg font-black">Correction summary</h2></div>
-      <div className="flex flex-wrap gap-2">{categories.map((category) => <a key={category} href={correctionHref(category)} className="rounded-full bg-orange-50 px-3 py-1 text-xs font-black text-orange-800">{category}</a>)}</div>
+      <div><p className="text-xs font-bold uppercase tracking-widest text-orange-700">Needs Correction</p><h2 className="mt-1 text-lg font-bold">Correction summary</h2></div>
+      <div className="flex flex-wrap gap-2">{categories.map((category) => <a key={category} href={correctionHref(category)} className="rounded-full bg-orange-50 px-3 py-1 text-xs font-bold text-orange-800">{category}</a>)}</div>
     </div>
   </section>;
 }
@@ -339,13 +339,13 @@ function ManagerCorrectionPanel({ job, saving, onSave }: { job: Job; saving: boo
   }
 
   return <section className="card p-4 sm:p-6">
-    <div className="mb-4 flex items-start justify-between gap-3"><div><h2 className="text-lg font-black">Manager corrections</h2><p className="mt-1 text-sm text-black/50">Mark the closeout sections that need the crew&apos;s attention.</p></div>{active.length > 0 && <NeedsCorrectionBadge />}</div>
+    <div className="mb-4 flex items-start justify-between gap-3"><div><h2 className="text-lg font-bold">Manager corrections</h2><p className="mt-1 text-sm text-content/65">Mark the closeout sections that need the crew&apos;s attention.</p></div>{active.length > 0 && <NeedsCorrectionBadge />}</div>
     <div className="grid gap-2 sm:grid-cols-4">{correctionCategories.map((category) => {
       const checked = selected.includes(category);
-      return <label key={category} className={`flex min-h-12 items-center gap-3 rounded-xl border p-3 text-sm font-bold ${checked ? "border-orange-200 bg-orange-50 text-orange-900" : "border-black/10 bg-white text-ink"}`}><input type="checkbox" checked={checked} onChange={(event) => setSelected((old) => event.target.checked ? [...old, category] : old.filter((item) => item !== category))} className="size-5 accent-forest" />{category}</label>;
+      return <label key={category} className={`flex min-h-12 items-center gap-3 rounded-xl border p-3 text-sm font-bold ${checked ? "border-orange-200 bg-orange-50 text-orange-900" : "border-content/10 bg-surface text-content"}`}><input type="checkbox" checked={checked} onChange={(event) => setSelected((old) => event.target.checked ? [...old, category] : old.filter((item) => item !== category))} className="size-5 accent-forest" />{category}</label>;
     })}</div>
-    {active.length > 0 && <div className="mt-3 grid gap-2 sm:grid-cols-4">{active.map((category) => <a key={category} href={correctionHref(category)} className={`rounded-xl p-3 text-sm font-bold ${correctionCategoryComplete(job, category) ? "bg-forest/5 text-forest" : "bg-orange-50 text-orange-800"}`}><span className="block text-[11px] font-black uppercase tracking-wide">{correctionCategoryComplete(job, category) ? "Ready" : "Open"}</span>{category}</a>)}</div>}
-    <button type="button" disabled={saving || !selected.length} onClick={markCorrection} className="mt-4 min-h-12 w-full rounded-xl bg-orange-100 px-4 py-3 font-black text-orange-900 disabled:opacity-50">{saving ? "Saving..." : "Mark Needs Correction"}</button>
+    {active.length > 0 && <div className="mt-3 grid gap-2 sm:grid-cols-4">{active.map((category) => <a key={category} href={correctionHref(category)} className={`rounded-xl p-3 text-sm font-bold ${correctionCategoryComplete(job, category) ? "bg-forest/5 text-accent" : "bg-orange-50 text-orange-800"}`}><span className="block text-[11px] font-bold uppercase tracking-wide">{correctionCategoryComplete(job, category) ? "Ready" : "Open"}</span>{category}</a>)}</div>}
+    <button type="button" disabled={saving || !selected.length} onClick={markCorrection} className="mt-4 min-h-12 w-full rounded-xl bg-orange-100 px-4 py-3 font-bold text-orange-900 disabled:opacity-50">{saving ? "Saving..." : "Mark Needs Correction"}</button>
   </section>;
 }
 
@@ -359,12 +359,12 @@ function correctionHref(category: CorrectionCategory) {
 function WorkspaceSection({ id, title, summary, openSection, setOpenSection, children }: { id: WorkspaceSectionId; title: string; summary: string; openSection: WorkspaceSectionId; setOpenSection: (section: WorkspaceSectionId) => void; children: React.ReactNode }) {
   const open = openSection === id;
   return <section id={`${id}-workspace`} className="scroll-mt-24">
-    <button type="button" onClick={() => setOpenSection(id)} className={`flex min-h-16 w-full items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left ${open ? "border-forest/20 bg-forest/5" : "border-black/10 bg-white"}`}>
+    <button type="button" onClick={() => setOpenSection(id)} className={`flex min-h-16 w-full items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left ${open ? "border-forest/20 bg-forest/5" : "border-content/10 bg-surface"}`}>
       <span>
-        <span className="block text-lg font-black">{title}</span>
-        <span className="mt-0.5 block text-xs font-bold text-black/45">{summary}</span>
+        <span className="block text-lg font-bold">{title}</span>
+        <span className="mt-0.5 block text-xs font-bold text-content/65">{summary}</span>
       </span>
-      <span className={`rounded-full px-3 py-1 text-xs font-black uppercase tracking-wide ${open ? "bg-forest text-white" : "bg-sand text-black/45"}`}>{open ? "Open" : "View"}</span>
+      <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide ${open ? "bg-forest text-white" : "bg-sand text-content/65"}`}>{open ? "Open" : "View"}</span>
     </button>
     {open && <div className="mt-3 space-y-5">{children}</div>}
   </section>;
@@ -375,16 +375,16 @@ function WorkSessionPanel({ job, saving, canStart, onStart }: { job: Job; saving
   const started = session.started?.createdAt;
   if (!started) {
     return <section className="card mb-5 p-4 sm:p-6">
-      {canStart ? <button type="button" disabled={saving} onClick={onStart} className="min-h-14 w-full rounded-xl bg-forest px-4 py-4 text-lg font-black text-white disabled:opacity-50">{saving ? "Saving..." : "START JOB"}</button> : <div className="rounded-xl bg-sand p-4 text-center font-black text-black/55">Not Started</div>}
+      {canStart ? <button type="button" disabled={saving} onClick={onStart} className="min-h-14 w-full rounded-xl bg-forest px-4 py-4 text-lg font-bold text-white disabled:opacity-50">{saving ? "Saving..." : "START JOB"}</button> : <div className="rounded-xl bg-sand p-4 text-center font-bold text-content/65">Not Started</div>}
     </section>;
   }
   return <section className="card mb-5 p-4 sm:p-6">
     <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
       <div>
-        <p className="text-xs font-black uppercase tracking-widest text-forest">Work Session</p>
-        <h2 className="mt-1 text-xl font-black">{session.active ? "CONTINUE JOB" : "Work Session Finished"}</h2>
+        <p className="text-xs font-bold uppercase tracking-widest text-accent">Work Session</p>
+        <h2 className="mt-1 text-xl font-bold">{session.active ? "CONTINUE JOB" : "Work Session Finished"}</h2>
       </div>
-      {canStart && (session.active ? <a href="#photos" className="inline-flex min-h-12 items-center justify-center rounded-xl bg-forest px-4 py-3 font-black text-white">CONTINUE JOB</a> : <button type="button" disabled={saving} onClick={onStart} className="min-h-12 rounded-xl bg-forest px-4 py-3 font-black text-white disabled:opacity-50">{saving ? "Saving..." : "CONTINUE JOB"}</button>)}
+      {canStart && (session.active ? <a href="#photos" className="inline-flex min-h-12 items-center justify-center rounded-xl bg-forest px-4 py-3 font-bold text-white">CONTINUE JOB</a> : <button type="button" disabled={saving} onClick={onStart} className="min-h-12 rounded-xl bg-forest px-4 py-3 font-bold text-white disabled:opacity-50">{saving ? "Saving..." : "CONTINUE JOB"}</button>)}
     </div>
     <div className="grid gap-3 sm:grid-cols-4">
       <MiniMetric label="Started" value={formatSessionDate(started)} icon={<ClockIcon />} />
@@ -400,8 +400,8 @@ function OverviewPanel({ job, companyCam }: { job: Job; companyCam: CompanyCamSt
   return <section className="card p-4 sm:p-6">
     <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
       <div>
-        <h2 className="text-lg font-black">Job information</h2>
-        <p className="text-sm font-semibold text-black/45">{job.source}{job.dealerName ? ` · ${job.dealerName}` : ""}{job.manufacturer ? ` · ${job.manufacturer}` : ""}{job.factoryWorkOrderNumber ? ` · WO ${job.factoryWorkOrderNumber}` : ""}</p>
+        <h2 className="text-lg font-bold">Job information</h2>
+        <p className="text-sm font-semibold text-content/65">{job.source}{job.dealerName ? ` · ${job.dealerName}` : ""}{job.manufacturer ? ` · ${job.manufacturer}` : ""}{job.factoryWorkOrderNumber ? ` · WO ${job.factoryWorkOrderNumber}` : ""}</p>
       </div>
       <div className="flex flex-wrap gap-2"><StatusBadge status={job.status} /><PriorityBadge priority={job.priority} /></div>
     </div>
@@ -418,8 +418,8 @@ function OverviewPanel({ job, companyCam }: { job: Job; companyCam: CompanyCamSt
       <Info icon={<CameraIcon />} label="CompanyCam">{companyCam.projectUrl ? "Linked" : companyCam.configured ? "Ready" : "Not connected"}</Info>
     </div>
     <div className="mt-4 grid gap-2 sm:grid-cols-2">
-      <a href={mapsUrl} target="_blank" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-forest px-4 py-3 font-black text-white"><MapPinIcon className="size-5" />Open Maps</a>
-      <a href={`tel:${job.phone}`} className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border-2 border-black/10 bg-white px-4 py-3 font-black ${job.phone ? "text-ink" : "pointer-events-none text-black/25"}`}><PhoneIcon className="size-5" />Call Customer</a>
+      <a href={mapsUrl} target="_blank" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-forest px-4 py-3 font-bold text-white"><MapPinIcon className="size-5" />Open Maps</a>
+      <a href={`tel:${job.phone}`} className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border-2 border-content/10 bg-surface px-4 py-3 font-bold ${job.phone ? "text-content" : "pointer-events-none text-content/65"}`}><PhoneIcon className="size-5" />Call Customer</a>
     </div>
   </section>;
 }
@@ -432,31 +432,31 @@ function IntakeCompletenessPanel({ job }: { job: Job }) {
   return <section className={`mb-4 rounded-2xl border p-4 ${intake.complete ? "border-forest/20 bg-forest/5" : "border-orange-200 bg-orange-50"}`}>
     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
       <div>
-        <p className={`text-xs font-black uppercase tracking-widest ${intake.complete ? "text-forest" : "text-orange-800"}`}>Office intake check</p>
-        <h2 className="mt-1 text-lg font-black">{intake.complete ? "Intake Complete" : "Intake Needs Information"}</h2>
-        <p className="mt-1 text-sm text-black/55">{missing.length ? `${missing.length} core item${missing.length === 1 ? "" : "s"} missing` : "Core customer and work details are recorded."}</p>
+        <p className={`text-xs font-bold uppercase tracking-widest ${intake.complete ? "text-accent" : "text-orange-800"}`}>Office intake check</p>
+        <h2 className="mt-1 text-lg font-bold">{intake.complete ? "Intake Complete" : "Intake Needs Information"}</h2>
+        <p className="mt-1 text-sm text-content/65">{missing.length ? `${missing.length} core item${missing.length === 1 ? "" : "s"} missing` : "Core customer and work details are recorded."}</p>
       </div>
-      <Link href={`/jobs/${job.jobId}/edit`} className="inline-flex min-h-11 items-center justify-center rounded-xl border border-black/10 bg-white px-4 py-2 text-sm font-black text-ink">Edit intake</Link>
+      <Link href={`/jobs/${job.jobId}/edit`} className="inline-flex min-h-11 items-center justify-center rounded-xl border border-content/10 bg-surface px-4 py-2 text-sm font-bold text-content">Edit intake</Link>
     </div>
-    {missing.length > 0 && <ul className="mt-3 grid gap-2 sm:grid-cols-2">{missing.map((check) => <li key={check.label} className="rounded-xl bg-white px-3 py-2 text-sm font-bold text-orange-950">{check.label}</li>)}</ul>}
-    <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold text-black/55">
-      <span className="rounded-full bg-white px-3 py-1">Scheduling: {scheduling.length ? scheduling.map((check) => check.label).join(", ") : "date and crew assigned"}</span>
-      <span className="rounded-full bg-white px-3 py-1">Optional details: {optionalRecorded} of {intake.optional.length} recorded</span>
+    {missing.length > 0 && <ul className="mt-3 grid gap-2 sm:grid-cols-2">{missing.map((check) => <li key={check.label} className="rounded-xl bg-surface px-3 py-2 text-sm font-bold text-orange-950">{check.label}</li>)}</ul>}
+    <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold text-content/65">
+      <span className="rounded-full bg-surface px-3 py-1">Scheduling: {scheduling.length ? scheduling.map((check) => check.label).join(", ") : "date and crew assigned"}</span>
+      <span className="rounded-full bg-surface px-3 py-1">Optional details: {optionalRecorded} of {intake.optional.length} recorded</span>
     </div>
   </section>;
 }
 
 function ScopePanel({ job }: { job: Job }) {
-  return <section className="card p-4 sm:p-6"><h2 className="mb-4 text-lg font-black">Scope of work</h2><p className="whitespace-pre-wrap leading-relaxed text-black/65">{job.scopeNotes || "No scope notes added."}</p>{job.partsNeeded && <div className="mt-5 rounded-xl bg-orange-50 p-4"><p className="mb-1 text-xs font-black uppercase tracking-wide text-orange-700">Parts needed</p><p className="font-semibold text-orange-950">{job.partsNeeded}</p></div>}</section>;
+  return <section className="card p-4 sm:p-6"><h2 className="mb-4 text-lg font-bold">Scope of work</h2><p className="whitespace-pre-wrap leading-relaxed text-content/65">{job.scopeNotes || "No scope notes added."}</p>{job.partsNeeded && <div className="mt-5 rounded-xl bg-orange-50 p-4"><p className="mb-1 text-xs font-bold uppercase tracking-wide text-orange-700">Parts needed</p><p className="font-semibold text-orange-950">{job.partsNeeded}</p></div>}</section>;
 }
 
 function ChecklistPanel({ job, saving, complete, percent, onToggle }: { job: Job; saving: boolean; complete: number; percent: number; onToggle: (id: string) => void }) {
   const checklist = checklistProgress(job);
   return <section id="checklist-panel" className="card p-4 sm:p-6">
-    <div className="mb-4 flex items-start justify-between"><div><h2 className="text-lg font-black">Job checklist</h2><p className="text-sm text-black/45">Job completion: {percent}% · {complete} of {checklist.total} completed · {checklist.remaining} remaining</p></div>{saving && <span className="text-xs font-bold text-black/35">Saving…</span>}</div>
-    <div className="mb-5 h-2 overflow-hidden rounded-full bg-black/5"><div className="h-full rounded-full bg-forest transition-all" style={{ width: `${percent}%` }} /></div>
-    <div className="grid gap-2 sm:grid-cols-2">{checklist.items.map((item) => <button key={item.id} onClick={() => onToggle(item.id)} className={`flex min-h-12 w-full items-center gap-3 rounded-xl border p-3 text-left text-sm font-bold transition ${item.complete ? "border-forest/10 bg-forest/5 text-black/50" : "border-black/10 bg-white"}`}><span className={`grid size-6 shrink-0 place-items-center rounded-md border ${item.complete ? "border-forest bg-forest text-white" : "border-black/20"}`}>{item.complete && <CheckIcon className="size-4 stroke-[3]" />}</span><span className={item.complete ? "line-through" : ""}>{item.label}</span></button>)}</div>
-    <div className="mt-5 border-t border-black/5 pt-4 text-sm"><div className="flex justify-between"><span className="text-black/45">Invoice</span><span className="font-extrabold">{job.invoiceStatus}</span></div><p className="mt-3 text-xs text-black/40">Invoice Simple integration can be connected here later.</p></div>
+    <div className="mb-4 flex items-start justify-between"><div><h2 className="text-lg font-bold">Job checklist</h2><p className="text-sm text-content/65">Job completion: {percent}% · {complete} of {checklist.total} completed · {checklist.remaining} remaining</p></div>{saving && <span className="text-xs font-bold text-content/65">Saving…</span>}</div>
+    <div className="mb-5 h-2 overflow-hidden rounded-full bg-content/5"><div className="h-full rounded-full bg-forest transition-all" style={{ width: `${percent}%` }} /></div>
+    <div className="grid gap-2 sm:grid-cols-2">{checklist.items.map((item) => <button key={item.id} onClick={() => onToggle(item.id)} className={`flex min-h-12 w-full items-center gap-3 rounded-xl border p-3 text-left text-sm font-bold transition ${item.complete ? "border-forest/10 bg-forest/5 text-content/65" : "border-content/10 bg-surface"}`}><span className={`grid size-6 shrink-0 place-items-center rounded-md border ${item.complete ? "border-forest bg-forest text-white" : "border-content/20"}`}>{item.complete && <CheckIcon className="size-4 stroke-[3]" />}</span><span className={item.complete ? "line-through" : ""}>{item.label}</span></button>)}</div>
+    <div className="mt-5 border-t border-content/5 pt-4 text-sm"><div className="flex justify-between"><span className="text-content/65">Invoice</span><span className="font-extrabold">{job.invoiceStatus}</span></div><p className="mt-3 text-xs text-content/65">Invoice Simple integration can be connected here later.</p></div>
   </section>;
 }
 
@@ -478,11 +478,11 @@ function JobCommandHub({ job, companyCam }: { job: Job; companyCam: CompanyCamSt
     <div className="bg-ink p-4 text-white">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="text-xs font-black uppercase tracking-widest text-lime">Job command hub</p>
-          <h2 className="mt-1 text-2xl font-black">What needs attention?</h2>
-          <p className="mt-1 text-sm text-white/55">Phone-first snapshot for dispatch, paperwork, photos, calendar, and closeout.</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-lime">Job command hub</p>
+          <h2 className="mt-1 text-2xl font-bold">What needs attention?</h2>
+          <p className="mt-1 text-sm text-white/65">Phone-first snapshot for dispatch, paperwork, photos, calendar, and closeout.</p>
         </div>
-        <Link href="/ready-check" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-lime px-4 py-2 text-sm font-black text-ink">Ready Check</Link>
+        <Link href="/ready-check" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-lime px-4 py-2 text-sm font-bold text-ink">Ready Check</Link>
       </div>
     </div>
     <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -493,12 +493,12 @@ function JobCommandHub({ job, companyCam }: { job: Job; companyCam: CompanyCamSt
     </div>
     {topMissing.length > 0 && <div className="px-4 pb-4">
       <div className="rounded-2xl border border-orange-200 bg-orange-50 p-3">
-        <p className="mb-2 text-xs font-black uppercase tracking-wide text-orange-800">Before sending crew</p>
+        <p className="mb-2 text-xs font-bold uppercase tracking-wide text-orange-800">Before sending crew</p>
         <div className="grid gap-2 sm:grid-cols-3">
-          {topMissing.map((item) => <a key={item.label} href={missingHref(item.label, job.jobId)} className="rounded-xl bg-white p-3 text-sm font-bold text-orange-950">
-            <span className="block text-xs font-black uppercase tracking-wide text-orange-700">Fix</span>
+          {topMissing.map((item) => <a key={item.label} href={missingHref(item.label, job.jobId)} className="rounded-xl bg-surface p-3 text-sm font-bold text-orange-950">
+            <span className="block text-xs font-bold uppercase tracking-wide text-orange-700">Fix</span>
             {item.label}
-            <span className="mt-1 block text-xs font-semibold text-black/45">{item.detail}</span>
+            <span className="mt-1 block text-xs font-semibold text-content/65">{item.detail}</span>
           </a>)}
         </div>
       </div>
@@ -507,11 +507,11 @@ function JobCommandHub({ job, companyCam }: { job: Job; companyCam: CompanyCamSt
 }
 
 function CommandMetric({ label, value, detail, tone }: { label: string; value: string; detail: string; tone: "green" | "orange" | "blue" }) {
-  const toneClass = tone === "green" ? "bg-forest/5 text-forest" : tone === "orange" ? "bg-orange-50 text-orange-800" : "bg-blue-50 text-blue-800";
+  const toneClass = tone === "green" ? "bg-forest/5 text-accent" : tone === "orange" ? "bg-orange-50 text-orange-800" : "bg-blue-50 text-blue-800";
   return <div className={`rounded-2xl p-4 ${toneClass}`}>
-    <p className="text-xs font-black uppercase tracking-wide opacity-70">{label}</p>
-    <p className="mt-1 text-2xl font-black">{value}</p>
-    <p className="mt-1 text-xs font-bold text-black/45">{detail}</p>
+    <p className="text-xs font-bold uppercase tracking-wide opacity-70">{label}</p>
+    <p className="mt-1 text-2xl font-bold">{value}</p>
+    <p className="mt-1 text-xs font-bold text-content/65">{detail}</p>
   </div>;
 }
 
@@ -520,16 +520,16 @@ function NextActionStrip({ job, companyCam }: { job: Job; companyCam: CompanyCam
   return <section className="card mb-5 p-4 print:hidden">
     <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <p className="text-xs font-black uppercase tracking-widest text-forest">Next best actions</p>
-        <h2 className="text-xl font-black">Do these first</h2>
+        <p className="text-xs font-bold uppercase tracking-widest text-accent">Next best actions</p>
+        <h2 className="text-xl font-bold">Do these first</h2>
       </div>
-      <span className="rounded-full bg-sand px-3 py-1 text-xs font-black uppercase tracking-wide text-black/45">{job.status}</span>
+      <span className="rounded-full bg-sand px-3 py-1 text-xs font-bold uppercase tracking-wide text-content/65">{job.status}</span>
     </div>
     <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-      {actions.map((action, index) => <a key={action.label} href={action.href} className={`rounded-2xl border p-3 ${index === 0 ? "border-forest/20 bg-forest/5" : "border-black/10 bg-sand"}`}>
-        <p className={`text-[11px] font-black uppercase tracking-wide ${index === 0 ? "text-forest" : "text-black/35"}`}>{index === 0 ? "First" : `Then ${index + 1}`}</p>
-        <p className="mt-1 font-black">{action.label}</p>
-        <p className="mt-1 text-xs font-semibold text-black/50">{action.detail}</p>
+      {actions.map((action, index) => <a key={action.label} href={action.href} className={`rounded-2xl border p-3 ${index === 0 ? "border-forest/20 bg-forest/5" : "border-content/10 bg-sand"}`}>
+        <p className={`text-[11px] font-bold uppercase tracking-wide ${index === 0 ? "text-accent" : "text-content/65"}`}>{index === 0 ? "First" : `Then ${index + 1}`}</p>
+        <p className="mt-1 font-bold">{action.label}</p>
+        <p className="mt-1 text-xs font-semibold text-content/65">{action.detail}</p>
       </a>)}
     </div>
   </section>;
@@ -581,32 +581,32 @@ function JobWorkflowGuide({ job, canManageJob }: { job: Job; canManageJob: boole
   return <section className="card mb-5 overflow-hidden print:hidden">
     <div className="grid gap-4 p-4 lg:grid-cols-[1fr_.75fr]">
       <div className="rounded-2xl bg-ink p-4 text-white">
-        <p className="text-xs font-black uppercase tracking-widest text-lime">Next action</p>
-        <h2 className="mt-1 text-2xl font-black">{primaryAction.label}</h2>
+        <p className="text-xs font-bold uppercase tracking-widest text-lime">Next action</p>
+        <h2 className="mt-1 text-2xl font-bold">{primaryAction.label}</h2>
         {primaryAction.detail && <p className="mt-1 text-sm font-semibold text-white/60">{primaryAction.detail}</p>}
-        <a href={primaryAction.href} target={primaryAction.external ? "_blank" : undefined} className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-lime px-4 py-3 font-black text-ink sm:w-auto">
+        <a href={primaryAction.href} target={primaryAction.external ? "_blank" : undefined} className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-lime px-4 py-3 font-bold text-ink sm:w-auto">
           <span className="[&>svg]:size-5">{primaryAction.icon}</span>
           {primaryAction.label}
         </a>
       </div>
       <div>
-        <p className="mb-2 text-xs font-black uppercase tracking-widest text-forest">Quick actions</p>
+        <p className="mb-2 text-xs font-bold uppercase tracking-widest text-accent">Quick actions</p>
         <div className="grid grid-cols-2 gap-2">
           {quickActions.map((action) => <WorkflowAction key={action.label} action={action} />)}
         </div>
       </div>
     </div>
-    <div className="border-t border-black/5 px-4 py-3">
-      <p className="mb-2 text-xs font-black uppercase tracking-widest text-forest">Job progress</p>
+    <div className="border-t border-content/5 px-4 py-3">
+      <p className="mb-2 text-xs font-bold uppercase tracking-widest text-accent">Job progress</p>
       <div className="flex gap-2 overflow-x-auto pb-1">
-        {progressSteps.map((step) => <a key={step.label} href={step.href} className={`min-w-32 rounded-xl border px-3 py-2 text-sm ${step.state === "complete" ? "border-forest/15 bg-forest/5 text-forest" : step.state === "current" ? "border-ink bg-ink text-white" : step.state === "upcoming" ? "border-black/10 bg-sand text-black/45" : "border-black/10 bg-white text-black/55"}`}>
-          <span className="block text-[10px] font-black uppercase tracking-wide opacity-70">{step.state === "complete" ? "Done" : step.state === "current" ? "Now" : step.state === "upcoming" ? "Next" : "Check"}</span>
-          <span className="mt-0.5 block font-black">{step.label}</span>
+        {progressSteps.map((step) => <a key={step.label} href={step.href} className={`min-w-32 rounded-xl border px-3 py-2 text-sm ${step.state === "complete" ? "border-forest/15 bg-forest/5 text-accent" : step.state === "current" ? "border-ink bg-ink text-white" : step.state === "upcoming" ? "border-content/10 bg-sand text-content/65" : "border-content/10 bg-surface text-content/65"}`}>
+          <span className="block text-[10px] font-bold uppercase tracking-wide opacity-70">{step.state === "complete" ? "Done" : step.state === "current" ? "Now" : step.state === "upcoming" ? "Next" : "Check"}</span>
+          <span className="mt-0.5 block font-bold">{step.label}</span>
         </a>)}
       </div>
     </div>
-    <details className="border-t border-black/5 px-4 py-3">
-      <summary className="cursor-pointer text-sm font-black text-forest">More Actions</summary>
+    <details className="border-t border-content/5 px-4 py-3">
+      <summary className="cursor-pointer text-sm font-bold text-accent">More Actions</summary>
       <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
         {moreActions.map((action) => action.label === "Share Job"
           ? <QuickShareAction key={action.label} job={job} compact />
@@ -707,8 +707,8 @@ function mapsHref(job: Job) {
 }
 
 function WorkflowAction({ action }: { action: JobAction }) {
-  const className = `flex min-h-14 items-center justify-center gap-2 rounded-xl border px-3 py-2 text-center text-sm font-black ${action.disabled ? "pointer-events-none border-black/5 bg-black/5 text-black/25" : "border-black/10 bg-white text-ink active:scale-[.98]"}`;
-  return <a href={action.href} target={action.external ? "_blank" : undefined} className={className}><span className="text-forest [&>svg]:size-5">{action.icon}</span>{action.label}</a>;
+  const className = `flex min-h-14 items-center justify-center gap-2 rounded-xl border px-3 py-2 text-center text-sm font-bold ${action.disabled ? "pointer-events-none border-content/5 bg-content/5 text-content/65" : "border-content/10 bg-surface text-content active:scale-[.98]"}`;
+  return <a href={action.href} target={action.external ? "_blank" : undefined} className={className}><span className="text-accent [&>svg]:size-5">{action.icon}</span>{action.label}</a>;
 }
 
 function QuickShareAction({ job, compact = false }: { job: Job; compact?: boolean }) {
@@ -720,7 +720,7 @@ function QuickShareAction({ job, compact = false }: { job: Job; compact?: boolea
     }
     await navigator.clipboard.writeText(text).catch(() => undefined);
   }
-  return <button type="button" onClick={share} className={`flex items-center justify-center gap-2 rounded-xl border border-black/10 bg-white px-3 py-2 text-center font-black text-ink active:scale-[.98] ${compact ? "min-h-14 text-sm" : "min-h-20 flex-col text-xs"}`}><span className="text-forest [&>svg]:size-5"><ShareIcon /></span>Share Job</button>;
+  return <button type="button" onClick={share} className={`flex items-center justify-center gap-2 rounded-xl border border-content/10 bg-surface px-3 py-2 text-center font-bold text-content active:scale-[.98] ${compact ? "min-h-14 text-sm" : "min-h-20 flex-col text-xs"}`}><span className="text-accent [&>svg]:size-5"><ShareIcon /></span>Share Job</button>;
 }
 
 function FieldWorkspace({ job, companyCam }: { job: Job; companyCam: CompanyCamState }) {
@@ -785,10 +785,10 @@ function FieldWorkspace({ job, companyCam }: { job: Job; companyCam: CompanyCamS
   return <section className="mb-5 print:hidden">
     <div className="mb-3 flex items-end justify-between gap-3">
       <div>
-        <p className="text-xs font-black uppercase tracking-widest text-forest">Field workspace</p>
-        <h2 className="text-xl font-black">Grouped job tools</h2>
+        <p className="text-xs font-bold uppercase tracking-widest text-accent">Field workspace</p>
+        <h2 className="text-xl font-bold">Grouped job tools</h2>
       </div>
-      <Link href={`/jobs/${job.jobId}/packet`} className="text-sm font-black text-forest">Open packet</Link>
+      <Link href={`/jobs/${job.jobId}/packet`} className="text-sm font-bold text-accent">Open packet</Link>
     </div>
     <div className="grid gap-3 lg:grid-cols-5">
       {groups.map((group) => <WorkspaceGroup key={group.title} title={group.title} detail={group.detail} icon={group.icon} actions={group.actions} />)}
@@ -801,12 +801,12 @@ function WorkspaceGroup({ title, detail, icon, actions }: { title: string; detai
     <div className="mb-3 flex items-start gap-2">
       <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-lime text-ink [&>svg]:size-5">{icon}</span>
       <div className="min-w-0">
-        <h3 className="font-black">{title}</h3>
-        <p className="mt-0.5 text-xs font-semibold text-black/45">{detail}</p>
+        <h3 className="font-bold">{title}</h3>
+        <p className="mt-0.5 text-xs font-semibold text-content/65">{detail}</p>
       </div>
     </div>
     <div className="grid gap-2">
-      {actions.map((action) => <a key={action.label} href={action.href} target={action.external ? "_blank" : undefined} className={`min-h-11 rounded-xl px-3 py-2 text-center text-sm font-black ${action.disabled ? "pointer-events-none bg-black/5 text-black/25" : action.primary ? "bg-forest text-white" : "border border-black/10 bg-white text-ink"}`}>{action.label}</a>)}
+      {actions.map((action) => <a key={action.label} href={action.href} target={action.external ? "_blank" : undefined} className={`min-h-11 rounded-xl px-3 py-2 text-center text-sm font-bold ${action.disabled ? "pointer-events-none bg-content/5 text-content/65" : action.primary ? "bg-forest text-white" : "border border-content/10 bg-surface text-content"}`}>{action.label}</a>)}
     </div>
   </div>;
 }
@@ -892,33 +892,33 @@ function CommunicationHandoffPanel({ job, saving, onSave }: { job: Job; saving: 
     <div className="mb-4 flex items-start gap-3">
       <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-lime text-ink"><ChatBubbleLeftRightIcon className="size-5" /></span>
       <div>
-        <p className="text-xs font-black uppercase tracking-widest text-forest">Communication handoff</p>
-        <h2 className="text-lg font-black">Ready-to-send job updates</h2>
-        <p className="text-sm text-black/50">Copy messages, open a customer text, and log who was notified. Nothing sends automatically.</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-accent">Communication handoff</p>
+        <h2 className="text-lg font-bold">Ready-to-send job updates</h2>
+        <p className="text-sm text-content/65">Copy messages, open a customer text, and log who was notified. Nothing sends automatically.</p>
       </div>
     </div>
     <div className="grid gap-3 lg:grid-cols-3">
-      {templates.map((template) => <div key={template.key} className="rounded-2xl border border-black/10 bg-white p-3">
+      {templates.map((template) => <div key={template.key} className="rounded-2xl border border-content/10 bg-surface p-3">
         <div className="mb-3">
-          <h3 className="font-black">{template.label}</h3>
-          <p className="mt-1 text-xs font-semibold text-black/45">{template.detail}</p>
+          <h3 className="font-bold">{template.label}</h3>
+          <p className="mt-1 text-xs font-semibold text-content/65">{template.detail}</p>
         </div>
-        <p className="min-h-28 whitespace-pre-wrap rounded-xl bg-sand p-3 text-sm font-semibold leading-relaxed text-black/65">{template.text}</p>
+        <p className="min-h-28 whitespace-pre-wrap rounded-xl bg-sand p-3 text-sm font-semibold leading-relaxed text-content/65">{template.text}</p>
         <div className="mt-3 grid grid-cols-2 gap-2">
-          <button type="button" onClick={() => copyTemplate(template.key, template.text)} className="min-h-11 rounded-xl bg-forest px-3 py-2 text-sm font-black text-white">{copiedKey === template.key ? "Copied" : "Copy"}</button>
+          <button type="button" onClick={() => copyTemplate(template.key, template.text)} className="min-h-11 rounded-xl bg-forest px-3 py-2 text-sm font-bold text-white">{copiedKey === template.key ? "Copied" : "Copy"}</button>
           {template.href
-            ? <a href={template.href} className="min-h-11 rounded-xl border border-black/10 bg-white px-3 py-2 text-center text-sm font-black text-ink">{template.hrefLabel || "Open"}</a>
-            : <button type="button" onClick={() => shareProfile(job, template.text)} className="min-h-11 rounded-xl border border-black/10 bg-white px-3 py-2 text-sm font-black text-ink">Share</button>}
-          <button type="button" disabled={saving} onClick={() => logNotified(template)} className="col-span-2 min-h-11 rounded-xl bg-lime px-3 py-2 text-sm font-black text-ink disabled:opacity-50">{saving ? "Saving…" : "Log Notified"}</button>
+            ? <a href={template.href} className="min-h-11 rounded-xl border border-content/10 bg-surface px-3 py-2 text-center text-sm font-bold text-content">{template.hrefLabel || "Open"}</a>
+            : <button type="button" onClick={() => shareProfile(job, template.text)} className="min-h-11 rounded-xl border border-content/10 bg-surface px-3 py-2 text-sm font-bold text-content">Share</button>}
+          <button type="button" disabled={saving} onClick={() => logNotified(template)} className="col-span-2 min-h-11 rounded-xl bg-lime px-3 py-2 text-sm font-bold text-ink disabled:opacity-50">{saving ? "Saving…" : "Log Notified"}</button>
         </div>
       </div>)}
     </div>
-    {message && <p className="mt-3 rounded-xl bg-forest/5 p-3 text-sm font-bold text-forest">{message}</p>}
+    {message && <p className="mt-3 rounded-xl bg-forest/5 p-3 text-sm font-bold text-accent">{message}</p>}
   </section>;
 }
 
-function Info({ icon, label, children }: { icon: React.ReactNode; label: string; children: React.ReactNode }) { return <div className="flex gap-3"><span className="mt-0.5 text-forest [&>svg]:size-5">{icon}</span><div><p className="mb-0.5 text-xs font-bold uppercase tracking-wide text-black/35">{label}</p><div className="text-sm font-semibold">{children}</div></div></div>; }
-function PhotoCount({ label, count }: { label: string; count: number }) { return <div className="rounded-xl bg-sand p-3 text-center"><p className="text-2xl font-black">{count}</p><p className="text-xs font-bold text-black/45">{label}</p></div>; }
+function Info({ icon, label, children }: { icon: React.ReactNode; label: string; children: React.ReactNode }) { return <div className="flex gap-3"><span className="mt-0.5 text-accent [&>svg]:size-5">{icon}</span><div><p className="mb-0.5 text-xs font-bold uppercase tracking-wide text-content/65">{label}</p><div className="text-sm font-semibold">{children}</div></div></div>; }
+function PhotoCount({ label, count }: { label: string; count: number }) { return <div className="rounded-xl bg-sand p-3 text-center"><p className="text-2xl font-bold">{count}</p><p className="text-xs font-bold text-content/65">{label}</p></div>; }
 
 function AdditionalIssuePanel({ job, saving, onSave }: { job: Job; saving: boolean; onSave: (patch: Partial<Job>) => Promise<Job | undefined> }) {
   const [description, setDescription] = useState("");
@@ -956,20 +956,20 @@ function AdditionalIssuePanel({ job, saving, onSave }: { job: Job; saving: boole
   return <section id="additional-issue" className="card scroll-mt-24 p-4 sm:p-6">
     <div className="flex items-start gap-3">
       <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-orange-100 text-orange-800"><WrenchScrewdriverIcon className="size-5" /></span>
-      <div><p className="text-xs font-black uppercase tracking-widest text-orange-800">Field documentation</p><h2 className="text-lg font-black">Additional Issue</h2><p className="text-sm text-black/50">Document work found outside the original work order for manager review. This does not approve billing.</p></div>
+      <div><p className="text-xs font-bold uppercase tracking-widest text-orange-800">Field documentation</p><h2 className="text-lg font-bold">Additional Issue</h2><p className="text-sm text-content/65">Document work found outside the original work order for manager review. This does not approve billing.</p></div>
     </div>
     <form onSubmit={submit} className="mt-4 grid gap-3">
       <label className="block"><span className="label">What did you find?</span><textarea required className="field min-h-24 resize-y" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Describe the issue clearly for the manager." /></label>
-      <label className="flex min-h-12 items-center gap-3 rounded-xl border border-black/10 bg-sand p-3 text-sm font-bold"><input type="checkbox" checked={returnVisit} onChange={(event) => setReturnVisit(event.target.checked)} className="size-5 accent-forest" /> Return visit needed</label>
+      <label className="flex min-h-12 items-center gap-3 rounded-xl border border-content/10 bg-sand p-3 text-sm font-bold"><input type="checkbox" checked={returnVisit} onChange={(event) => setReturnVisit(event.target.checked)} className="size-5 accent-forest" /> Return visit needed</label>
       <label className="block"><span className="label">Customer informed / approval note (optional)</span><input className="field" value={customerNote} onChange={(event) => setCustomerNote(event.target.value)} placeholder="What the customer was told; no billing approval is recorded here." /></label>
-      <button disabled={saving || !description.trim()} className="min-h-12 rounded-xl bg-orange-700 px-4 py-3 font-black text-white disabled:opacity-50">{saving ? "Saving…" : "Save Additional Issue"}</button>
+      <button disabled={saving || !description.trim()} className="min-h-12 rounded-xl bg-orange-700 px-4 py-3 font-bold text-white disabled:opacity-50">{saving ? "Saving…" : "Save Additional Issue"}</button>
     </form>
     <div className="mt-3 grid grid-cols-2 gap-2">
-      <a href="#photos" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-black/10 bg-white px-3 py-2 text-sm font-black text-ink"><CameraIcon className="size-5" /> Add issue photos</a>
-      <a href="#parts-needed" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-black/10 bg-white px-3 py-2 text-sm font-black text-ink"><WrenchScrewdriverIcon className="size-5" /> Add needed part</a>
+      <a href="#photos" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-content/10 bg-surface px-3 py-2 text-sm font-bold text-content"><CameraIcon className="size-5" /> Add issue photos</a>
+      <a href="#parts-needed" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-content/10 bg-surface px-3 py-2 text-sm font-bold text-content"><WrenchScrewdriverIcon className="size-5" /> Add needed part</a>
     </div>
-    <p className="mt-2 text-xs font-semibold text-black/45">Use the existing Damage or Parts photo category so photos stay on this job.</p>
-    {message && <p role="status" className="mt-3 rounded-xl bg-forest/5 p-3 text-sm font-bold text-forest">{message}</p>}
+    <p className="mt-2 text-xs font-semibold text-content/65">Use the existing Damage or Parts photo category so photos stay on this job.</p>
+    {message && <p role="status" className="mt-3 rounded-xl bg-forest/5 p-3 text-sm font-bold text-accent">{message}</p>}
   </section>;
 }
 
@@ -1075,40 +1075,40 @@ function PhotoUploadPanel({ job, saving, onSave }: { job: Job; saving: boolean; 
     <div className="mb-4 flex items-start gap-3">
       <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-blue-100 text-blue-800"><CameraIcon className="size-5" /></span>
       <div>
-        <h2 className="text-lg font-black">Photos & documentation</h2>
-        <p className="text-sm text-black/50">Upload from phone camera or photo library. Photos stay on the job profile.</p>
+        <h2 className="text-lg font-bold">Photos & documentation</h2>
+        <p className="text-sm text-content/65">Upload from phone camera or photo library. Photos stay on the job profile.</p>
       </div>
     </div>
-    <div className="mb-4 overflow-hidden rounded-2xl border border-black/10 bg-white">
+    <div className="mb-4 overflow-hidden rounded-2xl border border-content/10 bg-surface">
       <div className="flex flex-col gap-3 bg-sand p-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-xs font-black uppercase tracking-wide text-forest">Photo proof checklist</p>
-          <h3 className="mt-1 text-xl font-black">{proofReady}/{proofChecks.length} ready · {totalPhotos} total photos</h3>
-          <p className="mt-1 text-sm font-semibold text-black/45">Before, serial/VIN, and after photos protect closeout and billing.</p>
+          <p className="text-xs font-bold uppercase tracking-wide text-accent">Photo proof checklist</p>
+          <h3 className="mt-1 text-xl font-bold">{proofReady}/{proofChecks.length} ready · {totalPhotos} total photos</h3>
+          <p className="mt-1 text-sm font-semibold text-content/65">Before, serial/VIN, and after photos protect closeout and billing.</p>
         </div>
-        <button type="button" onClick={copyProofSummary} className="min-h-11 rounded-xl border border-black/10 bg-white px-4 py-2 text-sm font-black text-ink">Copy summary</button>
+        <button type="button" onClick={copyProofSummary} className="min-h-11 rounded-xl border border-content/10 bg-surface px-4 py-2 text-sm font-bold text-content">Copy summary</button>
       </div>
       <div className="grid gap-2 p-3 sm:grid-cols-4">
         {proofChecks.map((check) => <div key={check.label} className={`rounded-xl p-3 ${check.complete ? "bg-forest/5" : "bg-orange-50"}`}>
-          <p className={`text-[11px] font-black uppercase tracking-wide ${check.complete ? "text-forest" : "text-orange-800"}`}>{check.complete ? "Ready" : "Needed"}</p>
-          <p className="mt-1 font-black">{check.label}</p>
-          <p className="mt-1 text-xs font-semibold text-black/45">{check.detail}</p>
+          <p className={`text-[11px] font-bold uppercase tracking-wide ${check.complete ? "text-accent" : "text-orange-800"}`}>{check.complete ? "Ready" : "Needed"}</p>
+          <p className="mt-1 font-bold">{check.label}</p>
+          <p className="mt-1 text-xs font-semibold text-content/65">{check.detail}</p>
         </div>)}
       </div>
     </div>
-    <div className="rounded-2xl border border-black/10 bg-sand p-3 sm:p-4">
+    <div className="rounded-2xl border border-content/10 bg-sand p-3 sm:p-4">
       <div className="mb-3 grid gap-2 sm:grid-cols-3">
-        <button type="button" disabled={saving || uploading} onClick={() => setSelectedCategory("Before")} className={`min-h-16 rounded-xl p-3 text-left disabled:opacity-50 ${selectedCategory === "Before" ? "bg-forest text-white" : "bg-white text-ink"}`}>
-          <p className="text-xs font-black uppercase tracking-wide opacity-70">1. Before</p>
-          <p className="mt-1 text-sm font-black">Start photos + serial/VIN</p>
+        <button type="button" disabled={saving || uploading} onClick={() => setSelectedCategory("Before")} className={`min-h-16 rounded-xl p-3 text-left disabled:opacity-50 ${selectedCategory === "Before" ? "bg-forest text-white" : "bg-surface text-content"}`}>
+          <p className="text-xs font-bold uppercase tracking-wide opacity-70">1. Before</p>
+          <p className="mt-1 text-sm font-bold">Start photos + serial/VIN</p>
         </button>
-        <button type="button" disabled={saving || uploading} onClick={() => setSelectedCategory("Progress")} className={`min-h-16 rounded-xl p-3 text-left disabled:opacity-50 ${selectedCategory === "Progress" ? "bg-forest text-white" : "bg-white text-ink"}`}>
-          <p className="text-xs font-black uppercase tracking-wide opacity-70">2. During</p>
-          <p className="mt-1 text-sm font-black">Progress; use Damage if needed</p>
+        <button type="button" disabled={saving || uploading} onClick={() => setSelectedCategory("Progress")} className={`min-h-16 rounded-xl p-3 text-left disabled:opacity-50 ${selectedCategory === "Progress" ? "bg-forest text-white" : "bg-surface text-content"}`}>
+          <p className="text-xs font-bold uppercase tracking-wide opacity-70">2. During</p>
+          <p className="mt-1 text-sm font-bold">Progress; use Damage if needed</p>
         </button>
-        <button type="button" disabled={saving || uploading} onClick={() => setSelectedCategory("After")} className={`min-h-16 rounded-xl p-3 text-left disabled:opacity-50 ${selectedCategory === "After" ? "bg-forest text-white" : "bg-white text-ink"}`}>
-          <p className="text-xs font-black uppercase tracking-wide opacity-70">3. Completed</p>
-          <p className="mt-1 text-sm font-black">Finished work, clean area, no debris</p>
+        <button type="button" disabled={saving || uploading} onClick={() => setSelectedCategory("After")} className={`min-h-16 rounded-xl p-3 text-left disabled:opacity-50 ${selectedCategory === "After" ? "bg-forest text-white" : "bg-surface text-content"}`}>
+          <p className="text-xs font-bold uppercase tracking-wide opacity-70">3. Completed</p>
+          <p className="mt-1 text-sm font-bold">Finished work, clean area, no debris</p>
         </button>
       </div>
       <div className="grid gap-3 lg:grid-cols-[1fr_1fr]">
@@ -1116,31 +1116,31 @@ function PhotoUploadPanel({ job, saving, onSave }: { job: Job; saving: boolean; 
         <label className="block"><span className="label">Optional caption</span><input className="field" value={caption} disabled={saving || uploading} onChange={(event) => setCaption(event.target.value)} placeholder="Short note for this upload batch" /></label>
       </div>
       <div className="mt-3 grid gap-2 sm:grid-cols-3">
-        <label className={`flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-xl bg-forest px-4 py-3 text-center font-black text-white ${(saving || uploading) ? "opacity-50" : ""}`}>
+        <label className={`flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-xl bg-forest px-4 py-3 text-center font-bold text-white ${(saving || uploading) ? "opacity-50" : ""}`}>
           <CameraIcon className="size-5" /> Take Photo
           <input type="file" accept="image/*" capture="environment" className="hidden" disabled={saving || uploading} onChange={(event) => chooseFiles(event.target.files)} />
         </label>
-        <label className={`flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-black/10 bg-white px-4 py-3 text-center font-black text-ink ${(saving || uploading) ? "opacity-50" : ""}`}>
+        <label className={`flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-content/10 bg-surface px-4 py-3 text-center font-bold text-content ${(saving || uploading) ? "opacity-50" : ""}`}>
           <CameraIcon className="size-5" /> Upload Photos
           <input type="file" accept="image/*" multiple className="hidden" disabled={saving || uploading} onChange={(event) => chooseFiles(event.target.files)} />
         </label>
-        <button type="button" disabled={saving || uploading || selectedFiles.length === 0} onClick={uploadSelectedPhotos} className="min-h-14 rounded-xl bg-lime px-4 py-3 font-black text-ink disabled:opacity-50">{uploading ? uploadProgress || "Uploading…" : `Upload ${selectedFiles.length || ""}`.trim()}</button>
+        <button type="button" disabled={saving || uploading || selectedFiles.length === 0} onClick={uploadSelectedPhotos} className="min-h-14 rounded-xl bg-lime px-4 py-3 font-bold text-ink disabled:opacity-50">{uploading ? uploadProgress || "Uploading…" : `Upload ${selectedFiles.length || ""}`.trim()}</button>
       </div>
-      <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold text-black/45">
-        <span className="rounded-full bg-white px-3 py-1">{selectedFiles.length ? `${selectedFiles.length} selected` : "No photos selected"}</span>
-        <span className="rounded-full bg-white px-3 py-1">Large photos are resized before upload</span>
+      <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold text-content/65">
+        <span className="rounded-full bg-surface px-3 py-1">{selectedFiles.length ? `${selectedFiles.length} selected` : "No photos selected"}</span>
+        <span className="rounded-full bg-surface px-3 py-1">Large photos are resized before upload</span>
       </div>
-      {message && <p role="status" className="mt-3 rounded-xl bg-white p-3 text-sm font-bold text-forest">{message}</p>}
+      {message && <p role="status" className="mt-3 rounded-xl bg-surface p-3 text-sm font-bold text-accent">{message}</p>}
     </div>
     <div className="mt-4 grid gap-3 lg:grid-cols-2">
       {photoCategories.map((bucket) => {
         const photos = gallery[bucket.category] || [];
-        return <div key={bucket.category} className="rounded-2xl border border-black/10 bg-white p-3">
+        return <div key={bucket.category} className="rounded-2xl border border-content/10 bg-surface p-3">
           <div className="mb-3 flex items-start justify-between gap-3">
-            <div><p className="font-black">{bucket.label}</p><p className="text-xs font-semibold text-black/45">{bucket.help}</p></div>
-            <span className="rounded-full bg-sand px-2.5 py-1 text-xs font-black text-forest">{photos.length}</span>
+            <div><p className="font-bold">{bucket.label}</p><p className="text-xs font-semibold text-content/65">{bucket.help}</p></div>
+            <span className="rounded-full bg-sand px-2.5 py-1 text-xs font-bold text-accent">{photos.length}</span>
           </div>
-          {photos.length > 0 ? <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{photos.map((photo, index) => <PhotoGalleryTile key={photo.id} photo={photo} label={`${bucket.label} ${index + 1}`} onCaptionSave={updatePhotoCaption} />)}</div> : <p className="rounded-xl bg-sand p-3 text-sm font-semibold text-black/45">No photos yet.</p>}
+          {photos.length > 0 ? <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{photos.map((photo, index) => <PhotoGalleryTile key={photo.id} photo={photo} label={`${bucket.label} ${index + 1}`} onCaptionSave={updatePhotoCaption} />)}</div> : <p className="rounded-xl bg-sand p-3 text-sm font-semibold text-content/65">No photos yet.</p>}
         </div>;
       })}
     </div>
@@ -1158,21 +1158,21 @@ function PhotoGalleryTile({ photo, label, onCaptionSave }: { photo: PhotoGallery
     setSaving(false);
     setEditing(false);
   }
-  return <div className="overflow-hidden rounded-xl border border-black/10 bg-sand">
-    <a href={photo.url} target="_blank" className="block aspect-square bg-white">
+  return <div className="overflow-hidden rounded-xl border border-content/10 bg-sand">
+    <a href={photo.url} target="_blank" className="block aspect-square bg-surface">
       <img src={photo.url} alt={label} loading="lazy" className="size-full object-cover" />
     </a>
     <div className="p-2">
-      <p className="truncate text-xs font-black">{photo.fileName}</p>
-      <p className="mt-0.5 text-[11px] font-semibold text-black/40">{photo.uploadedBy ? `${photo.uploadedBy} · ` : ""}{photo.fileSize ? `${(photo.fileSize / 1024).toFixed(0)} KB` : "Saved photo"}</p>
+      <p className="truncate text-xs font-bold">{photo.fileName}</p>
+      <p className="mt-0.5 text-[11px] font-semibold text-content/65">{photo.uploadedBy ? `${photo.uploadedBy} · ` : ""}{photo.fileSize ? `${(photo.fileSize / 1024).toFixed(0)} KB` : "Saved photo"}</p>
       {editing ? <div className="mt-2 space-y-2">
-        <input className="field !min-h-10 !py-2 text-xs" value={caption} onChange={(event) => setCaption(event.target.value)} placeholder="Caption" />
-        <button type="button" disabled={saving} onClick={saveCaption} className="min-h-10 w-full rounded-lg bg-forest px-3 py-2 text-xs font-black text-white disabled:opacity-50">{saving ? "Saving…" : "Save caption"}</button>
+        <input className="field !min-h-11 !py-2 text-xs" value={caption} onChange={(event) => setCaption(event.target.value)} placeholder="Caption" />
+        <button type="button" disabled={saving} onClick={saveCaption} className="min-h-11 w-full rounded-lg bg-forest px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{saving ? "Saving…" : "Save caption"}</button>
       </div> : <>
-        {photo.caption && <p className="mt-2 text-xs font-semibold text-black/55">{photo.caption}</p>}
+        {photo.caption && <p className="mt-2 text-xs font-semibold text-content/65">{photo.caption}</p>}
         <div className="mt-2 grid grid-cols-2 gap-2">
-          <a href={photo.url} target="_blank" className="min-h-10 rounded-lg bg-white px-3 py-2 text-center text-xs font-black text-forest">Open</a>
-          {photo.source === "file" && <button type="button" onClick={() => setEditing(true)} className="min-h-10 rounded-lg bg-white px-3 py-2 text-xs font-black text-ink">Caption</button>}
+          <a href={photo.url} target="_blank" className="min-h-11 rounded-lg bg-surface px-3 py-2 text-center text-xs font-bold text-accent">Open</a>
+          {photo.source === "file" && <button type="button" onClick={() => setEditing(true)} className="min-h-11 rounded-lg bg-surface px-3 py-2 text-xs font-bold text-content">Caption</button>}
         </div>
       </>}
     </div>
@@ -1398,8 +1398,8 @@ function CompleteJobFlow({ job, saving, canManageJob, onFinishWork, onSave }: { 
     <div className="mb-4 flex items-start gap-3">
       <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-emerald-100 text-emerald-800"><CheckCircleIcon className="size-5" /></span>
       <div>
-        <h2 className="text-lg font-black">Complete job</h2>
-        <p className="text-sm text-black/50">Final manager/crew closeout so billing and paperwork do not get missed.</p>
+        <h2 className="text-lg font-bold">Complete job</h2>
+        <p className="text-sm text-content/65">Final manager/crew closeout so billing and paperwork do not get missed.</p>
       </div>
     </div>
     <div className="grid gap-3 sm:grid-cols-3">
@@ -1409,23 +1409,23 @@ function CompleteJobFlow({ job, saving, canManageJob, onFinishWork, onSave }: { 
     </div>
     <label className="mt-4 block"><span className="label">Completion notes</span><textarea className="field min-h-28 resize-y" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="What was completed, what was found, anything billing should know..." /></label>
     <div className={`mt-3 grid gap-2 ${canManageJob ? "sm:grid-cols-2" : ""}`}>
-      <label className="flex min-h-12 items-center gap-3 rounded-xl border border-black/10 bg-sand p-3 text-sm font-bold"><input type="checkbox" checked={notified} onChange={(event) => setNotified(event.target.checked)} className="size-5 accent-forest" /> Customer/dealer/factory notified</label>
-      {canManageJob && <label className="flex min-h-12 items-center gap-3 rounded-xl border border-black/10 bg-sand p-3 text-sm font-bold"><input type="checkbox" checked={invoiceReady} onChange={(event) => setInvoiceReady(event.target.checked)} className="size-5 accent-forest" /> Mark invoice ready</label>}
+      <label className="flex min-h-12 items-center gap-3 rounded-xl border border-content/10 bg-sand p-3 text-sm font-bold"><input type="checkbox" checked={notified} onChange={(event) => setNotified(event.target.checked)} className="size-5 accent-forest" /> Customer/dealer/factory notified</label>
+      {canManageJob && <label className="flex min-h-12 items-center gap-3 rounded-xl border border-content/10 bg-sand p-3 text-sm font-bold"><input type="checkbox" checked={invoiceReady} onChange={(event) => setInvoiceReady(event.target.checked)} className="size-5 accent-forest" /> Mark invoice ready</label>}
     </div>
     {requireAfterPhotos && !afterPhotosReady && <p className="mt-3 rounded-xl bg-orange-50 p-3 text-sm font-bold text-orange-800">Add at least one After photo before completing the job.</p>}
     {reviewBlockers.length > 0 && <p className="mt-3 rounded-xl bg-orange-50 p-3 text-sm font-bold text-orange-800">Complete {reviewBlockers.length} item{reviewBlockers.length === 1 ? "" : "s"} first: {reviewBlockers.map((item) => item.name).join(", ")}.</p>}
-    <div className="mt-4 rounded-2xl border border-black/10 bg-sand p-3">
+    <div className="mt-4 rounded-2xl border border-content/10 bg-sand p-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm font-black">Finish Work</p>
-          <p className="text-xs font-semibold text-black/45">{session.active ? "Closes the current work session without submitting for review." : session.started ? "Current work session is already closed." : "Start the job before finishing work."}</p>
+          <p className="text-sm font-bold">Finish Work</p>
+          <p className="text-xs font-semibold text-content/65">{session.active ? "Closes the current work session without submitting for review." : session.started ? "Current work session is already closed." : "Start the job before finishing work."}</p>
         </div>
-        <button type="button" disabled={saving || !session.active} onClick={onFinishWork} className="min-h-11 rounded-xl bg-ink px-4 py-2 text-sm font-black text-white disabled:opacity-50">{saving ? "Saving..." : "Finish Work"}</button>
+        <button type="button" disabled={saving || !session.active} onClick={onFinishWork} className="min-h-11 rounded-xl bg-ink px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{saving ? "Saving..." : "Finish Work"}</button>
       </div>
     </div>
     <div className={`mt-4 grid gap-2 ${canManageJob ? "sm:grid-cols-2" : ""}`}>
-      <button type="button" disabled={saving || !canSubmitForReview} onClick={sendForManagerReview} className="min-h-12 rounded-xl border-2 border-black/10 bg-white px-4 py-3 font-black text-ink disabled:opacity-50">{saving ? "Saving…" : canSubmitForReview ? "Submit for Review" : `Complete ${reviewBlockers.length} items first`}</button>
-      {canManageJob && <button type="button" disabled={saving || !canComplete} onClick={completeJob} className="min-h-12 rounded-xl bg-forest px-4 py-3 font-black text-white disabled:opacity-50">{saving ? "Saving…" : "Manager Approve Complete"}</button>}
+      <button type="button" disabled={saving || !canSubmitForReview} onClick={sendForManagerReview} className="min-h-12 rounded-xl border-2 border-content/10 bg-surface px-4 py-3 font-bold text-content disabled:opacity-50">{saving ? "Saving…" : canSubmitForReview ? "Submit for Review" : `Complete ${reviewBlockers.length} items first`}</button>
+      {canManageJob && <button type="button" disabled={saving || !canComplete} onClick={completeJob} className="min-h-12 rounded-xl bg-forest px-4 py-3 font-bold text-white disabled:opacity-50">{saving ? "Saving…" : "Manager Approve Complete"}</button>}
     </div>
   </section>;
 }
@@ -1476,8 +1476,8 @@ function PartsPanel({ job, saving, onSave }: { job: Job; saving: boolean; onSave
     <div className="mb-4 flex items-start gap-3">
       <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-orange-100 text-orange-800"><WrenchScrewdriverIcon className="size-5" /></span>
       <div>
-        <h2 className="text-lg font-black">Parts tracker</h2>
-        <p className="text-sm text-black/50">Request, order, pick up, and install parts without losing the note in a text box.</p>
+        <h2 className="text-lg font-bold">Parts tracker</h2>
+        <p className="text-sm text-content/65">Request, order, pick up, and install parts without losing the note in a text box.</p>
       </div>
     </div>
     <div className="grid gap-3 sm:grid-cols-3">
@@ -1485,34 +1485,34 @@ function PartsPanel({ job, saving, onSave }: { job: Job; saving: boolean; onSave
       <MiniMetric label="Total requested" value={parts.length} icon={<ClipboardDocumentListIcon />} />
       <MiniMetric label="Installed" value={parts.filter((part) => part.status === "Installed").length} icon={<CheckCircleIcon />} />
     </div>
-    <form onSubmit={addPart} className="mt-4 grid gap-2 rounded-2xl border border-black/10 bg-white p-3 sm:grid-cols-[1fr_.35fr]">
+    <form onSubmit={addPart} className="mt-4 grid gap-2 rounded-2xl border border-content/10 bg-surface p-3 sm:grid-cols-[1fr_.35fr]">
       <input className="field !min-h-11 !py-2 text-sm" value={name} onChange={(event) => setName(event.target.value)} placeholder="Part needed" />
       <input className="field !min-h-11 !py-2 text-sm" value={quantity} onChange={(event) => setQuantity(event.target.value)} placeholder="Qty" />
       <input className="field !min-h-11 !py-2 text-sm sm:col-span-2" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Notes: where to buy, size, color, serial, etc." />
-      <button disabled={saving || !name.trim()} className="min-h-11 rounded-xl bg-ink px-4 py-2 font-black text-white disabled:opacity-50 sm:col-span-2">{saving ? "Saving…" : "Request Part"}</button>
+      <button disabled={saving || !name.trim()} className="min-h-11 rounded-xl bg-ink px-4 py-2 font-bold text-white disabled:opacity-50 sm:col-span-2">{saving ? "Saving…" : "Request Part"}</button>
     </form>
     <div className="mt-4 space-y-2">
       {parts.length ? parts.map((part) => <div key={part.id} className="rounded-xl bg-sand p-3">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <p className="font-black">{part.quantity} × {part.name}</p>
-            <p className="text-xs font-semibold text-black/45">Requested {new Date(part.requestedAt).toLocaleDateString()} by {part.requestedBy}</p>
-            {part.notes && <p className="mt-1 text-xs font-semibold text-black/55">{part.notes}</p>}
+            <p className="font-bold">{part.quantity} × {part.name}</p>
+            <p className="text-xs font-semibold text-content/65">Requested {new Date(part.requestedAt).toLocaleDateString()} by {part.requestedBy}</p>
+            {part.notes && <p className="mt-1 text-xs font-semibold text-content/65">{part.notes}</p>}
           </div>
-          <select className="field !min-h-10 !w-auto !py-2 text-sm font-bold" value={part.status} onChange={(event) => updatePart(part.id, event.target.value as PartItem["status"])}>
+          <select className="field !min-h-11 !w-auto !py-2 text-sm font-bold" value={part.status} onChange={(event) => updatePart(part.id, event.target.value as PartItem["status"])}>
             {["Needed", "Ordered", "Picked up", "Installed", "Not needed"].map((status) => <option key={status}>{status}</option>)}
           </select>
         </div>
-      </div>) : <p className="rounded-xl bg-sand p-3 text-sm font-semibold text-black/45">No structured parts requested yet.</p>}
+      </div>) : <p className="rounded-xl bg-sand p-3 text-sm font-semibold text-content/65">No structured parts requested yet.</p>}
     </div>
   </section>;
 }
 
 function CloseoutCheck({ label, complete, detail }: { label: string; complete: boolean; detail: string }) {
   return <div className={`rounded-xl border p-3 ${complete ? "border-forest/15 bg-forest/5" : "border-orange-200 bg-orange-50"}`}>
-    <p className={`text-xs font-black uppercase tracking-wide ${complete ? "text-forest" : "text-orange-800"}`}>{complete ? "Ready" : "Needed"}</p>
-    <p className="font-black">{label}</p>
-    <p className="text-xs font-semibold text-black/45">{detail}</p>
+    <p className={`text-xs font-bold uppercase tracking-wide ${complete ? "text-accent" : "text-orange-800"}`}>{complete ? "Ready" : "Needed"}</p>
+    <p className="font-bold">{label}</p>
+    <p className="text-xs font-semibold text-content/65">{detail}</p>
   </div>;
 }
 
@@ -1523,13 +1523,13 @@ function CloseoutRequirementRow({ requirement }: { requirement: CloseoutRequirem
     "not-required": "Not required",
     "not-due": "Not due yet",
   };
-  const tone = requirement.status === "complete" ? "border-forest/15 bg-forest/5 text-forest" : requirement.status === "missing" ? "border-orange-200 bg-orange-50 text-orange-800" : "border-black/10 bg-sand text-black/45";
+  const tone = requirement.status === "complete" ? "border-forest/15 bg-forest/5 text-accent" : requirement.status === "missing" ? "border-orange-200 bg-orange-50 text-orange-800" : "border-content/10 bg-sand text-content/65";
   const content = <div className="flex min-h-14 items-start justify-between gap-3 rounded-xl border p-3">
     <div className="min-w-0">
-      <p className="font-black text-ink">{requirement.name}</p>
-      <p className="mt-0.5 text-xs font-semibold text-black/45">{requirement.detail}</p>
+      <p className="font-bold text-content">{requirement.name}</p>
+      <p className="mt-0.5 text-xs font-semibold text-content/65">{requirement.detail}</p>
     </div>
-    <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wide ${tone}`}>{statusLabel[requirement.status]}</span>
+    <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${tone}`}>{statusLabel[requirement.status]}</span>
   </div>;
   if (!requirement.href || requirement.status !== "missing") return content;
   return <a href={requirement.href} className="block">{content}</a>;
@@ -1546,21 +1546,21 @@ function GuidedCloseoutPanel({ job, canManageJob }: { job: Job; canManageJob: bo
     <div className={`p-4 ${bannerClass}`}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="text-xs font-black uppercase tracking-widest opacity-70">Finish job</p>
-          <h2 className="mt-1 text-2xl font-black">{summary.label}</h2>
+          <p className="text-xs font-bold uppercase tracking-widest opacity-70">Finish job</p>
+          <h2 className="mt-1 text-2xl font-bold">{summary.label}</h2>
           <p className="mt-1 text-sm font-semibold opacity-75">{summary.detail}</p>
         </div>
-        <div className="flex gap-2 text-center text-xs font-black">
-          <span className="rounded-xl bg-white/90 px-3 py-2 text-ink">{summary.missing} missing</span>
-          <span className="rounded-xl bg-white/90 px-3 py-2 text-ink">{summary.notDue} not due</span>
+        <div className="flex gap-2 text-center text-xs font-bold">
+          <span className="rounded-xl bg-surface/90 px-3 py-2 text-content">{summary.missing} missing</span>
+          <span className="rounded-xl bg-surface/90 px-3 py-2 text-content">{summary.notDue} not due</span>
         </div>
       </div>
     </div>
     <div className="space-y-2 p-4">
       {requirements.map((item) => <CloseoutRequirementRow key={item.name} requirement={item} />)}
     </div>
-    <div className="border-t border-black/5 p-4">
-      {nextAction?.href ? <a href={nextAction.href} className="block min-h-12 rounded-xl bg-forest px-4 py-3 text-center font-black text-white">{nextAction.status === "missing" ? `Fix: ${nextAction.name}` : "Continue finishing job"}</a> : canManageJob ? <a href="#billing-handoff" className="block min-h-12 rounded-xl bg-ink px-4 py-3 text-center font-black text-white">Send to billing</a> : <a href="#complete-job" className="block min-h-12 rounded-xl bg-forest px-4 py-3 text-center font-black text-white">Send to manager</a>}
+    <div className="border-t border-content/5 p-4">
+      {nextAction?.href ? <a href={nextAction.href} className="block min-h-12 rounded-xl bg-forest px-4 py-3 text-center font-bold text-white">{nextAction.status === "missing" ? `Fix: ${nextAction.name}` : "Continue finishing job"}</a> : canManageJob ? <a href="#billing-handoff" className="block min-h-12 rounded-xl bg-ink px-4 py-3 text-center font-bold text-white">Send to billing</a> : <a href="#complete-job" className="block min-h-12 rounded-xl bg-forest px-4 py-3 text-center font-bold text-white">Send to manager</a>}
     </div>
     {blockers.length > 0 && <p className="mx-4 mb-4 rounded-xl bg-orange-50 p-3 text-sm font-bold text-orange-800">Blocking closeout items: {blockers.map((blocker) => blocker.name).join(", ")}.</p>}
   </section>;
@@ -1574,10 +1574,10 @@ function CloseoutQualityPanel({ job }: { job: Job }) {
   return <section className="card p-4 sm:p-6">
     <div className="mb-4 flex items-start justify-between gap-3">
       <div>
-        <h2 className="text-lg font-black">Closeout quality check</h2>
-        <p className="mt-1 text-sm text-black/50">Manager/billing readiness based on notes, photos, paperwork, parts, and invoice status.</p>
+        <h2 className="text-lg font-bold">Closeout quality check</h2>
+        <p className="mt-1 text-sm text-content/65">Manager/billing readiness based on notes, photos, paperwork, parts, and invoice status.</p>
       </div>
-      <span className={`rounded-full px-3 py-1 text-xs font-black ${blockers.length ? "bg-orange-100 text-orange-800" : "bg-forest text-white"}`}>{score}% ready</span>
+      <span className={`rounded-full px-3 py-1 text-xs font-bold ${blockers.length ? "bg-orange-100 text-orange-800" : "bg-forest text-white"}`}>{score}% ready</span>
     </div>
     <div className="space-y-2">
       {checks.map((check) => <CloseoutRequirementRow key={check.name} requirement={check} />)}
@@ -1683,12 +1683,12 @@ function ContractorInvoiceDataSummary({ job }: { job: Job }) {
   const recordedCount = groups.flatMap((group) => group.fields).filter((field) => field.value === "Recorded").length;
   const fieldCount = groups.flatMap((group) => group.fields).length;
 
-  return <section className="mb-4 rounded-2xl border border-black/10 bg-sand p-4">
-    <div className="mb-3 flex items-start justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-widest text-forest">Manager summary</p><h3 className="mt-1 text-lg font-black">Contractor Invoice Data Summary</h3><p className="mt-1 text-sm text-black/50">Available job and field data only. This does not create an invoice.</p></div><p className="shrink-0 rounded-full bg-white px-3 py-2 text-xs font-black text-forest">Contractor paperwork {recordedCount} of {fieldCount} recorded</p></div>
+  return <section className="mb-4 rounded-2xl border border-content/10 bg-sand p-4">
+    <div className="mb-3 flex items-start justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-widest text-accent">Manager summary</p><h3 className="mt-1 text-lg font-bold">Contractor Invoice Data Summary</h3><p className="mt-1 text-sm text-content/65">Available job and field data only. This does not create an invoice.</p></div><p className="shrink-0 rounded-full bg-surface px-3 py-2 text-xs font-bold text-accent">Contractor paperwork {recordedCount} of {fieldCount} recorded</p></div>
     <div className="grid gap-2 lg:grid-cols-2">
-      {groups.map((group) => <div key={group.title} className="rounded-xl bg-white p-3">
-        <h4 className="text-sm font-black text-ink">{group.title}</h4>
-        <dl className="mt-2 space-y-1 text-sm">{group.fields.map((field) => <div key={field.label} className="grid grid-cols-[minmax(0,1fr)_auto] gap-2"><dt className="font-semibold text-black/50">{field.label}</dt><dd className={`text-right text-xs font-black ${field.value === "Recorded" ? "text-forest" : "text-black/45"}`}>{field.href ? <a href={field.href} className="underline">{field.value}</a> : field.value}</dd></div>)}</dl>
+      {groups.map((group) => <div key={group.title} className="rounded-xl bg-surface p-3">
+        <h4 className="text-sm font-bold text-content">{group.title}</h4>
+        <dl className="mt-2 space-y-1 text-sm">{group.fields.map((field) => <div key={field.label} className="grid grid-cols-[minmax(0,1fr)_auto] gap-2"><dt className="font-semibold text-content/65">{field.label}</dt><dd className={`text-right text-xs font-bold ${field.value === "Recorded" ? "text-accent" : "text-content/65"}`}>{field.href ? <a href={field.href} className="underline">{field.value}</a> : field.value}</dd></div>)}</dl>
       </div>)}
     </div>
   </section>;
@@ -1769,8 +1769,8 @@ function BillingHandoffPanel({ job, saving, onSave }: { job: Job; saving: boolea
     <div className="mb-4 flex items-start gap-3">
       <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-lime text-ink"><BanknotesIcon className="size-5" /></span>
       <div>
-        <h2 className="text-lg font-black">Billing handoff</h2>
-        <p className="text-sm text-black/50">One-tap office status for invoice work. This does not create an Invoice Simple invoice yet.</p>
+        <h2 className="text-lg font-bold">Billing handoff</h2>
+        <p className="text-sm text-content/65">One-tap office status for invoice work. This does not create an Invoice Simple invoice yet.</p>
       </div>
     </div>
     <ContractorInvoiceDataSummary job={job} />
@@ -1786,12 +1786,12 @@ function BillingHandoffPanel({ job, saving, onSave }: { job: Job; saving: boolea
       <MiniMetric label="Payment due date" value={job.paymentDueDate ? formatJobDate(job.paymentDueDate) : "Not recorded"} icon={<CalendarDaysIcon />} />
       <MiniMetric label="Paid date" value={job.paidDate ? formatJobDate(job.paidDate) : "Not recorded"} icon={<CheckCircleIcon />} />
     </div>
-    <form onSubmit={saveBillingMetadata} className="mb-3 grid gap-3 rounded-2xl border border-black/10 bg-sand p-3 sm:grid-cols-2">
+    <form onSubmit={saveBillingMetadata} className="mb-3 grid gap-3 rounded-2xl border border-content/10 bg-sand p-3 sm:grid-cols-2">
       <label><span className="label">Invoice date</span><input name="invoiceDate" type="date" className="field" defaultValue={job.invoiceDate || ""} /></label>
       <label><span className="label">Invoice amount</span><input name="invoiceAmount" type="number" min="0" step="0.01" inputMode="decimal" className="field" defaultValue={job.invoiceAmount ?? ""} placeholder="Not recorded" /></label>
       <label><span className="label">Payment due date</span><input name="paymentDueDate" type="date" className="field" defaultValue={job.paymentDueDate || ""} /></label>
       <label><span className="label">Paid date</span><input name="paidDate" type="date" className="field" defaultValue={job.paidDate || ""} /></label>
-      <button disabled={saving} className="min-h-12 rounded-xl bg-white px-4 py-3 font-black text-ink disabled:opacity-50 sm:col-span-2">{saving ? "Saving…" : "Save billing details"}</button>
+      <button disabled={saving} className="min-h-12 rounded-xl bg-surface px-4 py-3 font-bold text-content disabled:opacity-50 sm:col-span-2">{saving ? "Saving…" : "Save billing details"}</button>
     </form>
     {actionableBlockers.length > 0 && <div className="mb-3 rounded-xl bg-orange-50 p-3 text-sm font-bold text-orange-800">
       <div className="flex items-center justify-between gap-3"><span>Not Ready for Billing</span><span>{actionableBlockers.length} blocker{actionableBlockers.length === 1 ? "" : "s"}</span></div>
@@ -1801,16 +1801,16 @@ function BillingHandoffPanel({ job, saving, onSave }: { job: Job; saving: boolea
     </div>}
     {receiptBackupMissing && <p className="mb-3 rounded-xl border border-orange-200 bg-orange-50 p-3 text-sm font-bold text-orange-900">Receipt backup missing for entered dollars. <a href="#receipts" className="underline">Open receipts</a></p>}
     <div className="grid gap-2 sm:grid-cols-3">
-      <button type="button" disabled={saving || blockers.length > 0} onClick={() => handoff("Ready", "Billing handoff: marked Ready for Invoice.")} className="min-h-12 rounded-xl bg-forest px-4 py-3 font-black text-white disabled:opacity-50">Ready for Invoice</button>
-      <button type="button" disabled={saving} onClick={() => handoff("Needs more info", "Billing handoff: needs more information before invoice.")} className="min-h-12 rounded-xl border-2 border-orange-200 bg-orange-50 px-4 py-3 font-black text-orange-900 disabled:opacity-50">Needs More Info</button>
-      <button type="button" disabled={saving || blockers.length > 0 || job.invoiceStatus !== "Ready"} onClick={() => handoff("Sent to Billing", "Billing handoff: sent to billing queue.")} className="min-h-12 rounded-xl border-2 border-black/10 bg-white px-4 py-3 font-black disabled:opacity-50">Sent to Billing</button>
-      <button type="button" disabled={saving || blockers.length > 0 || !["Sent to Billing", "Ready", "Draft"].includes(job.invoiceStatus)} onClick={() => handoffWithJobPatch("Sent", "Billing handoff: invoice sent to customer.", { status: job.status === "Complete" ? "Billed" : job.status })} className="min-h-12 rounded-xl border-2 border-blue-200 bg-blue-50 px-4 py-3 font-black text-blue-900 disabled:opacity-50">Invoice Sent</button>
-      <button type="button" disabled={saving} onClick={() => handoff("On hold", "Billing handoff: invoice placed on hold for follow-up.")} className="min-h-12 rounded-xl border-2 border-amber-200 bg-amber-50 px-4 py-3 font-black text-amber-900 disabled:opacity-50">On Hold</button>
-      <button type="button" disabled={saving || blockers.length > 0 || (!["Sent", "Paid"].includes(job.invoiceStatus) && job.status !== "Billed")} onClick={() => handoffWithJobPatch("Paid", "Billing handoff: invoice marked paid.", { status: "Paid" })} className="min-h-12 rounded-xl bg-lime px-4 py-3 font-black text-ink disabled:opacity-50">Paid</button>
+      <button type="button" disabled={saving || blockers.length > 0} onClick={() => handoff("Ready", "Billing handoff: marked Ready for Invoice.")} className="min-h-12 rounded-xl bg-forest px-4 py-3 font-bold text-white disabled:opacity-50">Ready for Invoice</button>
+      <button type="button" disabled={saving} onClick={() => handoff("Needs more info", "Billing handoff: needs more information before invoice.")} className="min-h-12 rounded-xl border-2 border-orange-200 bg-orange-50 px-4 py-3 font-bold text-orange-900 disabled:opacity-50">Needs More Info</button>
+      <button type="button" disabled={saving || blockers.length > 0 || job.invoiceStatus !== "Ready"} onClick={() => handoff("Sent to Billing", "Billing handoff: sent to billing queue.")} className="min-h-12 rounded-xl border-2 border-content/10 bg-surface px-4 py-3 font-bold disabled:opacity-50">Sent to Billing</button>
+      <button type="button" disabled={saving || blockers.length > 0 || !["Sent to Billing", "Ready", "Draft"].includes(job.invoiceStatus)} onClick={() => handoffWithJobPatch("Sent", "Billing handoff: invoice sent to customer.", { status: job.status === "Complete" ? "Billed" : job.status })} className="min-h-12 rounded-xl border-2 border-blue-200 bg-blue-50 px-4 py-3 font-bold text-blue-900 disabled:opacity-50">Invoice Sent</button>
+      <button type="button" disabled={saving} onClick={() => handoff("On hold", "Billing handoff: invoice placed on hold for follow-up.")} className="min-h-12 rounded-xl border-2 border-amber-200 bg-amber-50 px-4 py-3 font-bold text-amber-900 disabled:opacity-50">On Hold</button>
+      <button type="button" disabled={saving || blockers.length > 0 || (!["Sent", "Paid"].includes(job.invoiceStatus) && job.status !== "Billed")} onClick={() => handoffWithJobPatch("Paid", "Billing handoff: invoice marked paid.", { status: "Paid" })} className="min-h-12 rounded-xl bg-lime px-4 py-3 font-bold text-ink disabled:opacity-50">Paid</button>
     </div>
     <div className="mt-3 grid gap-2 sm:grid-cols-2">
-      <button type="button" onClick={copyBillingSummary} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-black/10 bg-white px-4 py-3 font-black print:hidden"><ClipboardDocumentListIcon className="size-5" />{copied ? "Billing Summary Copied" : "Copy Billing Summary"}</button>
-      <Link href={`/jobs/${job.jobId}/packet`} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-black/10 bg-white px-4 py-3 font-black print:hidden"><ClipboardDocumentListIcon className="size-5" />Open Closeout Packet</Link>
+      <button type="button" onClick={copyBillingSummary} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-content/10 bg-surface px-4 py-3 font-bold print:hidden"><ClipboardDocumentListIcon className="size-5" />{copied ? "Billing Summary Copied" : "Copy Billing Summary"}</button>
+      <Link href={`/jobs/${job.jobId}/packet`} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-content/10 bg-surface px-4 py-3 font-bold print:hidden"><ClipboardDocumentListIcon className="size-5" />Open Closeout Packet</Link>
     </div>
   </section>;
 }
@@ -1860,8 +1860,8 @@ function FactoryCostTrackerPanel({ job, saving, onSave }: { job: Job; saving: bo
     <div className="mb-4 flex items-start gap-3">
       <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-blue-100 text-blue-800"><BanknotesIcon className="size-5" /></span>
       <div>
-        <h2 className="text-lg font-black">Factory cost tracker</h2>
-        <p className="text-sm text-black/50">Track mileage, hotel receipts, per diem, labor/helper time, drive time, materials, and the factory job total.</p>
+        <h2 className="text-lg font-bold">Factory cost tracker</h2>
+        <p className="text-sm text-content/65">Track mileage, hotel receipts, per diem, labor/helper time, drive time, materials, and the factory job total.</p>
       </div>
     </div>
     <div className="mb-4 grid gap-3 sm:grid-cols-4">
@@ -1880,7 +1880,7 @@ function FactoryCostTrackerPanel({ job, saving, onSave }: { job: Job; saving: bo
         <textarea className="field min-h-24 resize-y" value={draft.notes || ""} onChange={(event) => setDraft((old) => ({ ...old, notes: event.target.value }))} placeholder="Hotel name, receipt notes, material notes, helper details..." />
       </label>
     </div>
-    <button type="button" disabled={saving} onClick={saveTracker} className="mt-4 min-h-12 w-full rounded-xl bg-forest px-4 py-3 font-black text-white disabled:opacity-50">{saving ? "Saving…" : "Save Factory Cost Tracker"}</button>
+    <button type="button" disabled={saving} onClick={saveTracker} className="mt-4 min-h-12 w-full rounded-xl bg-forest px-4 py-3 font-bold text-white disabled:opacity-50">{saving ? "Saving…" : "Save Factory Cost Tracker"}</button>
   </section>;
 }
 
@@ -1921,11 +1921,11 @@ function SignoffPanel({ job, saving, onSave }: { job: Job; saving: boolean; onSa
     <div className="mb-4 flex items-start gap-3">
       <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-emerald-100 text-emerald-800"><CheckCircleIcon className="size-5" /></span>
       <div>
-        <h2 className="text-lg font-black">Customer / source sign-off</h2>
-        <p className="text-sm text-black/50">Simple typed sign-off for work authorization, completion proof, or inspection notes.</p>
+        <h2 className="text-lg font-bold">Customer / source sign-off</h2>
+        <p className="text-sm text-content/65">Simple typed sign-off for work authorization, completion proof, or inspection notes.</p>
       </div>
     </div>
-    <form onSubmit={saveSignoff} className="grid gap-3 rounded-2xl border border-black/10 bg-white p-3 sm:grid-cols-2">
+    <form onSubmit={saveSignoff} className="grid gap-3 rounded-2xl border border-content/10 bg-surface p-3 sm:grid-cols-2">
       <label><span className="label">Sign-off type</span><select className="field" value={type} onChange={(event) => setType(event.target.value as SignoffItem["type"])}>
         {["Completion Sign-off", "Work Authorization", "Customer Approval", "Inspection"].map((option) => <option key={option}>{option}</option>)}
       </select></label>
@@ -1934,22 +1934,22 @@ function SignoffPanel({ job, saving, onSave }: { job: Job; saving: boolean; onSa
       </select></label>
       <label><span className="label">Signer name</span><input className="field" value={signerName} onChange={(event) => setSignerName(event.target.value)} placeholder="Customer / dealer / factory contact" /></label>
       <label><span className="label">Typed signature</span><input className="field" value={typedSignature} onChange={(event) => setTypedSignature(event.target.value)} placeholder="Type full name to sign" /></label>
-      <label className="flex min-h-12 items-center gap-3 rounded-xl border border-black/10 bg-sand p-3 text-sm font-bold sm:col-span-2"><input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} className="size-5 accent-forest" /> Signer confirms this record is accurate.</label>
+      <label className="flex min-h-12 items-center gap-3 rounded-xl border border-content/10 bg-sand p-3 text-sm font-bold sm:col-span-2"><input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} className="size-5 accent-forest" /> Signer confirms this record is accurate.</label>
       <label className="sm:col-span-2"><span className="label">Notes</span><textarea className="field min-h-24 resize-y" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Example: work completed, customer satisfied, inspection passed, exceptions noted..." /></label>
-      <button disabled={saving || !canSave} className="min-h-12 rounded-xl bg-forest px-4 py-3 font-black text-white disabled:opacity-50 sm:col-span-2">{saving ? "Saving…" : "Save Sign-off"}</button>
+      <button disabled={saving || !canSave} className="min-h-12 rounded-xl bg-forest px-4 py-3 font-bold text-white disabled:opacity-50 sm:col-span-2">{saving ? "Saving…" : "Save Sign-off"}</button>
     </form>
     <div className="mt-4 space-y-2">
       {signoffs.length ? signoffs.slice(0, 5).map((signoff) => <div key={signoff.id} className="rounded-xl bg-sand p-3">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <p className="font-black">{signoff.type}</p>
-            <p className="text-xs font-semibold text-black/45">{signoff.signerName} · {signoff.signerRole} · {new Date(signoff.signedAt).toLocaleString()}</p>
+            <p className="font-bold">{signoff.type}</p>
+            <p className="text-xs font-semibold text-content/65">{signoff.signerName} · {signoff.signerRole} · {new Date(signoff.signedAt).toLocaleString()}</p>
           </div>
-          <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide ${signoff.accepted ? "bg-forest text-white" : "bg-orange-100 text-orange-800"}`}>{signoff.accepted ? "Accepted" : "Not accepted"}</span>
+          <span className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wide ${signoff.accepted ? "bg-forest text-white" : "bg-orange-100 text-orange-800"}`}>{signoff.accepted ? "Accepted" : "Not accepted"}</span>
         </div>
-        {signoff.notes && <p className="mt-2 text-sm font-semibold text-black/55">{signoff.notes}</p>}
-        <p className="mt-2 rounded-lg bg-white p-2 text-xs font-bold text-black/45">Typed signature: {signoff.typedSignature}</p>
-      </div>) : <p className="rounded-xl bg-sand p-3 text-sm font-semibold text-black/45">No sign-offs saved yet.</p>}
+        {signoff.notes && <p className="mt-2 text-sm font-semibold text-content/65">{signoff.notes}</p>}
+        <p className="mt-2 rounded-lg bg-surface p-2 text-xs font-bold text-content/65">Typed signature: {signoff.typedSignature}</p>
+      </div>) : <p className="rounded-xl bg-sand p-3 text-sm font-semibold text-content/65">No sign-offs saved yet.</p>}
     </div>
   </section>;
 }
@@ -1974,15 +1974,15 @@ function CustomerSurveyPanel({ job, saving, onSave }: { job: Job; saving: boolea
   return <section id="customer-survey" className="card p-4 sm:p-6 scroll-mt-24">
     <div className="mb-4 flex items-start gap-3">
       <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-800"><ChatBubbleLeftRightIcon className="size-5" /></span>
-      <div><h2 className="text-lg font-black">Customer Survey</h2><p className="text-sm text-black/50">Record the customer’s service feedback. An existing customer sign-off can be reused; no additional signature is needed.</p></div>
+      <div><h2 className="text-lg font-bold">Customer Survey</h2><p className="text-sm text-content/65">Record the customer’s service feedback. An existing customer sign-off can be reused; no additional signature is needed.</p></div>
     </div>
-    <form onSubmit={saveSurvey} className="grid gap-3 rounded-2xl border border-black/10 bg-white p-3 sm:grid-cols-2">
-      <label className="flex min-h-12 items-center gap-3 rounded-xl border border-black/10 bg-sand p-3 text-sm font-bold sm:col-span-2"><input type="checkbox" checked={survey.completed} onChange={(event) => set("completed", event.target.checked)} className="size-5 accent-forest" /> Survey completed</label>
+    <form onSubmit={saveSurvey} className="grid gap-3 rounded-2xl border border-content/10 bg-surface p-3 sm:grid-cols-2">
+      <label className="flex min-h-12 items-center gap-3 rounded-xl border border-content/10 bg-sand p-3 text-sm font-bold sm:col-span-2"><input type="checkbox" checked={survey.completed} onChange={(event) => set("completed", event.target.checked)} className="size-5 accent-forest" /> Survey completed</label>
       <label><span className="label">Service rating</span><select className="field" value={survey.serviceRating || ""} onChange={(event) => set("serviceRating", event.target.value as CustomerSurvey["serviceRating"] || undefined)}><option value="">Not recorded</option>{["1", "2", "3", "4", "5"].map((rating) => <option key={rating} value={rating}>{rating} / 5</option>)}</select></label>
       <label><span className="label">Customer satisfied</span><select className="field" value={survey.customerSatisfied === undefined ? "" : survey.customerSatisfied ? "yes" : "no"} onChange={(event) => set("customerSatisfied", event.target.value === "" ? undefined : event.target.value === "yes")}><option value="">Not recorded</option><option value="yes">Yes</option><option value="no">No</option></select></label>
       <label><span className="label">Would recommend</span><select className="field" value={survey.wouldRecommend === undefined ? "" : survey.wouldRecommend ? "yes" : "no"} onChange={(event) => set("wouldRecommend", event.target.value === "" ? undefined : event.target.value === "yes")}><option value="">Not recorded</option><option value="yes">Yes</option><option value="no">No</option></select></label>
       <label className="sm:col-span-2"><span className="label">Comments</span><textarea className="field min-h-24 resize-y" value={survey.comments || ""} onChange={(event) => set("comments", event.target.value)} placeholder="Customer feedback or follow-up notes" /></label>
-      <button disabled={saving} className="min-h-12 rounded-xl bg-forest px-4 py-3 font-black text-white disabled:opacity-50 sm:col-span-2">{saving ? "Saving…" : "Save Customer Survey"}</button>
+      <button disabled={saving} className="min-h-12 rounded-xl bg-forest px-4 py-3 font-bold text-white disabled:opacity-50 sm:col-span-2">{saving ? "Saving…" : "Save Customer Survey"}</button>
     </form>
   </section>;
 }
@@ -2088,17 +2088,17 @@ function CalendarPanel({ job }: { job: Job }) {
     <div className="mb-4 flex items-start gap-3">
       <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-emerald-100 text-emerald-800"><CalendarDaysIcon className="size-5" /></span>
       <div>
-        <h2 className="text-lg font-black">Scheduling</h2>
-        <p className="text-sm text-black/50">RTS is the source of truth. Subscribe once from Settings to view due-dated RTS jobs in Google Calendar.</p>
+        <h2 className="text-lg font-bold">Scheduling</h2>
+        <p className="text-sm text-content/65">RTS is the source of truth. Subscribe once from Settings to view due-dated RTS jobs in Google Calendar.</p>
       </div>
     </div>
     <div className="grid gap-3 sm:grid-cols-2">
       <div className="rounded-xl bg-sand p-4">
-        <p className="text-xs font-black uppercase tracking-wide text-black/35">Due date</p>
+        <p className="text-xs font-bold uppercase tracking-wide text-content/65">Due date</p>
         <p className="font-extrabold">{calendarDate ? calendarDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }) : "No due date"}</p>
-        <p className="mt-2 text-xs font-semibold text-black/45">{calendarDate ? "Included in the RTS calendar feed" : "Add a due date to include this job"}</p>
+        <p className="mt-2 text-xs font-semibold text-content/65">{calendarDate ? "Included in the RTS calendar feed" : "Add a due date to include this job"}</p>
       </div>
-      <Link href="/settings" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-forest px-4 py-3 font-black text-white">Open calendar settings</Link>
+      <Link href="/settings" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-forest px-4 py-3 font-bold text-white">Open calendar settings</Link>
     </div>
   </section>;
 }
@@ -2208,8 +2208,8 @@ function OperationsPanel({ job, setJob, mode }: { job: Job; setJob: React.Dispat
       <div className="mb-4 flex items-start gap-3">
         <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-lime text-ink"><ClipboardDocumentListIcon className="size-5" /></span>
         <div>
-          <h2 className="text-lg font-black">Documents</h2>
-          <p className="text-sm text-black/50">Paperwork, receipts, signed documents, and work order files for this job.</p>
+          <h2 className="text-lg font-bold">Documents</h2>
+          <p className="text-sm text-content/65">Paperwork, receipts, signed documents, and work order files for this job.</p>
         </div>
       </div>
       {error && <p role="alert" className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-700">{error}</p>}
@@ -2218,7 +2218,7 @@ function OperationsPanel({ job, setJob, mode }: { job: Job; setJob: React.Dispat
         <MiniMetric label="Receipts" value={`$${receiptTotal.toFixed(2)}`} icon={<ReceiptPercentIcon />} />
         <MiniMetric label="Files" value={workOrderFiles.length} icon={<ClipboardDocumentListIcon />} />
       </div>
-      <div className="mt-3 grid grid-cols-2 gap-2 text-xs font-black text-black/55 sm:grid-cols-5">
+      <div className="mt-3 grid grid-cols-2 gap-2 text-xs font-bold text-content/65 sm:grid-cols-5">
         <FileSummaryPill label="Work orders" value={fileSummary.workOrders} />
         <FileSummaryPill label="Paperwork" value={fileSummary.paperwork} />
         <FileSummaryPill label="Signed docs" value={fileSummary.signedDocs} />
@@ -2226,8 +2226,8 @@ function OperationsPanel({ job, setJob, mode }: { job: Job; setJob: React.Dispat
         <FileSummaryPill label="Other" value={fileSummary.other} />
       </div>
       <div className="mt-5 grid gap-4 lg:grid-cols-2">
-        <div id="paperwork" className="rounded-2xl border border-black/10 bg-white p-3">
-          <h3 className="mb-3 font-black">Paperwork</h3>
+        <div id="paperwork" className="rounded-2xl border border-content/10 bg-surface p-3">
+          <h3 className="mb-3 font-bold">Paperwork</h3>
           <div className="mb-3 grid gap-2 sm:grid-cols-3">
             <FileUploadButton label="Upload work order" category="Work Order" disabled={saving} onFile={addPaperworkFile} />
             <FileUploadButton label="Upload paperwork" category="Paperwork" disabled={saving} onFile={addPaperworkFile} />
@@ -2236,14 +2236,14 @@ function OperationsPanel({ job, setJob, mode }: { job: Job; setJob: React.Dispat
           {workOrderFiles.length > 0 && <FileList files={workOrderFiles} />}
           <div className="space-y-2">{paperwork.map((item) => <div key={item.id} className="rounded-xl bg-sand p-3">
             <p className="font-extrabold">{item.label}</p>
-            {item.notes && <p className="text-xs font-semibold text-black/45">{item.notes}</p>}
-            <select className="field mt-2 !min-h-10 !py-2 text-sm" value={item.status} onChange={(event) => updatePaperwork(item.id, event.target.value as PaperworkItem["status"])}>
+            {item.notes && <p className="text-xs font-semibold text-content/65">{item.notes}</p>}
+            <select className="field mt-2 !min-h-11 !py-2 text-sm" value={item.status} onChange={(event) => updatePaperwork(item.id, event.target.value as PaperworkItem["status"])}>
               {["Needed", "Collected", "Submitted", "Not needed"].map((status) => <option key={status}>{status}</option>)}
             </select>
           </div>)}</div>
         </div>
-        <div id="receipts" className="rounded-2xl border border-black/10 bg-white p-3">
-          <h3 className="mb-3 font-black">Receipts</h3>
+        <div id="receipts" className="rounded-2xl border border-content/10 bg-surface p-3">
+          <h3 className="mb-3 font-bold">Receipts</h3>
           <form onSubmit={addReceipt} className="grid gap-2">
             <input name="vendor" className="field !min-h-11 !py-2 text-sm" placeholder="Vendor / store" />
             <div className="grid grid-cols-2 gap-2">
@@ -2251,19 +2251,19 @@ function OperationsPanel({ job, setJob, mode }: { job: Job; setJob: React.Dispat
               <input name="date" type="date" className="field !min-h-11 !py-2 text-sm" defaultValue={new Date().toLocaleDateString("en-CA")} />
             </div>
             <select name="category" className="field !min-h-11 !py-2 text-sm">{["Meal", "Lodging", "Parts / Materials", "Misc"].map((category) => <option key={category}>{category}</option>)}</select>
-            <label className="flex min-h-10 items-center gap-2 text-sm font-bold"><input name="reimbursable" type="checkbox" className="size-4 accent-forest" /> Reimbursable</label>
+            <label className="flex min-h-11 items-center gap-2 text-sm font-bold"><input name="reimbursable" type="checkbox" className="size-4 accent-forest" /> Reimbursable</label>
             <input name="notes" className="field !min-h-11 !py-2 text-sm" placeholder="Notes" />
-            <label className="flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed border-black/15 bg-sand px-3 py-3 text-center text-sm font-black text-ink">
+            <label className="flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed border-content/15 bg-sand px-3 py-3 text-center text-sm font-bold text-content">
               Upload receipt photo/PDF
               <input name="receiptFile" type="file" accept="image/*,.pdf" className="hidden" />
             </label>
-            <button type="submit" disabled={saving} className="min-h-11 rounded-xl bg-ink px-4 py-2 font-black text-white disabled:opacity-50">Add Receipt</button>
+            <button type="submit" disabled={saving} className="min-h-11 rounded-xl bg-ink px-4 py-2 font-bold text-white disabled:opacity-50">Add Receipt</button>
           </form>
           <div className="mt-3 space-y-2">{receipts.slice(0, 5).map((receipt) => <div key={receipt.id} className="rounded-xl bg-sand p-3 text-sm">
-            <div className="flex justify-between gap-3"><span className="font-extrabold">{receipt.vendor}</span><span className="font-black">${receipt.amount || "0"}</span></div>
-            <p className="text-xs font-semibold text-black/45">{receipt.category || "Uncategorized"} · {receipt.date}{receipt.reimbursable ? " · Reimbursable" : ""}</p>
-            {receipt.notes && <p className="mt-1 text-xs text-black/55">{receipt.notes}</p>}
-            {receipt.file && <a href={receipt.file.storageUrl || receipt.file.dataUrl} target="_blank" className="mt-2 inline-flex min-h-10 items-center justify-center rounded-lg bg-white px-3 py-2 text-xs font-black text-forest">Open receipt file</a>}
+            <div className="flex justify-between gap-3"><span className="font-extrabold">{receipt.vendor}</span><span className="font-bold">${receipt.amount || "0"}</span></div>
+            <p className="text-xs font-semibold text-content/65">{receipt.category || "Uncategorized"} · {receipt.date}{receipt.reimbursable ? " · Reimbursable" : ""}</p>
+            {receipt.notes && <p className="mt-1 text-xs text-content/65">{receipt.notes}</p>}
+            {receipt.file && <a href={receipt.file.storageUrl || receipt.file.dataUrl} target="_blank" className="mt-2 inline-flex min-h-11 items-center justify-center rounded-lg bg-surface px-3 py-2 text-xs font-bold text-accent">Open receipt file</a>}
           </div>)}</div>
         </div>
       </div>
@@ -2275,25 +2275,25 @@ function OperationsPanel({ job, setJob, mode }: { job: Job; setJob: React.Dispat
       <div className="mb-4 flex items-start gap-3">
         <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-lime text-ink"><ChatBubbleLeftRightIcon className="size-5" /></span>
         <div>
-          <h2 className="text-lg font-black">Notes</h2>
-          <p className="text-sm text-black/50">Customer, dealer/factory, manager, and field notes for this job.</p>
+          <h2 className="text-lg font-bold">Notes</h2>
+          <p className="text-sm text-content/65">Customer, dealer/factory, manager, and field notes for this job.</p>
         </div>
       </div>
       {error && <p role="alert" className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-700">{error}</p>}
       <MiniMetric label="Updates" value={activity.length} icon={<ChatBubbleLeftRightIcon />} />
-      <div className="mt-5 rounded-2xl border border-black/10 bg-white p-3">
+      <div className="mt-5 rounded-2xl border border-content/10 bg-surface p-3">
         <label className="label">Add job update</label>
         <textarea className="field min-h-24 resize-y" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Example: Customer called, parts ordered, dealer notified..." />
         <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto]">
           <label><span className="label">Who is this update for?</span><select value={audience} onChange={(event) => setAudience(event.target.value as JobActivity["audience"])} className="field !min-h-11 !py-2 text-sm font-bold">
             {["All", "Admin", "Manager", "Employee"].map((option) => <option key={option}>{option}</option>)}
           </select></label>
-          <label className="flex min-h-11 items-center gap-2 self-end rounded-xl border border-black/10 bg-sand px-3 py-2 text-sm font-bold"><input type="checkbox" checked={notify} onChange={(event) => setNotify(event.target.checked)} className="size-4 accent-forest" /> Flag for follow-up</label>
+          <label className="flex min-h-11 items-center gap-2 self-end rounded-xl border border-content/10 bg-sand px-3 py-2 text-sm font-bold"><input type="checkbox" checked={notify} onChange={(event) => setNotify(event.target.checked)} className="size-4 accent-forest" /> Flag for follow-up</label>
         </div>
         <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {(["Customer contacted", "Left voicemail", "Text sent", "Parts ordered", "Dealer/factory notified", "Work complete"] as const).map((template) => <button key={template} type="button" onClick={() => submitNote(template, template === "Parts ordered" ? "Parts" : template === "Work complete" ? "Status" : template === "Dealer/factory notified" ? "Source" : "Customer")} className="min-h-11 rounded-xl border border-black/10 bg-sand px-3 py-2 text-xs font-black text-ink">{template}</button>)}
+          {(["Customer contacted", "Left voicemail", "Text sent", "Parts ordered", "Dealer/factory notified", "Work complete"] as const).map((template) => <button key={template} type="button" onClick={() => submitNote(template, template === "Parts ordered" ? "Parts" : template === "Work complete" ? "Status" : template === "Dealer/factory notified" ? "Source" : "Customer")} className="min-h-11 rounded-xl border border-content/10 bg-sand px-3 py-2 text-xs font-bold text-content">{template}</button>)}
         </div>
-        <button type="button" disabled={saving || !note.trim()} onClick={() => submitNote()} className="mt-3 min-h-12 w-full rounded-xl bg-forest px-4 py-3 font-black text-white disabled:opacity-50">{saving ? "Saving…" : "Save Update"}</button>
+        <button type="button" disabled={saving || !note.trim()} onClick={() => submitNote()} className="mt-3 min-h-12 w-full rounded-xl bg-forest px-4 py-3 font-bold text-white disabled:opacity-50">{saving ? "Saving…" : "Save Update"}</button>
       </div>
     </section>;
   }
@@ -2302,25 +2302,25 @@ function OperationsPanel({ job, setJob, mode }: { job: Job; setJob: React.Dispat
     <div className="mb-4 flex items-start gap-3">
       <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-lime text-ink"><ClipboardDocumentListIcon className="size-5" /></span>
       <div>
-        <h2 className="text-lg font-black">History</h2>
-        <p className="text-sm text-black/50">Existing activity log records for this job.</p>
+        <h2 className="text-lg font-bold">History</h2>
+        <p className="text-sm text-content/65">Existing activity log records for this job.</p>
       </div>
     </div>
     <div className="space-y-2">{activity.length ? activity.slice(0, 8).map((entry) => <div key={entry.id} className="rounded-xl bg-sand p-3">
-      <div className="flex items-start justify-between gap-3"><p className="font-bold">{entry.message}</p><span className="rounded-full bg-white px-2 py-1 text-[10px] font-black uppercase tracking-wide text-black/45">{entry.type}</span></div>
-      <p className="mt-1 text-xs font-semibold text-black/40">{entry.createdBy} · {new Date(entry.createdAt).toLocaleString()} · {entry.audience || "All"}{entry.notify ? " · Follow-up flagged" : ""}</p>
-    </div>) : <p className="rounded-xl bg-sand p-3 text-sm font-semibold text-black/45">No updates yet.</p>}</div>
+      <div className="flex items-start justify-between gap-3"><p className="font-bold">{entry.message}</p><span className="rounded-full bg-surface px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-content/65">{entry.type}</span></div>
+      <p className="mt-1 text-xs font-semibold text-content/65">{entry.createdBy} · {new Date(entry.createdAt).toLocaleString()} · {entry.audience || "All"}{entry.notify ? " · Follow-up flagged" : ""}</p>
+    </div>) : <p className="rounded-xl bg-sand p-3 text-sm font-semibold text-content/65">No updates yet.</p>}</div>
   </section>;
 }
 
 function MiniMetric({ label, value, icon }: { label: string; value: string | number; icon: React.ReactNode }) {
-  return <div className="rounded-xl bg-sand p-3"><div className="mb-2 text-forest [&>svg]:size-5">{icon}</div><p className="text-2xl font-black">{value}</p><p className="text-xs font-bold text-black/45">{label}</p></div>;
+  return <div className="rounded-xl bg-sand p-3"><div className="mb-2 text-accent [&>svg]:size-5">{icon}</div><p className="text-2xl font-bold">{value}</p><p className="text-xs font-bold text-content/65">{label}</p></div>;
 }
 
 function FileSummaryPill({ label, value }: { label: string; value: number }) {
   return <div className="rounded-xl bg-sand p-3 text-center">
-    <p className="text-xl font-black text-ink">{value}</p>
-    <p className="mt-1 text-[11px] font-black uppercase tracking-wide text-black/40">{label}</p>
+    <p className="text-xl font-bold text-content">{value}</p>
+    <p className="mt-1 text-[11px] font-bold uppercase tracking-wide text-content/65">{label}</p>
   </div>;
 }
 
@@ -2392,19 +2392,19 @@ function OfflineDraftPanel({ job, saving, onSave }: { job: Job; saving: boolean;
       <div className="flex items-start gap-3">
         <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-blue-100 text-blue-800"><ChatBubbleLeftRightIcon className="size-5" /></span>
         <div>
-          <h2 className="text-lg font-black">Offline field draft</h2>
-          <p className="text-sm text-black/50">Scratch notes save on this phone first. Push them to job activity when ready.</p>
+          <h2 className="text-lg font-bold">Offline field draft</h2>
+          <p className="text-sm text-content/65">Scratch notes save on this phone first. Push them to job activity when ready.</p>
         </div>
       </div>
-      <span className={`rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-wide ${online ? "bg-forest text-white" : "bg-orange-100 text-orange-800"}`}>{online ? "Online" : "Offline"}</span>
+      <span className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wide ${online ? "bg-forest text-white" : "bg-orange-100 text-orange-800"}`}>{online ? "Online" : "Offline"}</span>
     </div>
     <textarea className="field min-h-32 resize-y" value={draft} onChange={(event) => saveDraft(event.target.value)} placeholder="Type field notes here even if service is bad. Example: customer wants call before arrival, extra trim damage on back side..." />
     <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto_auto] sm:items-center">
-      <p className="text-xs font-bold text-black/40">{draft ? `Saved on this phone${lastSaved ? ` at ${lastSaved}` : ""}.` : "No local draft saved."}</p>
-      <button type="button" onClick={clearDraft} disabled={!draft || saving} className="min-h-11 rounded-xl border border-black/10 bg-white px-4 py-2 text-sm font-black text-black/55 disabled:opacity-50">Clear Draft</button>
-      <button type="button" onClick={pushDraft} disabled={!draft.trim() || saving} className="min-h-11 rounded-xl bg-forest px-4 py-2 text-sm font-black text-white disabled:opacity-50">{saving ? "Saving…" : "Push to Activity"}</button>
+      <p className="text-xs font-bold text-content/65">{draft ? `Saved on this phone${lastSaved ? ` at ${lastSaved}` : ""}.` : "No local draft saved."}</p>
+      <button type="button" onClick={clearDraft} disabled={!draft || saving} className="min-h-11 rounded-xl border border-content/10 bg-surface px-4 py-2 text-sm font-bold text-content/65 disabled:opacity-50">Clear Draft</button>
+      <button type="button" onClick={pushDraft} disabled={!draft.trim() || saving} className="min-h-11 rounded-xl bg-forest px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{saving ? "Saving…" : "Push to Activity"}</button>
     </div>
-    {message && <p className="mt-3 rounded-xl bg-sand p-3 text-sm font-bold text-black/55">{message}</p>}
+    {message && <p className="mt-3 rounded-xl bg-sand p-3 text-sm font-bold text-content/65">{message}</p>}
   </section>;
 }
 
@@ -2474,8 +2474,8 @@ function TimeLogPanel({ job, saving, onSave }: { job: Job; saving: boolean; onSa
     <div className="mb-4 flex items-start gap-3">
       <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-lime text-ink"><ClockIcon className="size-5" /></span>
       <div>
-        <h2 className="text-lg font-black">Time & trip log</h2>
-        <p className="text-sm text-black/50">Crew field log for arrival, work time, travel, mileage, and notes.</p>
+        <h2 className="text-lg font-bold">Time & trip log</h2>
+        <p className="text-sm text-content/65">Crew field log for arrival, work time, travel, mileage, and notes.</p>
       </div>
     </div>
     <div className="grid gap-3 sm:grid-cols-3">
@@ -2488,42 +2488,42 @@ function TimeLogPanel({ job, saving, onSave }: { job: Job; saving: boolean; onSa
       <MiniMetric label="Total entries" value={entries.length} icon={<ClipboardDocumentListIcon />} />
       <MiniMetric label="Mileage" value={mileageTotal.toFixed(1)} icon={<MapPinIcon />} />
     </div>
-    <div className="mt-4 rounded-2xl border border-black/10 bg-sand p-3">
+    <div className="mt-4 rounded-2xl border border-content/10 bg-sand p-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm font-black">Travel and mileage</p>
-          <p className="text-xs font-semibold text-black/45">{structured ? structuredArrival ? "Structured arrival is recorded." : "Structured travel is recorded without arrival." : travelLabel(travel)}</p>
+          <p className="text-sm font-bold">Travel and mileage</p>
+          <p className="text-xs font-semibold text-content/65">{structured ? structuredArrival ? "Structured arrival is recorded." : "Structured travel is recorded without arrival." : travelLabel(travel)}</p>
         </div>
         {!structured && travel.active
-          ? <button type="button" disabled={saving} onClick={arriveAtJob} className="min-h-11 rounded-xl bg-forest px-4 py-2 text-sm font-black text-white disabled:opacity-50">{saving ? "Saving..." : "Arrive at Job"}</button>
+          ? <button type="button" disabled={saving} onClick={arriveAtJob} className="min-h-11 rounded-xl bg-forest px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{saving ? "Saving..." : "Arrive at Job"}</button>
           : !structured && !travel.started && !session.started
-            ? <button type="button" disabled={saving} onClick={startTravel} className="min-h-11 rounded-xl bg-forest px-4 py-2 text-sm font-black text-white disabled:opacity-50">{saving ? "Saving..." : "Start Travel"}</button>
-            : <span className="inline-flex min-h-11 items-center justify-center rounded-xl bg-white px-4 py-2 text-sm font-black text-black/45">Travel Recorded</span>}
+            ? <button type="button" disabled={saving} onClick={startTravel} className="min-h-11 rounded-xl bg-forest px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{saving ? "Saving..." : "Start Travel"}</button>
+            : <span className="inline-flex min-h-11 items-center justify-center rounded-xl bg-surface px-4 py-2 text-sm font-bold text-content/65">Travel Recorded</span>}
       </div>
       <div className="mt-3 grid gap-2 sm:grid-cols-3">
         <MiniMetric label="Travel started" value={structured ? `${structuredTravelLegs(job).length} structured leg${structuredTravelLegs(job).length === 1 ? "" : "s"}` : travel.started ? formatSessionDate(travel.started.createdAt) : "Not started"} icon={<MapPinIcon />} />
         <MiniMetric label="Arrival" value={structured ? structuredArrival ? "Recorded" : "Not recorded" : travel.active ? "In travel" : travel.arrived ? formatSessionDate(travel.arrived.createdAt) : "Not recorded"} icon={<MapPinIcon />} />
         <MiniMetric label="Drive time" value={structured ? formatMinutes(structured.driveMinutes) : travelDuration(travel)} icon={<ClockIcon />} />
       </div>
-      {!travel.started && !session.started && <label className="mt-3 block text-sm font-bold text-black/55">Origin<input className="field mt-1 !min-h-11 !py-2 text-sm" value={origin} onChange={(event) => setOrigin(event.target.value)} placeholder="Starting location (optional)" /></label>}
+      {!travel.started && !session.started && <label className="mt-3 block text-sm font-bold text-content/65">Origin<input className="field mt-1 !min-h-11 !py-2 text-sm" value={origin} onChange={(event) => setOrigin(event.target.value)} placeholder="Starting location (optional)" /></label>}
     </div>
     <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-      {(["Arrived", "Work started", "Paused", "Departed"] as TimeEntry["type"][]).map((type) => <button key={type} type="button" disabled={saving} onClick={() => addTimeEntry(type)} className="min-h-12 rounded-xl bg-forest px-3 py-3 text-sm font-black text-white disabled:opacity-50">{type}</button>)}
+      {(["Arrived", "Work started", "Paused", "Departed"] as TimeEntry["type"][]).map((type) => <button key={type} type="button" disabled={saving} onClick={() => addTimeEntry(type)} className="min-h-12 rounded-xl bg-forest px-3 py-3 text-sm font-bold text-white disabled:opacity-50">{type}</button>)}
     </div>
-    <form onSubmit={submitNote} className="mt-4 grid gap-2 rounded-2xl border border-black/10 bg-white p-3 sm:grid-cols-[.45fr_1fr_auto]">
+    <form onSubmit={submitNote} className="mt-4 grid gap-2 rounded-2xl border border-content/10 bg-surface p-3 sm:grid-cols-[.45fr_1fr_auto]">
       <input className="field !min-h-11 !py-2 text-sm" value={mileage} onChange={(event) => setMileage(event.target.value)} inputMode="decimal" placeholder="Miles" />
       <input className="field !min-h-11 !py-2 text-sm" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Trip/time note" />
-      <button disabled={saving || (!mileage.trim() && !notes.trim())} className="min-h-11 rounded-xl bg-ink px-4 py-2 font-black text-white disabled:opacity-50">Add Log</button>
+      <button disabled={saving || (!mileage.trim() && !notes.trim())} className="min-h-11 rounded-xl bg-ink px-4 py-2 font-bold text-white disabled:opacity-50">Add Log</button>
     </form>
     {mileageError && <p role="alert" className="mt-2 rounded-xl bg-orange-50 p-3 text-sm font-bold text-orange-800">{mileageError}</p>}
     <div className="mt-4 space-y-2">
       {entries.length ? entries.slice(0, 8).map((entry) => <div key={entry.id} className="rounded-xl bg-sand p-3">
         <div className="flex items-start justify-between gap-3">
-          <div><p className="font-black">{entry.type}{entry.mileage ? ` · ${entry.mileage} miles` : ""}</p><p className="text-xs font-semibold text-black/45">{entry.employeeName} · {new Date(entry.createdAt).toLocaleString()}</p></div>
-          <span className="rounded-full bg-white px-2 py-1 text-[10px] font-black uppercase tracking-wide text-black/45">Time</span>
+          <div><p className="font-bold">{entry.type}{entry.mileage ? ` · ${entry.mileage} miles` : ""}</p><p className="text-xs font-semibold text-content/65">{entry.employeeName} · {new Date(entry.createdAt).toLocaleString()}</p></div>
+          <span className="rounded-full bg-surface px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-content/65">Time</span>
         </div>
-        {entry.notes && <p className="mt-2 text-sm font-semibold text-black/55">{entry.notes}</p>}
-      </div>) : <p className="rounded-xl bg-sand p-3 text-sm font-semibold text-black/45">No time entries yet.</p>}
+        {entry.notes && <p className="mt-2 text-sm font-semibold text-content/65">{entry.notes}</p>}
+      </div>) : <p className="rounded-xl bg-sand p-3 text-sm font-semibold text-content/65">No time entries yet.</p>}
     </div>
   </section>;
 }
@@ -2545,15 +2545,15 @@ function ProfileSheetPanel({ job }: { job: Job }) {
     <div className="mb-4 flex items-start gap-3">
       <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-lime text-ink"><ClipboardDocumentListIcon className="size-5" /></span>
       <div>
-        <h2 className="text-lg font-black">Customer profile sheet</h2>
-        <p className="text-sm text-black/50">Quick handoff summary for crew, office, dealer, factory, or billing.</p>
+        <h2 className="text-lg font-bold">Customer profile sheet</h2>
+        <p className="text-sm text-content/65">Quick handoff summary for crew, office, dealer, factory, or billing.</p>
       </div>
     </div>
-    <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-2xl bg-sand p-4 text-sm font-semibold leading-relaxed text-black/70">{text}</pre>
+    <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-2xl bg-sand p-4 text-sm font-semibold leading-relaxed text-content/70">{text}</pre>
     <div className="mt-3 grid gap-2 sm:grid-cols-2 print:hidden">
-      <button type="button" onClick={copyProfile} className="min-h-12 rounded-xl bg-forest px-4 py-3 font-black text-white">{copied ? "Copied" : "Copy Profile Sheet"}</button>
-      <button type="button" onClick={() => shareProfile(job, text)} className="min-h-12 rounded-xl border-2 border-black/10 bg-white px-4 py-3 font-black">Share Profile</button>
-      <button type="button" onClick={() => window.print()} className="min-h-12 rounded-xl border-2 border-black/10 bg-white px-4 py-3 font-black sm:col-span-2">Print Profile</button>
+      <button type="button" onClick={copyProfile} className="min-h-12 rounded-xl bg-forest px-4 py-3 font-bold text-white">{copied ? "Copied" : "Copy Profile Sheet"}</button>
+      <button type="button" onClick={() => shareProfile(job, text)} className="min-h-12 rounded-xl border-2 border-content/10 bg-surface px-4 py-3 font-bold">Share Profile</button>
+      <button type="button" onClick={() => window.print()} className="min-h-12 rounded-xl border-2 border-content/10 bg-surface px-4 py-3 font-bold sm:col-span-2">Print Profile</button>
     </div>
   </section>;
 }
@@ -2644,23 +2644,23 @@ function buildProfileSheet(job: Job) {
 }
 
 function FileUploadButton({ label, category, disabled, onFile }: { label: string; category: FileCategory; disabled: boolean; onFile: (file: File | undefined, category: FileCategory) => void }) {
-  return <label className={`flex min-h-12 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-black/15 bg-sand px-3 py-3 text-center text-sm font-black text-ink ${disabled ? "opacity-50" : ""}`}>
+  return <label className={`flex min-h-12 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-content/15 bg-sand px-3 py-3 text-center text-sm font-bold text-content ${disabled ? "opacity-50" : ""}`}>
     {label}
     <input type="file" accept="image/*,.pdf,.doc,.docx,.txt,.csv" className="hidden" disabled={disabled} onChange={(event) => onFile(event.target.files?.[0], category)} />
   </label>;
 }
 
 function FileList({ files }: { files: WorkOrderFile[] }) {
-  return <div className="mb-3 space-y-2">{files.map((file) => <div key={file.id} className="rounded-xl border border-black/10 bg-sand p-3">
+  return <div className="mb-3 space-y-2">{files.map((file) => <div key={file.id} className="rounded-xl border border-content/10 bg-sand p-3">
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0">
         <p className="truncate font-extrabold">{file.fileName}</p>
-        <p className="text-xs font-semibold text-black/45">{file.category || "File"} · {(file.fileSize / 1024).toFixed(1)} KB</p>
+        <p className="text-xs font-semibold text-content/65">{file.category || "File"} · {(file.fileSize / 1024).toFixed(1)} KB</p>
       </div>
-      <a href={file.storageUrl || file.dataUrl} target="_blank" className="shrink-0 rounded-lg bg-white px-3 py-2 text-xs font-black text-forest">Open</a>
+      <a href={file.storageUrl || file.dataUrl} target="_blank" className="shrink-0 rounded-lg bg-surface px-3 py-2 text-xs font-bold text-accent">Open</a>
     </div>
-    {file.extractedText && <details className="mt-3 rounded-lg bg-white p-3 text-xs font-semibold text-black/55">
-      <summary className="cursor-pointer font-black text-forest">View saved work-order text</summary>
+    {file.extractedText && <details className="mt-3 rounded-lg bg-surface p-3 text-xs font-semibold text-content/65">
+      <summary className="cursor-pointer font-bold text-accent">View saved work-order text</summary>
       <p className="mt-2 whitespace-pre-wrap">{file.extractedText}</p>
     </details>}
   </div>)}</div>;
@@ -2733,24 +2733,24 @@ function CompanyCamPanel({ job, status, setStatus, onJobSynced }: { job: Job; st
     <div className="mb-4 flex items-start gap-3">
       <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-blue-100 text-blue-800"><CameraIcon className="size-5" /></span>
       <div>
-        <h2 className="text-lg font-black">CompanyCam</h2>
-        <p className="text-sm text-black/50">Create or open the photo project for this customer job.</p>
+        <h2 className="text-lg font-bold">CompanyCam</h2>
+        <p className="text-sm text-content/65">Create or open the photo project for this customer job.</p>
       </div>
     </div>
-    <div className="rounded-xl border border-black/10 bg-sand p-4">
+    <div className="rounded-xl border border-content/10 bg-sand p-4">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <p className="text-xs font-black uppercase tracking-wide text-black/35">Project status</p>
+          <p className="text-xs font-bold uppercase tracking-wide text-content/65">Project status</p>
           <p className="font-extrabold">{status.projectUrl ? "Project linked" : "No CompanyCam project yet"}</p>
         </div>
         <div className="text-right">
-          <p className="text-xs font-black uppercase tracking-wide text-black/35">Photos</p>
-          <p className="text-2xl font-black">{status.photoCount ?? "—"}</p>
+          <p className="text-xs font-bold uppercase tracking-wide text-content/65">Photos</p>
+          <p className="text-2xl font-bold">{status.photoCount ?? "—"}</p>
         </div>
       </div>
-      {status.projectUrl && <a href={status.projectUrl} target="_blank" className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-forest px-4 py-3 text-center font-black text-white">Open CompanyCam <ArrowTopRightOnSquareIcon className="size-5" /></a>}
+      {status.projectUrl && <a href={status.projectUrl} target="_blank" className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-forest px-4 py-3 text-center font-bold text-white">Open CompanyCam <ArrowTopRightOnSquareIcon className="size-5" /></a>}
       {status.projectUrl && <CompanyCamPhotoReferences projectUrl={status.projectUrl} photos={status.photos} loading={loadingPhotos} onLoad={loadPhotos} />}
-      <button type="button" onClick={syncProject} disabled={syncing} className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-black/10 bg-white px-4 py-3 text-center font-black disabled:opacity-50">
+      <button type="button" onClick={syncProject} disabled={syncing} className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-content/10 bg-surface px-4 py-3 text-center font-bold disabled:opacity-50">
         <ArrowPathIcon className={`size-5 ${syncing ? "animate-spin" : ""}`} />
         {syncing ? "Syncing…" : status.projectUrl ? "Update CompanyCam project" : "Create CompanyCam project"}
       </button>
@@ -2763,14 +2763,14 @@ function CompanyCamPanel({ job, status, setStatus, onJobSynced }: { job: Job; st
 
 function CompanyCamPhotoReferences({ projectUrl, photos, loading, onLoad }: { projectUrl: string; photos?: CompanyCamState["photos"]; loading: boolean; onLoad: () => void }) {
   return <>
-    <button type="button" onClick={onLoad} disabled={loading} className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border-2 border-black/10 bg-white px-4 py-2 text-center text-sm font-black disabled:opacity-50">
+    <button type="button" onClick={onLoad} disabled={loading} className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border-2 border-content/10 bg-surface px-4 py-2 text-center text-sm font-bold disabled:opacity-50">
       <ArrowPathIcon className={`size-4 ${loading ? "animate-spin" : ""}`} />
       {loading ? "Loading references…" : "View CompanyCam photo references"}
     </button>
     {photos && <div className="mt-3 grid grid-cols-4 gap-2" aria-label="CompanyCam photo references">
-      {photos.slice(0, 8).map((photo) => photo.thumbnailUrl ? <a key={photo.id} href={projectUrl} target="_blank" title={photo.createdAt ? `Added ${formatJobDate(photo.createdAt)}` : "Open in CompanyCam"} className="aspect-square overflow-hidden rounded-lg border border-black/10 bg-white"><img src={photo.thumbnailUrl} alt="CompanyCam project photo reference" className="size-full object-cover" /></a> : <a key={photo.id} href={projectUrl} target="_blank" className="grid aspect-square place-items-center rounded-lg border border-black/10 bg-white text-xs font-bold text-black/50">Photo</a>)}
+      {photos.slice(0, 8).map((photo) => photo.thumbnailUrl ? <a key={photo.id} href={projectUrl} target="_blank" title={photo.createdAt ? `Added ${formatJobDate(photo.createdAt)}` : "Open in CompanyCam"} className="aspect-square overflow-hidden rounded-lg border border-content/10 bg-surface"><img src={photo.thumbnailUrl} alt="CompanyCam project photo reference" className="size-full object-cover" /></a> : <a key={photo.id} href={projectUrl} target="_blank" className="grid aspect-square place-items-center rounded-lg border border-content/10 bg-surface text-xs font-bold text-content/65">Photo</a>)}
     </div>}
-    {photos?.length === 0 && !loading && <p className="mt-3 text-xs font-semibold text-black/55">No CompanyCam photo references are available for this project.</p>}
-    <p className="mt-3 text-xs font-semibold text-black/55">CompanyCam photos are reference-only. Native job photos remain required for closeout and billing evidence.</p>
+    {photos?.length === 0 && !loading && <p className="mt-3 text-xs font-semibold text-content/65">No CompanyCam photo references are available for this project.</p>}
+    <p className="mt-3 text-xs font-semibold text-content/65">CompanyCam photos are reference-only. Native job photos remain required for closeout and billing evidence.</p>
   </>;
 }

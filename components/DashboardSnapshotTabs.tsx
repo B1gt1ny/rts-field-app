@@ -20,16 +20,16 @@ export function DashboardSnapshotTabs({ dueToday, active, waitingParts, needsRev
 
   return <section className="card overflow-hidden">
     <div className="flex items-center justify-between gap-3 px-4 pb-2 pt-4 sm:px-5">
-      <h2 className="text-lg font-black">Business Snapshot</h2>
-      <span className="text-xs font-black uppercase tracking-wide text-black/35">{active} active</span>
+      <h2 className="text-lg font-bold">Business Snapshot</h2>
+      <span className="text-xs font-bold uppercase tracking-wide text-content/65">{active} active</span>
     </div>
     <div className="flex gap-2 overflow-x-auto px-4 pb-3 sm:px-5" role="tablist" aria-label="Business snapshot">
-      {tabs.map((tab) => <button key={tab.id} type="button" role="tab" aria-selected={tab.id === selected} onClick={() => setSelected(tab.id)} className={`min-h-11 shrink-0 rounded-xl px-3 text-sm font-black transition ${tab.id === selected ? "bg-forest text-white" : "bg-sand text-black/55 hover:bg-black/5"}`}>{tab.label} <span className="ml-1 opacity-75">{tab.value}</span></button>)}
+      {tabs.map((tab) => <button key={tab.id} type="button" role="tab" aria-selected={tab.id === selected} onClick={() => setSelected(tab.id)} className={`min-h-11 shrink-0 rounded-xl px-3 text-sm font-bold transition ${tab.id === selected ? "bg-forest text-white" : "bg-sand text-content/65 hover:bg-content/5"}`}>{tab.label} <span className="ml-1 opacity-75">{tab.value}</span></button>)}
     </div>
     <Link href={current.href} className="mx-4 mb-4 flex items-center justify-between gap-3 rounded-2xl bg-sand p-4 transition hover:bg-forest/10 sm:mx-5">
       <span className={`grid size-11 shrink-0 place-items-center rounded-xl ${current.tone}`}><Icon className="size-5" /></span>
-      <span className="min-w-0 flex-1"><span className="block text-xs font-black uppercase tracking-wide text-black/40">{current.label}</span><span className="mt-1 block text-sm font-semibold text-black/60">{current.detail}</span></span>
-      <span className="text-3xl font-black text-ink">{current.value}</span>
+      <span className="min-w-0 flex-1"><span className="block text-xs font-bold uppercase tracking-wide text-content/65">{current.label}</span><span className="mt-1 block text-sm font-semibold text-content/65">{current.detail}</span></span>
+      <span className="text-3xl font-bold text-content">{current.value}</span>
     </Link>
   </section>;
 }

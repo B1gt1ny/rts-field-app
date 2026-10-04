@@ -36,9 +36,9 @@ export default async function Dashboard() {
   return <div className="space-y-5">
     <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <p className="text-sm font-extrabold uppercase tracking-widest text-forest">{now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</p>
-        <h1 className="mt-1 text-3xl font-black tracking-tight sm:text-4xl">{isEmployee ? "My Field Dashboard" : "Dashboard"}</h1>
-        <p className="mt-1 text-sm font-semibold text-black/50">{isEmployee ? "What needs your attention in the field today." : "Owner snapshot for what is going on with the business right now."}</p>
+        <p className="text-sm font-extrabold uppercase tracking-widest text-accent">{now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</p>
+        <h1 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">{isEmployee ? "My Field Dashboard" : "Dashboard"}</h1>
+        <p className="mt-1 text-sm font-semibold text-content/65">{isEmployee ? "What needs your attention in the field today." : "Owner snapshot for what is going on with the business right now."}</p>
       </div>
       {isEmployee
         ? <Link href="/field" className="btn-primary sm:self-auto">Open my jobs <ArrowRightIcon className="size-5" /></Link>
@@ -51,36 +51,36 @@ export default async function Dashboard() {
 
     <section className="card overflow-hidden">
       <SectionHeader title="Urgent Attention" detail="Business-level exceptions across jobs, parts, paperwork, review, billing, and follow-ups." actionHref="/command" actionLabel={isEmployee ? undefined : "Manage"} />
-      <div className="divide-y divide-black/5">
+      <div className="divide-y divide-content/5">
         {attentionItems.length ? attentionItems.map((item) => <AttentionRow key={item.key} item={item} />) : <EmptyRow message="Nothing urgent needs attention right now." />}
       </div>
     </section>
 
     {!isEmployee && officePriorities.length > 0 && <section className="card overflow-hidden">
       <SectionHeader title="Office Daily Priorities" detail="One current office action per job, based on intake, scheduling, and billing state." />
-      <div className="divide-y divide-black/5">
+      <div className="divide-y divide-content/5">
         {officePriorities.map((priority) => <OfficePriorityRow key={priority.job.jobId} priority={priority} />)}
       </div>
     </section>}
 
     <section className="card overflow-hidden">
       <SectionHeader title="Today at a Glance" detail="Jobs due today, shown here as a quick owner preview." actionHref="/today" actionLabel="Open Today" />
-      <div className="divide-y divide-black/5">
+      <div className="divide-y divide-content/5">
         {todaysJobs.length ? todaysJobs.map((job) => <TodayJobRow key={job.jobId} job={job} />) : <EmptyRow message="No jobs scheduled for today." />}
       </div>
     </section>
 
     <section className="card overflow-hidden">
       <SectionHeader title="Follow-up Reminders" detail="Overdue and due-today reminders that can affect customers, dealers, or billing." actionHref="/reminders" actionLabel="Review" />
-      <div className="divide-y divide-black/5">
-        {dueReminders.slice(0, 4).length ? dueReminders.slice(0, 4).map((reminder) => <Link key={reminder.id} href={`/jobs/${reminder.job.jobId}#operations`} className="block p-3 hover:bg-black/[.02] sm:p-4">
+      <div className="divide-y divide-content/5">
+        {dueReminders.slice(0, 4).length ? dueReminders.slice(0, 4).map((reminder) => <Link key={reminder.id} href={`/jobs/${reminder.job.jobId}#operations`} className="block p-3 hover:bg-content/[.02] sm:p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="truncate text-xs font-black uppercase tracking-wide text-forest">{reminder.job.jobId} · {reminder.job.customerName}</p>
-              <p className="mt-1 line-clamp-2 text-sm font-black">{reminder.entry.message}</p>
-              <p className="mt-1 text-xs font-semibold text-black/45">{formatReminderDate(reminder.dueDate)} · {reminder.entry.type}</p>
+              <p className="truncate text-xs font-bold uppercase tracking-wide text-accent">{reminder.job.jobId} · {reminder.job.customerName}</p>
+              <p className="mt-1 line-clamp-2 text-sm font-bold">{reminder.entry.message}</p>
+              <p className="mt-1 text-xs font-semibold text-content/65">{formatReminderDate(reminder.dueDate)} · {reminder.entry.type}</p>
             </div>
-            <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-black ${reminderTone(reminder.bucket)}`}>{reminder.bucket === "Today" ? "Due today" : reminder.bucket}</span>
+            <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${reminderTone(reminder.bucket)}`}>{reminder.bucket === "Today" ? "Due today" : reminder.bucket}</span>
           </div>
         </Link>) : <EmptyRow message="No overdue or due-today follow-ups." />}
       </div>
@@ -160,22 +160,22 @@ function buildOfficeDailyPriorities(jobs: Job[]): OfficePriority[] {
 function SectionHeader({ title, detail, actionHref, actionLabel }: { title: string; detail: string; actionHref?: string; actionLabel?: string }) {
   return <div className="flex items-center justify-between gap-3 bg-sand p-3 sm:p-4">
     <div className="min-w-0">
-      <h2 className="text-lg font-black sm:text-xl">{title}</h2>
-      <p className="mt-0.5 text-xs font-semibold text-black/45 sm:text-sm">{detail}</p>
+      <h2 className="text-lg font-bold sm:text-xl">{title}</h2>
+      <p className="mt-0.5 text-xs font-semibold text-content/65 sm:text-sm">{detail}</p>
     </div>
-    {actionHref && actionLabel && <Link href={actionHref} className="shrink-0 text-sm font-extrabold text-forest">{actionLabel}</Link>}
+    {actionHref && actionLabel && <Link href={actionHref} className="shrink-0 text-sm font-extrabold text-accent">{actionLabel}</Link>}
   </div>;
 }
 
 function AttentionRow({ item }: { item: { job: Job; reason: string; tone: string } }) {
   return <div className="flex items-center justify-between gap-3 p-3 sm:p-4">
     <div className="min-w-0">
-      <p className="truncate text-sm font-black">{item.job.customerName}</p>
-      <p className="mt-0.5 truncate text-xs font-semibold text-black/45">{item.job.jobId} · {item.job.city || "No city"} · {item.job.assignedCrew || "Unassigned"}</p>
+      <p className="truncate text-sm font-bold">{item.job.customerName}</p>
+      <p className="mt-0.5 truncate text-xs font-semibold text-content/65">{item.job.jobId} · {item.job.city || "No city"} · {item.job.assignedCrew || "Unassigned"}</p>
     </div>
     <div className="flex shrink-0 items-center gap-2">
-      <span className={`hidden rounded-full px-3 py-1 text-xs font-black sm:inline-flex ${item.tone}`}>{item.reason}</span>
-      <Link href={`/jobs/${item.job.jobId}`} className="rounded-xl bg-forest px-3 py-2 text-xs font-black text-white">Open job</Link>
+      <span className={`hidden rounded-full px-3 py-1 text-xs font-bold sm:inline-flex ${item.tone}`}>{item.reason}</span>
+      <Link href={`/jobs/${item.job.jobId}`} className="rounded-xl bg-forest px-3 py-2 text-xs font-bold text-white">Open job</Link>
     </div>
   </div>;
 }
@@ -183,26 +183,26 @@ function AttentionRow({ item }: { item: { job: Job; reason: string; tone: string
 function OfficePriorityRow({ priority }: { priority: OfficePriority }) {
   return <div className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
     <div className="min-w-0">
-      <p className="truncate text-sm font-black">{priority.job.customerName || "Customer not recorded"} <span className="text-black/40">· {priority.job.jobId}</span></p>
-      <p className="mt-1 text-xs font-black uppercase tracking-wide text-forest">{priority.action}</p>
-      <p className="mt-0.5 truncate text-sm font-semibold text-black/50">{priority.reason}</p>
+      <p className="truncate text-sm font-bold">{priority.job.customerName || "Customer not recorded"} <span className="text-content/65">· {priority.job.jobId}</span></p>
+      <p className="mt-1 text-xs font-bold uppercase tracking-wide text-accent">{priority.action}</p>
+      <p className="mt-0.5 truncate text-sm font-semibold text-content/65">{priority.reason}</p>
     </div>
-    <Link href={priority.href} className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-xl border border-black/10 bg-white px-3 py-2 text-sm font-black text-forest">{priority.linkLabel}</Link>
+    <Link href={priority.href} className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-xl border border-content/10 bg-surface px-3 py-2 text-sm font-bold text-accent">{priority.linkLabel}</Link>
   </div>;
 }
 
 function TodayJobRow({ job }: { job: Job }) {
   return <div className="grid grid-cols-[1fr_auto] items-center gap-3 p-3 sm:grid-cols-[1fr_1fr_1fr_auto] sm:p-4">
     <div className="min-w-0">
-      <p className="truncate text-sm font-black">{job.jobId} · {job.customerName}</p>
-      <p className="mt-0.5 truncate text-xs font-semibold text-black/45">{job.city || "No city"}</p>
+      <p className="truncate text-sm font-bold">{job.jobId} · {job.customerName}</p>
+      <p className="mt-0.5 truncate text-xs font-semibold text-content/65">{job.city || "No city"}</p>
     </div>
-    <p className="hidden truncate text-sm font-semibold text-black/55 sm:block">{job.assignedCrew || "Unassigned"}</p>
-    <span className="hidden rounded-full bg-black/5 px-3 py-1 text-center text-xs font-black text-black/55 sm:inline-block">{job.status}</span>
-    <Link href={`/jobs/${job.jobId}`} className="rounded-xl border border-black/10 bg-white px-3 py-2 text-xs font-black text-forest">Open</Link>
+    <p className="hidden truncate text-sm font-semibold text-content/65 sm:block">{job.assignedCrew || "Unassigned"}</p>
+    <span className="hidden rounded-full bg-content/5 px-3 py-1 text-center text-xs font-bold text-content/65 sm:inline-block">{job.status}</span>
+    <Link href={`/jobs/${job.jobId}`} className="rounded-xl border border-content/10 bg-surface px-3 py-2 text-xs font-bold text-accent">Open</Link>
   </div>;
 }
 
 function EmptyRow({ message }: { message: string }) {
-  return <p className="p-4 text-center text-sm font-semibold text-black/35">{message}</p>;
+  return <p className="p-4 text-center text-sm font-semibold text-content/65">{message}</p>;
 }

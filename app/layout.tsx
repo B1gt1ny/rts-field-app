@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, title: "Field Service", statusBarStyle: "black-translucent" },
   formatDetection: { telephone: false },
 };
-export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#17211c" };
+export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#0d1420" };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return <html lang="en" className="dark"><body><ServiceWorkerRegister /><AuthGate><AppShell>{children}</AppShell></AuthGate></body></html>;

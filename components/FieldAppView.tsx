@@ -418,27 +418,27 @@ export function FieldAppView() {
     <section className="rounded-2xl bg-ink p-4 text-white sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-xs font-black uppercase tracking-widest text-lime">Employee field app</p>
-          <h1 className="mt-1 truncate text-2xl font-black">{employee?.name || user?.employeeName || "Field work"}</h1>
+          <p className="text-xs font-bold uppercase tracking-widest text-lime">Employee field app</p>
+          <h1 className="mt-1 truncate text-2xl font-bold">{employee?.name || user?.employeeName || "Field work"}</h1>
           <p className="mt-1 text-sm font-semibold text-white/60">{formatTodayLabel()} · {todayJobs.length} assigned today</p>
           <p className="mt-2 text-sm text-white/70">Next job, next action, then the rest of today.</p>
         </div>
         <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-lime text-ink"><UserCircleIcon className="size-6" /></span>
       </div>
       {employees.length > 0 && !lockedToLogin && <label className="mt-4 block">
-        <span className="mb-2 block text-xs font-black uppercase tracking-wide text-white/60">Viewing employee</span>
-        <select value={employeeId} onChange={(event) => chooseEmployee(event.target.value)} className="field bg-white text-ink">
+        <span className="mb-2 block text-xs font-bold uppercase tracking-wide text-white/60">Viewing employee</span>
+        <select value={employeeId} onChange={(event) => chooseEmployee(event.target.value)} className="field bg-surface text-content">
           {employees.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
         </select>
       </label>}
-      {lockedToLogin && <p className="mt-3 text-xs font-bold text-white/45">This login is locked to {user?.employeeName || "the linked employee"}.</p>}
+      {lockedToLogin && <p className="mt-3 text-xs font-bold text-white/65">This login is locked to {user?.employeeName || "the linked employee"}.</p>}
     </section>
 
-    {loading ? <p className="card p-5 text-sm font-bold text-black/45">Loading assigned jobs...</p> : null}
+    {loading ? <p className="card p-5 text-sm font-bold text-content/65">Loading assigned jobs...</p> : null}
 
     {!loading && !employees.length ? <section className="card p-6 text-center">
-      <p className="font-black">No employees added yet.</p>
-      <p className="mt-1 text-sm text-black/45">An admin can add employees from the employee manager.</p>
+      <p className="font-bold">No employees added yet.</p>
+      <p className="mt-1 text-sm text-content/65">An admin can add employees from the employee manager.</p>
       <Link href="/employees" className="btn-primary mt-4">Open Employees</Link>
     </section> : null}
 
@@ -452,30 +452,30 @@ export function FieldAppView() {
 
     {!loading && employee && assignedJobs.length ? <section id="all-assigned-work" className="scroll-mt-24">
       <details>
-        <summary className="cursor-pointer rounded-xl border border-black/10 bg-white px-4 py-3 text-base font-black">Other assigned work</summary>
+        <summary className="cursor-pointer rounded-xl border border-content/10 bg-surface px-4 py-3 text-base font-bold">Other assigned work</summary>
         <div className="mt-3">
           <CrewFilterBar value={crewFilter} counts={crewFilterCounts} onChange={setCrewFilter} />
           <div className="grid gap-3 md:grid-cols-2">{filteredAssignedJobs.map((job) => <FieldJobCard key={job.jobId} job={job} noteDraft={noteDrafts[job.jobId] || ""} saving={savingJobId === job.jobId} permissions={fieldPermissions} customerTextTemplate={customerTextTemplate} fieldNoteTemplates={fieldNoteTemplates} reviewInstructions={reviewInstructions} factoryCostInstructions={factoryCostInstructions} requireBeforePhotosForReview={requireBeforePhotosForReview} requireSerialTagPhotoForReview={requireSerialTagPhotoForReview} requireDamagePhotosForReview={requireDamagePhotosForReview} requireAfterPhotosForReview={requireAfterPhotosForReview} requireCompletionNotesForReview={requireCompletionNotesForReview} requireWorkCompleteForReview={requireWorkCompleteForReview} requirePartsClosedForReview={requirePartsClosedForReview} requireFactoryCostsForReview={requireFactoryCostsForReview} requireReceiptBackupForReview={requireReceiptBackupForReview} fieldSupportName={fieldSupportName} fieldSupportPhone={fieldSupportPhone} employeeHelpInstructions={employeeHelpInstructions} onStart={() => startJob(job)} onReadyReview={() => readyForManagerReview(job)} onChecklist={(itemId) => toggleChecklist(job, itemId)} onNote={(message, type) => saveFieldNote(job, message, type)} onCompletionNotes={(notes) => saveCompletionNotes(job, notes)} onFactoryCost={(costPatch) => saveFactoryCost(job, costPatch)} onSaveTravelLeg={(leg) => saveTravelLeg(job, leg)} onNoteDraft={(value) => setNoteDrafts((old) => ({ ...old, [job.jobId]: value }))} />)}</div>
           {assignedJobs.length > 0 && !filteredAssignedJobs.length && <div className="card p-6 text-center">
-            <p className="font-black">No jobs in this lane.</p>
-            <p className="mt-1 text-sm text-black/45">Try another crew filter or view all assigned work.</p>
-            <button type="button" onClick={() => setCrewFilter("all")} className="mt-4 min-h-11 rounded-xl bg-forest px-4 py-2 font-black text-white">Show All Work</button>
+            <p className="font-bold">No jobs in this lane.</p>
+            <p className="mt-1 text-sm text-content/65">Try another crew filter or view all assigned work.</p>
+            <button type="button" onClick={() => setCrewFilter("all")} className="mt-4 min-h-11 rounded-xl bg-forest px-4 py-2 font-bold text-white">Show All Work</button>
           </div>}
         </div>
       </details>
     </section> : null}
 
     {!loading && employee && !assignedJobs.length ? <div className="card p-6 text-center">
-        <p className="font-black">No jobs assigned to {employee.name}.</p>
-        <p className="mt-1 text-sm text-black/45">Assign this employee on a job edit screen, or mark a job as Full Crew.</p>
+        <p className="font-bold">No jobs assigned to {employee.name}.</p>
+        <p className="mt-1 text-sm text-content/65">Assign this employee on a job edit screen, or mark a job as Full Crew.</p>
       </div> : null}
   </div>;
 }
 
 function CurrentJobPanel({ job, employeeName, today, saving, permissions, onStart, onStartTravel, onArrive }: { job?: Job; employeeName: string; today: string; saving: boolean; permissions: FieldPermissions; onStart: (job: Job) => void; onStartTravel: (job: Job) => void; onArrive: (job: Job) => void }) {
   if (!job) return <section className="card p-5 text-center">
-    <p className="text-lg font-black">No assigned work right now.</p>
-    <p className="mt-1 text-sm font-semibold text-black/45">Assigned jobs will show here when dispatch puts them on your crew list.</p>
+    <p className="text-lg font-bold">No assigned work right now.</p>
+    <p className="mt-1 text-sm font-semibold text-content/65">Assigned jobs will show here when dispatch puts them on your crew list.</p>
   </section>;
   const action = fieldNextStep(job);
   const attention = fieldAttentionItems(job, action);
@@ -483,45 +483,45 @@ function CurrentJobPanel({ job, employeeName, today, saving, permissions, onStar
   const fieldStatus = todayFieldStatus(job, employeeName, today);
   return <section className="card overflow-hidden">
     <div className="bg-sand p-4">
-      <p className="text-xs font-black uppercase tracking-widest text-forest">Current / next job</p>
+      <p className="text-xs font-bold uppercase tracking-widest text-accent">Current / next job</p>
       <div className="mt-2 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate text-sm font-black text-black/45">{job.jobId} · {job.priority}</p>
-          <h2 className="mt-1 truncate text-2xl font-black">{job.customerName}</h2>
-          <p className="mt-1 text-sm font-semibold text-black/55">{job.city || "No city"} · {formatDue(job.dueDate)}</p>
+          <p className="truncate text-sm font-bold text-content/65">{job.jobId} · {job.priority}</p>
+          <h2 className="mt-1 truncate text-2xl font-bold">{job.customerName}</h2>
+          <p className="mt-1 text-sm font-semibold text-content/65">{job.city || "No city"} · {formatDue(job.dueDate)}</p>
         </div>
         <StatusBadge status={job.status} />
       </div>
-      {job.assignedCrew && <p className="mt-2 text-xs font-black uppercase tracking-wide text-black/40">Crew: {job.assignedCrew}</p>}
-      <p className="mt-2 text-xs font-black uppercase tracking-wide text-black/40">{fieldStatus}</p>
-      <div className="mt-3 rounded-xl bg-white p-3">
-        <p className="text-xs font-black uppercase tracking-wide text-forest">Next Step</p>
-        <p className="mt-1 text-sm font-bold text-black/65">{action.reason}</p>
-        {attention.items.length > 0 && <div className="mt-3 border-t border-black/10 pt-3">
-          <p className="text-xs font-black uppercase tracking-wide text-black/45">Also remember</p>
+      {job.assignedCrew && <p className="mt-2 text-xs font-bold uppercase tracking-wide text-content/65">Crew: {job.assignedCrew}</p>}
+      <p className="mt-2 text-xs font-bold uppercase tracking-wide text-content/65">{fieldStatus}</p>
+      <div className="mt-3 rounded-xl bg-surface p-3">
+        <p className="text-xs font-bold uppercase tracking-wide text-accent">Next Step</p>
+        <p className="mt-1 text-sm font-bold text-content/65">{action.reason}</p>
+        {attention.items.length > 0 && <div className="mt-3 border-t border-content/10 pt-3">
+          <p className="text-xs font-bold uppercase tracking-wide text-content/65">Also remember</p>
           <div className="mt-2 space-y-1.5">
-            {attention.items.map((item) => <p key={item.kind} className="text-xs font-semibold text-black/65"><span className="font-black text-black/80">{item.label}</span> · {item.detail}</p>)}
-            {attention.remaining > 0 && <p className="text-xs font-bold text-black/45">+{attention.remaining} more</p>}
+            {attention.items.map((item) => <p key={item.kind} className="text-xs font-semibold text-content/65"><span className="font-bold text-content/80">{item.label}</span> · {item.detail}</p>)}
+            {attention.remaining > 0 && <p className="text-xs font-bold text-content/65">+{attention.remaining} more</p>}
           </div>
         </div>}
       </div>
     </div>
     <div className="space-y-3 p-4">
       <CurrentJobInfo job={job} />
-      {job.phone && <p className="rounded-xl bg-blue-50 p-3 text-sm font-black text-blue-900">Contact customer with ETA before arrival</p>}
+      {job.phone && <p className="rounded-xl bg-blue-50 p-3 text-sm font-bold text-blue-900">Contact customer with ETA before arrival</p>}
       <FieldWorkflowGuide />
       {session.started
-        ? <Link href={`/jobs/${job.jobId}`} className="block min-h-12 rounded-xl bg-forest px-4 py-3 text-center font-black text-white">{action.label}</Link>
+        ? <Link href={`/jobs/${job.jobId}`} className="block min-h-12 rounded-xl bg-forest px-4 py-3 text-center font-bold text-white">{action.label}</Link>
         : permissions.employeeCanStartJobs && action.kind === "start"
-          ? <button type="button" disabled={saving} onClick={() => onStart(job)} className="block min-h-12 w-full rounded-xl bg-forest px-4 py-3 text-center font-black text-white disabled:opacity-50">{saving ? "Saving..." : action.label}</button>
-          : <Link href={action.href} className="block min-h-12 rounded-xl bg-forest px-4 py-3 text-center font-black text-white">{action.label}</Link>}
+          ? <button type="button" disabled={saving} onClick={() => onStart(job)} className="block min-h-12 w-full rounded-xl bg-forest px-4 py-3 text-center font-bold text-white disabled:opacity-50">{saving ? "Saving..." : action.label}</button>
+          : <Link href={action.href} className="block min-h-12 rounded-xl bg-forest px-4 py-3 text-center font-bold text-white">{action.label}</Link>}
       <QuickCurrentJobActions job={job} canUpload={permissions.employeeCanUploadFiles} />
     </div>
   </section>;
 }
 
 function CurrentJobInfo({ job }: { job: Job }) {
-  return <div className="rounded-2xl border border-black/10 bg-white p-3">
+  return <div className="rounded-2xl border border-content/10 bg-surface p-3">
     <div className="grid gap-2 text-sm">
       <InfoLine label="Customer / job" value={job.customerName || job.jobId} />
       <InfoLine label="Address" value={[job.address, job.city].filter(Boolean).join(", ")} />
@@ -530,8 +530,8 @@ function CurrentJobInfo({ job }: { job: Job }) {
       {job.assignedCrew && <InfoLine label="Crew" value={job.assignedCrew} />}
       {job.jobType && <InfoLine label="Job type" value={job.jobType} />}
       {job.scopeNotes && <div>
-        <p className="text-[11px] font-black uppercase tracking-wide text-black/35">Work order / description</p>
-        <p className="mt-1 line-clamp-3 whitespace-pre-wrap font-semibold text-black/70">{job.scopeNotes}</p>
+        <p className="text-[11px] font-bold uppercase tracking-wide text-content/65">Work order / description</p>
+        <p className="mt-1 line-clamp-3 whitespace-pre-wrap font-semibold text-content/70">{job.scopeNotes}</p>
       </div>}
     </div>
   </div>;
@@ -540,16 +540,16 @@ function CurrentJobInfo({ job }: { job: Job }) {
 function InfoLine({ label, value }: { label: string; value?: string }) {
   if (!value) return null;
   return <div className="grid grid-cols-[7rem_1fr] gap-2">
-    <p className="text-[11px] font-black uppercase tracking-wide text-black/35">{label}</p>
-    <p className="font-semibold text-black/70">{value}</p>
+    <p className="text-[11px] font-bold uppercase tracking-wide text-content/65">{label}</p>
+    <p className="font-semibold text-content/70">{value}</p>
   </div>;
 }
 
 function FieldWorkflowGuide() {
   const steps = ["Before photos", "Do the work", "Progress photos", "After photos", "Paperwork", "Send to manager"];
-  return <div className="flex flex-wrap items-center gap-1 rounded-xl bg-sand p-2 text-[11px] font-black text-black/55">
+  return <div className="flex flex-wrap items-center gap-1 rounded-xl bg-sand p-2 text-[11px] font-bold text-content/65">
     {steps.map((step, index) => <span key={step} className="inline-flex items-center gap-1">
-      <span className="rounded-full bg-white px-2 py-1">{step}</span>
+      <span className="rounded-full bg-surface px-2 py-1">{step}</span>
       {index < steps.length - 1 && <span aria-hidden="true">→</span>}
     </span>)}
   </div>;
@@ -564,51 +564,51 @@ function QuickCurrentJobActions({ job, canUpload }: { job: Job; canUpload: boole
   ].filter(Boolean).slice(0, 4) as Array<{ label: string; href: string; icon: React.ReactNode; external?: boolean }>;
   return <div className="grid grid-cols-2 gap-2">
     {actions.map((action) => action.external
-      ? <a key={action.label} href={action.href} target="_blank" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-black/10 bg-white px-3 py-2 text-sm font-black text-ink">{action.icon}{action.label}</a>
-      : <Link key={action.label} href={action.href} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-black/10 bg-white px-3 py-2 text-sm font-black text-ink">{action.icon}{action.label}</Link>)}
+      ? <a key={action.label} href={action.href} target="_blank" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-content/10 bg-surface px-3 py-2 text-sm font-bold text-content">{action.icon}{action.label}</a>
+      : <Link key={action.label} href={action.href} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-content/10 bg-surface px-3 py-2 text-sm font-bold text-content">{action.icon}{action.label}</Link>)}
   </div>;
 }
 
 function EmployeeSevenDaySchedule({ groups }: { groups: Array<{ date: string; jobs: Job[] }> }) {
   return <section className="card overflow-hidden">
-    <div className="border-b border-black/5 p-4">
-      <h2 className="text-lg font-black">My 7-day schedule</h2>
-      <p className="text-sm font-semibold text-black/45">Assigned scheduled work for today and the next 6 days.</p>
+    <div className="border-b border-content/5 p-4">
+      <h2 className="text-lg font-bold">My 7-day schedule</h2>
+      <p className="text-sm font-semibold text-content/65">Assigned scheduled work for today and the next 6 days.</p>
     </div>
-    {groups.length ? <div className="divide-y divide-black/5">
+    {groups.length ? <div className="divide-y divide-content/5">
       {groups.map((group) => <div key={group.date} className="p-3">
-        <p className={`mb-2 text-xs font-black uppercase tracking-wide ${group.date === new Date().toLocaleDateString("en-CA") ? "text-forest" : "text-black/45"}`}>{formatScheduleDate(group.date)}</p>
+        <p className={`mb-2 text-xs font-bold uppercase tracking-wide ${group.date === new Date().toLocaleDateString("en-CA") ? "text-accent" : "text-content/65"}`}>{formatScheduleDate(group.date)}</p>
         <div className="space-y-2">
           {group.jobs.map((job) => <ScheduleAssignmentRow key={job.jobId} job={job} />)}
         </div>
       </div>)}
-    </div> : <p className="p-4 text-sm font-semibold text-black/40">No assigned scheduled work in the next 7 days.</p>}
+    </div> : <p className="p-4 text-sm font-semibold text-content/65">No assigned scheduled work in the next 7 days.</p>}
   </section>;
 }
 
 function ScheduleAssignmentRow({ job }: { job: Job }) {
-  return <Link href={`/jobs/${job.jobId}`} className="block rounded-xl bg-sand p-3 active:bg-black/10">
+  return <Link href={`/jobs/${job.jobId}`} className="block rounded-xl bg-sand p-3 active:bg-content/10">
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0">
-        <p className="truncate text-sm font-black">{job.customerName || job.jobId}</p>
-        <p className="mt-0.5 truncate text-xs font-bold text-black/50">{job.jobId}{job.jobType ? ` · ${job.jobType}` : ""}</p>
+        <p className="truncate text-sm font-bold">{job.customerName || job.jobId}</p>
+        <p className="mt-0.5 truncate text-xs font-bold text-content/65">{job.jobId}{job.jobType ? ` · ${job.jobType}` : ""}</p>
       </div>
-      <span className="shrink-0 rounded-full bg-white px-2 py-1 text-[11px] font-black text-black/55">{formatScheduledTime(job.scheduledTime)}</span>
+      <span className="shrink-0 rounded-full bg-surface px-2 py-1 text-[11px] font-bold text-content/65">{formatScheduledTime(job.scheduledTime)}</span>
     </div>
-    <p className="mt-2 truncate text-xs font-bold text-black/45">{[job.city, shortAddress(job.address)].filter(Boolean).join(" · ") || "Address not set"}</p>
+    <p className="mt-2 truncate text-xs font-bold text-content/65">{[job.city, shortAddress(job.address)].filter(Boolean).join(" · ") || "Address not set"}</p>
   </Link>;
 }
 
 function FieldBlockers({ blockers }: { blockers: FieldBlocker[] }) {
   return <section className="card overflow-hidden">
-    <div className="border-b border-black/5 p-4">
-      <h2 className="text-lg font-black">Problems stopping work</h2>
-      <p className="text-sm font-semibold text-black/45">Only items tied to assigned work.</p>
+    <div className="border-b border-content/5 p-4">
+      <h2 className="text-lg font-bold">Problems stopping work</h2>
+      <p className="text-sm font-semibold text-content/65">Only items tied to assigned work.</p>
     </div>
-    <div className="divide-y divide-black/5">
+    <div className="divide-y divide-content/5">
       {blockers.map((blocker) => <Link key={`${blocker.job.jobId}-${blocker.label}`} href={blocker.href} className="block p-3 active:bg-sand">
-        <p className="text-sm font-black text-orange-900">{blocker.label}</p>
-        <p className="mt-1 text-xs font-bold text-black/50">{blocker.job.jobId} · {blocker.job.customerName} · {blocker.detail}</p>
+        <p className="text-sm font-bold text-orange-900">{blocker.label}</p>
+        <p className="mt-1 text-xs font-bold text-content/65">{blocker.job.jobId} · {blocker.job.customerName} · {blocker.detail}</p>
       </Link>)}
     </div>
   </section>;
@@ -616,14 +616,14 @@ function FieldBlockers({ blockers }: { blockers: FieldBlocker[] }) {
 
 function RecentFieldActivity({ items }: { items: Array<{ job: Job; activity: JobActivity }> }) {
   return <section className="card overflow-hidden">
-    <div className="border-b border-black/5 p-4">
-      <h2 className="text-lg font-black">Recent field activity</h2>
-      <p className="text-sm font-semibold text-black/45">Today&apos;s updates by this employee.</p>
+    <div className="border-b border-content/5 p-4">
+      <h2 className="text-lg font-bold">Recent field activity</h2>
+      <p className="text-sm font-semibold text-content/65">Today&apos;s updates by this employee.</p>
     </div>
-    <div className="divide-y divide-black/5">
+    <div className="divide-y divide-content/5">
       {items.map(({ job, activity }) => <Link key={activity.id} href={`/jobs/${job.jobId}#history`} className="block p-3">
-        <p className="line-clamp-2 text-sm font-black">{activity.message}</p>
-        <p className="mt-1 text-xs font-bold text-black/45">{job.jobId} · {new Date(activity.createdAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}</p>
+        <p className="line-clamp-2 text-sm font-bold">{activity.message}</p>
+        <p className="mt-1 text-xs font-bold text-content/65">{job.jobId} · {new Date(activity.createdAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}</p>
       </Link>)}
     </div>
   </section>;
@@ -639,9 +639,9 @@ function CrewFilterBar({ value, counts, onChange }: { value: CrewFilter; counts:
     { value: "all", label: "All" },
   ];
   return <div className="mb-4 grid grid-cols-3 gap-2 sm:grid-cols-6">
-    {filters.map((filter) => <button key={filter.value} type="button" onClick={() => onChange(filter.value)} className={`min-h-16 rounded-2xl border p-2 text-center transition active:scale-[.98] ${value === filter.value ? "border-forest bg-forest text-white" : "border-black/10 bg-white text-ink"}`}>
-      <span className="block text-2xl font-black">{counts[filter.value]}</span>
-      <span className={`text-[11px] font-black uppercase tracking-wide ${value === filter.value ? "text-white/70" : "text-black/45"}`}>{filter.label}</span>
+    {filters.map((filter) => <button key={filter.value} type="button" onClick={() => onChange(filter.value)} className={`min-h-16 rounded-2xl border p-2 text-center transition active:scale-[.98] ${value === filter.value ? "border-forest bg-forest text-white" : "border-content/10 bg-surface text-content"}`}>
+      <span className="block text-2xl font-bold">{counts[filter.value]}</span>
+      <span className={`text-[11px] font-bold uppercase tracking-wide ${value === filter.value ? "text-white/70" : "text-content/65"}`}>{filter.label}</span>
     </button>)}
   </div>;
 }
@@ -649,9 +649,9 @@ function CrewFilterBar({ value, counts, onChange }: { value: CrewFilter; counts:
 function MyDayCommand({ employeeName, nextJob, todayJobs, overdueJobs, startedJobs, closeoutJobs }: { employeeName: string; nextJob?: Job; todayJobs: number; overdueJobs: number; startedJobs: number; closeoutJobs: number }) {
   return <section className="card overflow-hidden">
     <div className="bg-ink p-4 text-white">
-      <p className="text-xs font-black uppercase tracking-widest text-lime">My day command</p>
-      <h2 className="mt-1 text-2xl font-black">{employeeName}&apos;s field day</h2>
-      <p className="mt-1 text-sm text-white/55">Start work, log proof, add notes, and close out jobs from the phone.</p>
+      <p className="text-xs font-bold uppercase tracking-widest text-lime">My day command</p>
+      <h2 className="mt-1 text-2xl font-bold">{employeeName}&apos;s field day</h2>
+      <p className="mt-1 text-sm text-white/65">Start work, log proof, add notes, and close out jobs from the phone.</p>
     </div>
     <div className="grid gap-3 p-4 sm:grid-cols-4">
       <DayMetric label="Today" value={todayJobs} />
@@ -659,29 +659,29 @@ function MyDayCommand({ employeeName, nextJob, todayJobs, overdueJobs, startedJo
       <DayMetric label="Started" value={startedJobs} />
       <DayMetric label="Needs closeout" value={closeoutJobs} />
     </div>
-    {nextJob ? <div className="border-t border-black/5 p-4">
+    {nextJob ? <div className="border-t border-content/5 p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-black uppercase tracking-wide text-forest">Next suggested job</p>
-          <h3 className="mt-1 text-xl font-black">{nextJob.customerName}</h3>
-          <p className="mt-1 text-sm font-semibold text-black/50">{nextJob.jobId} · {nextJob.city || "No city"} · {formatDue(nextJob.dueDate)}</p>
+          <p className="text-xs font-bold uppercase tracking-wide text-accent">Next suggested job</p>
+          <h3 className="mt-1 text-xl font-bold">{nextJob.customerName}</h3>
+          <p className="mt-1 text-sm font-semibold text-content/65">{nextJob.jobId} · {nextJob.city || "No city"} · {formatDue(nextJob.dueDate)}</p>
         </div>
         <StatusBadge status={nextJob.status} />
       </div>
       <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <Link href={`/jobs/${nextJob.jobId}`} className="min-h-11 rounded-xl bg-forest px-3 py-2 text-center text-sm font-black text-white">Open job</Link>
-        <Link href={`/jobs/${nextJob.jobId}#time-log`} className="min-h-11 rounded-xl border border-black/10 bg-white px-3 py-2 text-center text-sm font-black text-ink">Time log</Link>
-        <Link href={`/jobs/${nextJob.jobId}#photos`} className="min-h-11 rounded-xl bg-sand px-3 py-2 text-center text-sm font-black text-ink">Photos</Link>
-        <a href={`https://maps.google.com/?q=${encodeURIComponent(`${nextJob.address}, ${nextJob.city}`)}`} target="_blank" className="min-h-11 rounded-xl bg-ink px-3 py-2 text-center text-sm font-black text-white">Map</a>
+        <Link href={`/jobs/${nextJob.jobId}`} className="min-h-11 rounded-xl bg-forest px-3 py-2 text-center text-sm font-bold text-white">Open job</Link>
+        <Link href={`/jobs/${nextJob.jobId}#time-log`} className="min-h-11 rounded-xl border border-content/10 bg-surface px-3 py-2 text-center text-sm font-bold text-content">Time log</Link>
+        <Link href={`/jobs/${nextJob.jobId}#photos`} className="min-h-11 rounded-xl bg-sand px-3 py-2 text-center text-sm font-bold text-content">Photos</Link>
+        <a href={`https://maps.google.com/?q=${encodeURIComponent(`${nextJob.address}, ${nextJob.city}`)}`} target="_blank" className="min-h-11 rounded-xl bg-ink px-3 py-2 text-center text-sm font-bold text-white">Map</a>
       </div>
-    </div> : <p className="border-t border-black/5 p-5 text-center text-sm font-semibold text-black/35">No assigned active work right now.</p>}
+    </div> : <p className="border-t border-content/5 p-5 text-center text-sm font-semibold text-content/65">No assigned active work right now.</p>}
   </section>;
 }
 
 function DayMetric({ label, value }: { label: string; value: number }) {
   return <div className="rounded-2xl bg-sand p-4">
-    <p className="text-3xl font-black">{value}</p>
-    <p className="mt-1 text-xs font-bold text-black/45">{label}</p>
+    <p className="text-3xl font-bold">{value}</p>
+    <p className="mt-1 text-xs font-bold text-content/65">{label}</p>
   </div>;
 }
 
@@ -695,23 +695,23 @@ function EmployeeHelpPanel({ employeeName, fieldNotice, reviewInstructions }: { 
     <div className="mb-4 flex items-start gap-3">
       <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-lime text-ink"><WrenchScrewdriverIcon className="size-5" /></span>
       <div>
-        <p className="text-xs font-black uppercase tracking-widest text-forest">Simple field mode</p>
-        <h2 className="text-lg font-black">What {employeeName} needs to do</h2>
-        <p className="text-sm text-black/50">{fieldNotice}</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-accent">Simple field mode</p>
+        <h2 className="text-lg font-bold">What {employeeName} needs to do</h2>
+        <p className="text-sm text-content/65">{fieldNotice}</p>
       </div>
     </div>
     <div className="grid gap-3 md:grid-cols-3">
-      {steps.map((step) => <a key={step.title} href={step.href} className="rounded-2xl border border-black/10 bg-sand p-3 active:scale-[.99]">
-        <span className="mb-3 grid size-9 place-items-center rounded-xl bg-white text-forest [&>svg]:size-5">{step.icon}</span>
-        <p className="font-black">{step.title}</p>
-        <p className="mt-1 text-sm font-semibold text-black/50">{step.detail}</p>
+      {steps.map((step) => <a key={step.title} href={step.href} className="rounded-2xl border border-content/10 bg-sand p-3 active:scale-[.99]">
+        <span className="mb-3 grid size-9 place-items-center rounded-xl bg-surface text-accent [&>svg]:size-5">{step.icon}</span>
+        <p className="font-bold">{step.title}</p>
+        <p className="mt-1 text-sm font-semibold text-content/65">{step.detail}</p>
       </a>)}
     </div>
     <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-      <a href="/install" className="min-h-11 rounded-xl border border-black/10 bg-white px-3 py-2 text-center text-xs font-black text-ink">Install help</a>
-      <a href="/account" className="min-h-11 rounded-xl border border-black/10 bg-white px-3 py-2 text-center text-xs font-black text-ink">My login</a>
-      <a href="#field-actions" className="min-h-11 rounded-xl bg-forest px-3 py-2 text-center text-xs font-black text-white">Start work list</a>
-      <a href="#all-assigned-work" className="min-h-11 rounded-xl bg-ink px-3 py-2 text-center text-xs font-black text-white">All my jobs</a>
+      <a href="/install" className="min-h-11 rounded-xl border border-content/10 bg-surface px-3 py-2 text-center text-xs font-bold text-content">Install help</a>
+      <a href="/account" className="min-h-11 rounded-xl border border-content/10 bg-surface px-3 py-2 text-center text-xs font-bold text-content">My login</a>
+      <a href="#field-actions" className="min-h-11 rounded-xl bg-forest px-3 py-2 text-center text-xs font-bold text-white">Start work list</a>
+      <a href="#all-assigned-work" className="min-h-11 rounded-xl bg-ink px-3 py-2 text-center text-xs font-bold text-white">All my jobs</a>
     </div>
   </section>;
 }
@@ -720,12 +720,12 @@ function FieldActionCard({ job, noteDraft, saving, permissions, customerTextTemp
   const review = fieldReviewStatus(job, requireFactoryCostsForReview, requireReceiptBackupForReview, requireBeforePhotosForReview, requireSerialTagPhotoForReview, requireDamagePhotosForReview, requireAfterPhotosForReview, requireCompletionNotesForReview, requireWorkCompleteForReview, requirePartsClosedForReview);
   const missing = fieldMissingItems(review);
   const helpMessage = fieldHelpMessage(job, review);
-  return <div className="rounded-2xl border border-black/10 bg-white p-4">
+  return <div className="rounded-2xl border border-content/10 bg-surface p-4">
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0">
-        <p className="truncate text-xs font-black uppercase tracking-wide text-forest">{job.jobId} · {job.priority}</p>
-        <h3 className="mt-1 truncate text-xl font-black">{job.customerName}</h3>
-        <p className="mt-1 text-sm font-semibold text-black/55">{job.city} · {formatDue(job.dueDate)}</p>
+        <p className="truncate text-xs font-bold uppercase tracking-wide text-accent">{job.jobId} · {job.priority}</p>
+        <h3 className="mt-1 truncate text-xl font-bold">{job.customerName}</h3>
+        <p className="mt-1 text-sm font-semibold text-content/65">{job.city} · {formatDue(job.dueDate)}</p>
       </div>
       <StatusBadge status={job.status} />
     </div>
@@ -752,9 +752,9 @@ function FieldJobCard({ job, noteDraft, saving, permissions, customerTextTemplat
   return <div className="card p-4">
     <div className="flex items-start justify-between gap-3">
       <Link href={`/jobs/${job.jobId}`} className="min-w-0 flex-1">
-        <p className="truncate text-xs font-black uppercase tracking-wide text-forest">{job.jobId} · {job.priority}</p>
-        <h3 className="mt-1 truncate text-xl font-black">{job.customerName}</h3>
-        <p className="mt-1 text-sm font-semibold text-black/55">{job.jobType} · {job.address}, {job.city}</p>
+        <p className="truncate text-xs font-bold uppercase tracking-wide text-accent">{job.jobId} · {job.priority}</p>
+        <h3 className="mt-1 truncate text-xl font-bold">{job.customerName}</h3>
+        <p className="mt-1 text-sm font-semibold text-content/65">{job.jobType} · {job.address}, {job.city}</p>
       </Link>
       <StatusBadge status={job.status} />
     </div>
@@ -787,7 +787,7 @@ function StructuredTravelLegs({ job, saving, onSave }: { job: Job; saving: boole
     onSave({ ...draft, from: draft.from.trim(), to: draft.to.trim(), miles: String(miles) });
     setDraft((old) => ({ ...old, from: "", to: "", departureAt: "", arrivalAt: "", miles: "" }));
   }
-  return <section className="mt-3 rounded-2xl border border-black/10 bg-sand p-3"><p className="text-sm font-black">Travel legs</p><p className="mt-1 text-xs font-semibold text-black/45">Record trip activity only. Rates and dollar amounts stay with the office.</p><form onSubmit={submit} className="mt-3 grid gap-2 sm:grid-cols-2"><input className="field !min-h-11 !py-2 text-sm" type="date" value={draft.date} onChange={(e) => setDraft((old) => ({ ...old, date: e.target.value }))} /><input className="field !min-h-11 !py-2 text-sm" placeholder="From / origin" value={draft.from} onChange={(e) => setDraft((old) => ({ ...old, from: e.target.value }))} required /><input className="field !min-h-11 !py-2 text-sm" placeholder="To / destination" value={draft.to} onChange={(e) => setDraft((old) => ({ ...old, to: e.target.value }))} required /><input className="field !min-h-11 !py-2 text-sm" type="datetime-local" value={draft.departureAt ? draft.departureAt.slice(0, 16) : ""} onChange={(e) => setDraft((old) => ({ ...old, departureAt: e.target.value ? new Date(e.target.value).toISOString() : "" }))} /><input className="field !min-h-11 !py-2 text-sm" type="datetime-local" value={draft.arrivalAt ? draft.arrivalAt.slice(0, 16) : ""} onChange={(e) => setDraft((old) => ({ ...old, arrivalAt: e.target.value ? new Date(e.target.value).toISOString() : "" }))} /><input className="field !min-h-11 !py-2 text-sm" type="number" min="0" step="0.1" inputMode="decimal" placeholder="Miles" value={draft.miles} onChange={(e) => setDraft((old) => ({ ...old, miles: e.target.value }))} required /><button type="submit" disabled={saving} className="min-h-11 rounded-xl bg-forest px-4 py-2 text-sm font-black text-white sm:col-span-2">{saving ? "Saving..." : "Add travel leg"}</button></form>{legs.length > 0 && <div className="mt-3 space-y-2">{legs.map((leg) => <div key={leg.id} className="rounded-xl bg-white p-3 text-sm"><p className="font-black">{leg.date} · {leg.from} → {leg.to}</p><p className="text-xs font-semibold text-black/45">{leg.departureAt ? new Date(leg.departureAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "No departure"} → {leg.arrivalAt ? new Date(leg.arrivalAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "No arrival"} · {leg.miles || "0"} miles</p></div>)}</div>}</section>;
+  return <section className="mt-3 rounded-2xl border border-content/10 bg-sand p-3"><p className="text-sm font-bold">Travel legs</p><p className="mt-1 text-xs font-semibold text-content/65">Record trip activity only. Rates and dollar amounts stay with the office.</p><form onSubmit={submit} className="mt-3 grid gap-2 sm:grid-cols-2"><input className="field !min-h-11 !py-2 text-sm" type="date" value={draft.date} onChange={(e) => setDraft((old) => ({ ...old, date: e.target.value }))} /><input className="field !min-h-11 !py-2 text-sm" placeholder="From / origin" value={draft.from} onChange={(e) => setDraft((old) => ({ ...old, from: e.target.value }))} required /><input className="field !min-h-11 !py-2 text-sm" placeholder="To / destination" value={draft.to} onChange={(e) => setDraft((old) => ({ ...old, to: e.target.value }))} required /><input className="field !min-h-11 !py-2 text-sm" type="datetime-local" value={draft.departureAt ? draft.departureAt.slice(0, 16) : ""} onChange={(e) => setDraft((old) => ({ ...old, departureAt: e.target.value ? new Date(e.target.value).toISOString() : "" }))} /><input className="field !min-h-11 !py-2 text-sm" type="datetime-local" value={draft.arrivalAt ? draft.arrivalAt.slice(0, 16) : ""} onChange={(e) => setDraft((old) => ({ ...old, arrivalAt: e.target.value ? new Date(e.target.value).toISOString() : "" }))} /><input className="field !min-h-11 !py-2 text-sm" type="number" min="0" step="0.1" inputMode="decimal" placeholder="Miles" value={draft.miles} onChange={(e) => setDraft((old) => ({ ...old, miles: e.target.value }))} required /><button type="submit" disabled={saving} className="min-h-11 rounded-xl bg-forest px-4 py-2 text-sm font-bold text-white sm:col-span-2">{saving ? "Saving..." : "Add travel leg"}</button></form>{legs.length > 0 && <div className="mt-3 space-y-2">{legs.map((leg) => <div key={leg.id} className="rounded-xl bg-surface p-3 text-sm"><p className="font-bold">{leg.date} · {leg.from} → {leg.to}</p><p className="text-xs font-semibold text-content/65">{leg.departureAt ? new Date(leg.departureAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "No departure"} → {leg.arrivalAt ? new Date(leg.arrivalAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "No arrival"} · {leg.miles || "0"} miles</p></div>)}</div>}</section>;
 }
 
 function FactoryCostQuickEntry({ job, instructions, saving, onSave }: { job: Job; instructions: string; saving: boolean; onSave: (costPatch: Partial<FactoryCostTracker>) => void }) {
@@ -809,8 +809,8 @@ function FactoryCostQuickEntry({ job, instructions, saving, onSave }: { job: Job
   return <div className="mt-3 rounded-2xl border border-blue-100 bg-blue-50 p-3">
     <div className="mb-2 flex items-center justify-between gap-2">
       <div>
-        <p className="text-sm font-black text-blue-950">Factory costs</p>
-        <p className="text-xs font-semibold text-blue-900/65">{instructions}</p>
+        <p className="text-sm font-bold text-blue-950">Factory costs</p>
+        <p className="text-xs font-semibold text-blue-900">{instructions}</p>
       </div>
     </div>
     <div className="grid grid-cols-2 gap-2">
@@ -821,16 +821,16 @@ function FactoryCostQuickEntry({ job, instructions, saving, onSave }: { job: Job
       <FieldCostInput label="Hotel $" value={draft.hotelTotal} onChange={(value) => setDraft((old) => ({ ...old, hotelTotal: value }))} />
       <FieldCostInput label="Materials $" value={draft.materialsTotal} onChange={(value) => setDraft((old) => ({ ...old, materialsTotal: value }))} />
       <FieldCostInput label="Other $" value={draft.otherReceiptsTotal} onChange={(value) => setDraft((old) => ({ ...old, otherReceiptsTotal: value }))} />
-      <input value={draft.notes} onChange={(event) => setDraft((old) => ({ ...old, notes: event.target.value }))} className="min-h-10 rounded-xl border border-black/10 bg-white px-3 py-2 text-sm font-bold outline-none focus:border-blue-500" placeholder="Notes" />
+      <input value={draft.notes} onChange={(event) => setDraft((old) => ({ ...old, notes: event.target.value }))} className="min-h-11 rounded-xl border border-content/10 bg-surface px-3 py-2 text-sm font-bold outline-none focus:border-blue-500" placeholder="Notes" />
     </div>
-    <button type="button" disabled={saving} onClick={() => onSave(draft)} className="mt-2 min-h-11 w-full rounded-xl bg-blue-700 px-4 py-2 text-sm font-black text-white disabled:opacity-50">{saving ? "Saving…" : "Save Factory Costs"}</button>
+    <button type="button" disabled={saving} onClick={() => onSave(draft)} className="mt-2 min-h-11 w-full rounded-xl bg-blue-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{saving ? "Saving…" : "Save Factory Costs"}</button>
   </div>;
 }
 
 function FieldCostInput({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
   return <label>
-    <span className="mb-1 block text-[10px] font-black uppercase tracking-wide text-blue-900/60">{label}</span>
-    <input value={value} onChange={(event) => onChange(event.target.value)} inputMode="decimal" className="min-h-10 w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-sm font-bold outline-none focus:border-blue-500" placeholder="0" />
+    <span className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-blue-900">{label}</span>
+    <input value={value} onChange={(event) => onChange(event.target.value)} inputMode="decimal" className="min-h-11 w-full rounded-xl border border-content/10 bg-surface px-3 py-2 text-sm font-bold outline-none focus:border-blue-500" placeholder="0" />
   </label>;
 }
 
@@ -840,29 +840,29 @@ function QuickCompletionNotes({ job, saving, onSave }: { job: Job; saving: boole
   return <form onSubmit={(event) => { event.preventDefault(); onSave(notes); }} className="mt-3 rounded-2xl border border-emerald-100 bg-emerald-50 p-3">
     <div className="mb-2 flex items-center justify-between gap-2">
       <div>
-        <p className="text-sm font-black text-emerald-950">Completion notes</p>
-        <p className="text-xs font-semibold text-emerald-900/65">{saved ? "Saved for manager review." : "Tell the manager what was finished before sending the job."}</p>
+        <p className="text-sm font-bold text-emerald-950">Completion notes</p>
+        <p className="text-xs font-semibold text-emerald-900">{saved ? "Saved for manager review." : "Tell the manager what was finished before sending the job."}</p>
       </div>
-      <span className={`rounded-full px-3 py-1 text-xs font-black ${saved ? "bg-white text-emerald-900" : "bg-orange-100 text-orange-900"}`}>{saved ? "Added" : "Needed"}</span>
+      <span className={`rounded-full px-3 py-1 text-xs font-bold ${saved ? "bg-surface text-emerald-900" : "bg-orange-100 text-orange-900"}`}>{saved ? "Added" : "Needed"}</span>
     </div>
-    <textarea value={notes} onChange={(event) => setNotes(event.target.value)} className="field min-h-20 !bg-white !py-2 text-sm" placeholder="Example: Trim-out complete, serial tag photo added, cleaned up, customer aware." />
-    <button type="submit" disabled={saving || !notes.trim()} className="mt-2 min-h-11 w-full rounded-xl bg-emerald-700 px-4 py-2 text-sm font-black text-white disabled:opacity-50">{saving ? "Saving…" : saved ? "Update Completion Notes" : "Save Completion Notes"}</button>
+    <textarea value={notes} onChange={(event) => setNotes(event.target.value)} className="field min-h-20 !bg-surface !py-2 text-sm" placeholder="Example: Trim-out complete, serial tag photo added, cleaned up, customer aware." />
+    <button type="submit" disabled={saving || !notes.trim()} className="mt-2 min-h-11 w-full rounded-xl bg-emerald-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{saving ? "Saving…" : saved ? "Update Completion Notes" : "Save Completion Notes"}</button>
   </form>;
 }
 
 function QuickFieldNotes({ job, noteDraft, templates, saving, onNote, onNoteDraft }: { job: Job; noteDraft: string; templates: string[]; saving: boolean; onNote: (message: string, type?: JobActivity["type"]) => void; onNoteDraft: (value: string) => void }) {
   const quickTemplates = parseFieldNoteTemplates(templates);
-  return <div className="mt-3 rounded-2xl border border-black/10 bg-white p-3">
+  return <div className="mt-3 rounded-2xl border border-content/10 bg-surface p-3">
     <div className="mb-2 flex items-center justify-between gap-2">
-      <p className="text-sm font-black">Quick field note</p>
-      <Link href={`/jobs/${job.jobId}#operations`} className="text-xs font-black text-forest">All notes</Link>
+      <p className="text-sm font-bold">Quick field note</p>
+      <Link href={`/jobs/${job.jobId}#operations`} className="text-xs font-bold text-accent">All notes</Link>
     </div>
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-      {quickTemplates.map((template) => <button key={template.label} type="button" disabled={saving} onClick={() => onNote(template.message, template.type)} className="min-h-10 rounded-xl bg-sand px-2 py-2 text-center text-[11px] font-black text-ink disabled:opacity-50">{template.label}</button>)}
+      {quickTemplates.map((template) => <button key={template.label} type="button" disabled={saving} onClick={() => onNote(template.message, template.type)} className="min-h-11 rounded-xl bg-sand px-2 py-2 text-center text-[11px] font-bold text-content disabled:opacity-50">{template.label}</button>)}
     </div>
     <form onSubmit={(event) => { event.preventDefault(); onNote(noteDraft); }} className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
       <input value={noteDraft} onChange={(event) => onNoteDraft(event.target.value)} className="field !min-h-11 !py-2 text-sm" placeholder="Type quick note..." />
-      <button type="submit" disabled={saving || !noteDraft.trim()} className="min-h-11 rounded-xl bg-forest px-4 py-2 text-sm font-black text-white disabled:opacity-50">{saving ? "Saving…" : "Save"}</button>
+      <button type="submit" disabled={saving || !noteDraft.trim()} className="min-h-11 rounded-xl bg-forest px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{saving ? "Saving…" : "Save"}</button>
     </form>
   </div>;
 }
@@ -879,14 +879,14 @@ function parseFieldNoteTemplates(templates: string[]) {
 function FieldLatestUpdate({ job }: { job: Job }) {
   const latest = (job.activityLog || [])[0];
   if (!latest) return null;
-  return <div className={`mt-3 rounded-2xl border p-3 ${latest.notify && !latest.resolvedAt ? "border-orange-200 bg-orange-50" : "border-black/10 bg-sand"}`}>
+  return <div className={`mt-3 rounded-2xl border p-3 ${latest.notify && !latest.resolvedAt ? "border-orange-200 bg-orange-50" : "border-content/10 bg-sand"}`}>
     <div className="mb-1 flex items-center justify-between gap-2">
-      <p className="text-sm font-black">Latest update</p>
-      <span className="rounded-full bg-white px-2 py-1 text-[10px] font-black uppercase tracking-wide text-black/45">{latest.type}</span>
+      <p className="text-sm font-bold">Latest update</p>
+      <span className="rounded-full bg-surface px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-content/65">{latest.type}</span>
     </div>
-    <p className="line-clamp-3 text-sm font-semibold text-black/65">{latest.message}</p>
-    <p className="mt-1 text-xs font-semibold text-black/40">{latest.createdBy} · {new Date(latest.createdAt).toLocaleString()}</p>
-    {latest.notify && !latest.resolvedAt && <p className="mt-2 text-xs font-black uppercase tracking-wide text-orange-800">Needs follow-up</p>}
+    <p className="line-clamp-3 text-sm font-semibold text-content/65">{latest.message}</p>
+    <p className="mt-1 text-xs font-semibold text-content/65">{latest.createdBy} · {new Date(latest.createdAt).toLocaleString()}</p>
+    {latest.notify && !latest.resolvedAt && <p className="mt-2 text-xs font-bold uppercase tracking-wide text-orange-800">Needs follow-up</p>}
   </div>;
 }
 
@@ -894,12 +894,12 @@ function FieldScopeSummary({ job }: { job: Job }) {
   return <div className="mt-3 rounded-2xl bg-sand p-3">
     <div className="grid gap-2 sm:grid-cols-2">
       <div>
-        <p className="text-xs font-black uppercase tracking-wide text-black/35">Scope</p>
-        <p className="mt-1 line-clamp-3 text-sm font-semibold text-black/65">{job.scopeNotes || "No scope notes added."}</p>
+        <p className="text-xs font-bold uppercase tracking-wide text-content/65">Scope</p>
+        <p className="mt-1 line-clamp-3 text-sm font-semibold text-content/65">{job.scopeNotes || "No scope notes added."}</p>
       </div>
       <div>
-        <p className="text-xs font-black uppercase tracking-wide text-black/35">Parts / materials</p>
-        <p className={`mt-1 line-clamp-3 text-sm font-semibold ${job.partsNeeded ? "text-orange-800" : "text-black/45"}`}>{job.partsNeeded || "No parts listed."}</p>
+        <p className="text-xs font-bold uppercase tracking-wide text-content/65">Parts / materials</p>
+        <p className={`mt-1 line-clamp-3 text-sm font-semibold ${job.partsNeeded ? "text-orange-800" : "text-content/65"}`}>{job.partsNeeded || "No parts listed."}</p>
       </div>
     </div>
   </div>;
@@ -914,16 +914,16 @@ function FieldPhotoProof({ job, canUpload }: { job: Job; canUpload: boolean }) {
   ];
   const missing = requirements.filter((item) => item.needed && item.count === 0);
   if (!missing.length && requirements.every((item) => item.count === 0)) return null;
-  return <div className="mt-3 rounded-2xl border border-black/10 bg-white p-3">
+  return <div className="mt-3 rounded-2xl border border-content/10 bg-surface p-3">
     <div className="mb-2 flex items-center justify-between gap-2">
       <div>
-        <p className="text-sm font-black">Photo proof</p>
-        <p className="text-xs font-semibold text-black/45">{missing.length ? `${missing.length} required photo set${missing.length === 1 ? "" : "s"} missing` : "Required photo proof is covered."}</p>
+        <p className="text-sm font-bold">Photo proof</p>
+        <p className="text-xs font-semibold text-content/65">{missing.length ? `${missing.length} required photo set${missing.length === 1 ? "" : "s"} missing` : "Required photo proof is covered."}</p>
       </div>
-      {canUpload && <Link href={`/jobs/${job.jobId}#photos`} className="rounded-xl bg-lime px-3 py-2 text-xs font-black text-ink">Add photos</Link>}
+      {canUpload && <Link href={`/jobs/${job.jobId}#photos`} className="rounded-xl bg-lime px-3 py-2 text-xs font-bold text-ink">Add photos</Link>}
     </div>
     <div className="grid grid-cols-2 gap-2">
-      {requirements.map((item) => <Link key={item.label} href={`/jobs/${job.jobId}#photos`} className={`rounded-xl p-2 text-xs font-black ${item.needed && item.count === 0 ? "bg-orange-50 text-orange-900" : "bg-sand text-black/60"}`}>
+      {requirements.map((item) => <Link key={item.label} href={`/jobs/${job.jobId}#photos`} className={`rounded-xl p-2 text-xs font-bold ${item.needed && item.count === 0 ? "bg-orange-50 text-orange-900" : "bg-sand text-content/65"}`}>
         <span className="block">{item.needed && item.count === 0 ? "Need" : "Have"} · {item.label}</span>
         <span className="mt-0.5 block font-semibold opacity-70">{item.count} uploaded</span>
       </Link>)}
@@ -934,22 +934,22 @@ function FieldPhotoProof({ job, canUpload }: { job: Job; canUpload: boolean }) {
 function FieldJobBasics({ job }: { job: Job }) {
   const address = [job.address, job.city].filter(Boolean).join(", ") || "No address listed";
   const source = job.source === "Dealer" ? job.dealerName || "Dealer" : job.source === "Factory" ? job.factoryWorkOrderNumber || "Factory" : "Individual";
-  return <div className="mt-3 grid gap-2 rounded-2xl border border-black/10 bg-white p-3 text-sm sm:grid-cols-2">
+  return <div className="mt-3 grid gap-2 rounded-2xl border border-content/10 bg-surface p-3 text-sm sm:grid-cols-2">
     <div>
-      <p className="text-xs font-black uppercase tracking-wide text-black/35">Location</p>
-      <p className="mt-1 font-semibold text-black/65">{address}</p>
+      <p className="text-xs font-bold uppercase tracking-wide text-content/65">Location</p>
+      <p className="mt-1 font-semibold text-content/65">{address}</p>
     </div>
     <div>
-      <p className="text-xs font-black uppercase tracking-wide text-black/35">Phone</p>
-      <p className="mt-1 font-semibold text-black/65">{job.phone || "No phone listed"}</p>
+      <p className="text-xs font-bold uppercase tracking-wide text-content/65">Phone</p>
+      <p className="mt-1 font-semibold text-content/65">{job.phone || "No phone listed"}</p>
     </div>
     <div>
-      <p className="text-xs font-black uppercase tracking-wide text-black/35">Job type</p>
-      <p className="mt-1 font-semibold text-black/65">{job.jobType || "Not listed"}</p>
+      <p className="text-xs font-bold uppercase tracking-wide text-content/65">Job type</p>
+      <p className="mt-1 font-semibold text-content/65">{job.jobType || "Not listed"}</p>
     </div>
     <div>
-      <p className="text-xs font-black uppercase tracking-wide text-black/35">Source</p>
-      <p className="mt-1 font-semibold text-black/65">{source}</p>
+      <p className="text-xs font-bold uppercase tracking-wide text-content/65">Source</p>
+      <p className="mt-1 font-semibold text-content/65">{source}</p>
     </div>
   </div>;
 }
@@ -961,15 +961,15 @@ function QuickChecklist({ job, saving, onChecklist }: { job: Job; saving: boolea
   if (!checklist.length) return null;
   return <div className="mt-3 rounded-2xl bg-sand p-3">
     <div className="mb-2 flex items-center justify-between gap-2">
-      <p className="text-sm font-black">Quick checklist</p>
-      <Link href={`/jobs/${job.jobId}`} className="text-xs font-black text-forest">Full list</Link>
+      <p className="text-sm font-bold">Quick checklist</p>
+      <Link href={`/jobs/${job.jobId}`} className="text-xs font-bold text-accent">Full list</Link>
     </div>
     <div className="grid gap-2">
-      {incomplete.length ? incomplete.map((item) => <button key={item.id} type="button" disabled={saving} onClick={() => onChecklist(item.id)} className="flex min-h-11 items-center gap-2 rounded-xl bg-white px-3 py-2 text-left text-sm font-black text-ink disabled:opacity-50">
-        <span className="grid size-6 shrink-0 place-items-center rounded-md border border-black/20"><CheckCircleIcon className="size-4 text-black/20" /></span>
+      {incomplete.length ? incomplete.map((item) => <button key={item.id} type="button" disabled={saving} onClick={() => onChecklist(item.id)} className="flex min-h-11 items-center gap-2 rounded-xl bg-surface px-3 py-2 text-left text-sm font-bold text-content disabled:opacity-50">
+        <span className="grid size-6 shrink-0 place-items-center rounded-md border border-content/20"><CheckCircleIcon className="size-4 text-content/20" /></span>
         <span className="line-clamp-2">{item.label}</span>
-      </button>) : <p className="rounded-xl bg-white p-3 text-sm font-black text-forest">Checklist is complete.</p>}
-      {recentlyDone.length > 0 && incomplete.length > 0 && <button type="button" disabled={saving} onClick={() => onChecklist(recentlyDone[0].id)} className="min-h-10 rounded-xl border border-black/10 bg-white px-3 py-2 text-xs font-black text-black/45 disabled:opacity-50">Undo last done: {recentlyDone[0].label}</button>}
+      </button>) : <p className="rounded-xl bg-surface p-3 text-sm font-bold text-accent">Checklist is complete.</p>}
+      {recentlyDone.length > 0 && incomplete.length > 0 && <button type="button" disabled={saving} onClick={() => onChecklist(recentlyDone[0].id)} className="min-h-11 rounded-xl border border-content/10 bg-surface px-3 py-2 text-xs font-bold text-content/65 disabled:opacity-50">Undo last done: {recentlyDone[0].label}</button>}
     </div>
   </div>;
 }
@@ -978,23 +978,23 @@ function FieldCloseoutStatus({ review, instructions }: { review: ReturnType<type
   const nextSteps = review.items.filter((item) => !item.ok).slice(0, 3);
   const remaining = review.items.filter((item) => !item.ok).length;
   const hasRequirements = review.items.length > 0;
-  return <div className="mt-3 rounded-2xl border border-black/10 bg-sand p-3">
+  return <div className="mt-3 rounded-2xl border border-content/10 bg-sand p-3">
     <div className="mb-2 flex items-center justify-between gap-3">
       <div>
-        <p className="text-sm font-black">Before you send to the manager</p>
-        <p className="text-xs font-semibold text-black/45">{hasRequirements ? review.readyForManager ? "Everything needed is ready." : `${remaining} item${remaining === 1 ? "" : "s"} remaining before you can send it.` : "No required finish checks are enabled."}</p>
+        <p className="text-sm font-bold">Before you send to the manager</p>
+        <p className="text-xs font-semibold text-content/65">{hasRequirements ? review.readyForManager ? "Everything needed is ready." : `${remaining} item${remaining === 1 ? "" : "s"} remaining before you can send it.` : "No required finish checks are enabled."}</p>
       </div>
-      <span className={`rounded-full px-3 py-1 text-xs font-black ${review.readyForManager ? "bg-forest text-white" : "bg-orange-100 text-orange-900"}`}>{review.score}%</span>
+      <span className={`rounded-full px-3 py-1 text-xs font-bold ${review.readyForManager ? "bg-forest text-white" : "bg-orange-100 text-orange-900"}`}>{review.score}%</span>
     </div>
-    {instructions && <p className="mb-2 rounded-xl border border-black/10 bg-white p-3 text-xs font-bold text-black/55">{instructions}</p>}
-    {!hasRequirements ? <p className="mb-2 rounded-xl bg-white p-3 text-sm font-black text-forest">No required finish checks are turned on for this job.</p> : review.readyForManager ? <p className="mb-2 rounded-xl bg-white p-3 text-sm font-black text-forest">Good to go — send it to the manager when the job is finished.</p> : <div className="mb-2 grid gap-2">
-      {nextSteps.map((item) => <a key={item.label} href={item.href} className="rounded-xl bg-white p-3 text-sm font-black text-orange-900">
+    {instructions && <p className="mb-2 rounded-xl border border-content/10 bg-surface p-3 text-xs font-bold text-content/65">{instructions}</p>}
+    {!hasRequirements ? <p className="mb-2 rounded-xl bg-surface p-3 text-sm font-bold text-accent">No required finish checks are turned on for this job.</p> : review.readyForManager ? <p className="mb-2 rounded-xl bg-surface p-3 text-sm font-bold text-accent">Good to go — send it to the manager when the job is finished.</p> : <div className="mb-2 grid gap-2">
+      {nextSteps.map((item) => <a key={item.label} href={item.href} className="rounded-xl bg-surface p-3 text-sm font-bold text-orange-900">
         Do this next: {item.label}
-        <span className="mt-0.5 block text-xs font-semibold text-black/45">{item.detail}</span>
+        <span className="mt-0.5 block text-xs font-semibold text-content/65">{item.detail}</span>
       </a>)}
     </div>}
     <div className="grid grid-cols-2 gap-2">
-      {review.items.map((item) => <a key={item.label} href={item.href} className={`rounded-xl p-2 text-xs font-black ${item.ok ? "bg-white text-forest" : "bg-orange-50 text-orange-900"}`}>
+      {review.items.map((item) => <a key={item.label} href={item.href} className={`rounded-xl p-2 text-xs font-bold ${item.ok ? "bg-surface text-accent" : "bg-orange-50 text-orange-900"}`}>
         <span className="block">{item.ok ? "Ready" : "Need"} · {item.label}</span>
         <span className="mt-0.5 block truncate font-semibold opacity-70">{item.detail}</span>
       </a>)}
@@ -1008,27 +1008,27 @@ function FieldButtons({ job, saving, permissions, customerTextTemplate, fieldSup
   return <div className="mt-4 space-y-2">
     {permissions.employeeCanRequestHelp && employeeHelpInstructions && <p className="rounded-xl border border-red-100 bg-red-50 p-3 text-xs font-bold text-red-900">{employeeHelpInstructions}</p>}
     <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-    <a href={`tel:${job.phone}`} className={`min-h-12 rounded-xl px-3 py-3 text-center text-xs font-black ${job.phone ? "bg-forest text-white" : "pointer-events-none bg-black/5 text-black/25"}`}><PhoneIcon className="mx-auto mb-1 size-5" />Call</a>
-    <a href={`sms:${job.phone}?&body=${encodeURIComponent(formatCustomerText(customerTextTemplate, job))}`} className={`min-h-12 rounded-xl px-3 py-3 text-center text-xs font-black ${job.phone ? "border border-black/10 bg-white text-ink" : "pointer-events-none bg-black/5 text-black/25"}`}><PhoneIcon className="mx-auto mb-1 size-5" />Text</a>
-    <a href={`https://maps.google.com/?q=${encodeURIComponent(`${job.address}, ${job.city}`)}`} target="_blank" className="min-h-12 rounded-xl bg-ink px-3 py-3 text-center text-xs font-black text-white"><MapPinIcon className="mx-auto mb-1 size-5" />Map</a>
-    {permissions.employeeCanRequestHelp && <button type="button" onClick={onNeedHelp} disabled={saving} className="min-h-12 rounded-xl bg-red-100 px-3 py-3 text-center text-xs font-black text-red-900 disabled:opacity-50"><ExclamationTriangleIcon className="mx-auto mb-1 size-5" />Need Help</button>}
-    {permissions.employeeCanRequestHelp && fieldSupportPhone && <a href={`tel:${fieldSupportPhone}`} className="min-h-12 rounded-xl bg-red-600 px-3 py-3 text-center text-xs font-black text-white"><PhoneIcon className="mx-auto mb-1 size-5" />{fieldSupportName || "Office"}</a>}
-    {permissions.employeeCanRequestHelp && fieldSupportPhone && <a href={`sms:${fieldSupportPhone}?&body=${encodeURIComponent(supportText)}`} className="min-h-12 rounded-xl bg-red-50 px-3 py-3 text-center text-xs font-black text-red-900"><PhoneIcon className="mx-auto mb-1 size-5" />Text Office</a>}
-    {permissions.employeeCanStartJobs && (session.started ? <Link href={`/jobs/${job.jobId}`} className="min-h-12 rounded-xl bg-blue-100 px-3 py-3 text-center text-xs font-black text-blue-900"><PlayIcon className="mx-auto mb-1 size-5" />Continue</Link> : <button type="button" onClick={onStart} disabled={saving} className="min-h-12 rounded-xl bg-blue-100 px-3 py-3 text-center text-xs font-black text-blue-900 disabled:opacity-50"><PlayIcon className="mx-auto mb-1 size-5" />{saving ? "Saving" : "Start"}</button>)}
-    {job.dueDate && <Link href={`/jobs/${job.jobId}#scheduling`} className="min-h-12 rounded-xl bg-blue-50 px-3 py-3 text-center text-xs font-black text-blue-900"><CalendarDaysIcon className="mx-auto mb-1 size-5" />RTS Calendar</Link>}
-    {job.companyCamProjectUrl && <a href={job.companyCamProjectUrl} target="_blank" className="min-h-12 rounded-xl bg-yellow-50 px-3 py-3 text-center text-xs font-black text-yellow-900"><CameraIcon className="mx-auto mb-1 size-5" />CompanyCam</a>}
-    <Link href={`/jobs/${job.jobId}#time-log`} className="min-h-12 rounded-xl bg-sand px-3 py-3 text-center text-xs font-black text-ink"><ClockIcon className="mx-auto mb-1 size-5" />Time</Link>
-    {permissions.employeeCanUploadFiles && <Link href={`/jobs/${job.jobId}#paperwork`} className="min-h-12 rounded-xl bg-purple-50 px-3 py-3 text-center text-xs font-black text-purple-900"><DocumentTextIcon className="mx-auto mb-1 size-5" />Paperwork</Link>}
-    {permissions.employeeCanUploadFiles && <Link href={`/jobs/${job.jobId}#photos`} className="min-h-12 rounded-xl bg-lime px-3 py-3 text-center text-xs font-black text-ink"><CameraIcon className="mx-auto mb-1 size-5" />Photos</Link>}
-    {permissions.employeeCanUploadFiles && <Link href={`/jobs/${job.jobId}#receipts`} className="min-h-12 rounded-xl bg-blue-50 px-3 py-3 text-center text-xs font-black text-blue-900"><ReceiptPercentIcon className="mx-auto mb-1 size-5" />Receipts</Link>}
-    <Link href={`/jobs/${job.jobId}#additional-issue`} className="min-h-12 rounded-xl bg-orange-50 px-3 py-3 text-center text-xs font-black text-orange-900"><ExclamationTriangleIcon className="mx-auto mb-1 size-5" />Additional Issue</Link>
-    {permissions.employeeCanRequestParts && <Link href={`/jobs/${job.jobId}#parts-needed`} className="min-h-12 rounded-xl bg-orange-50 px-3 py-3 text-center text-xs font-black text-orange-900"><WrenchScrewdriverIcon className="mx-auto mb-1 size-5" />Parts</Link>}
-    <Link href={`/jobs/${job.jobId}#operations`} className="min-h-12 rounded-xl bg-sand px-3 py-3 text-center text-xs font-black text-ink"><ClipboardDocumentCheckIcon className="mx-auto mb-1 size-5" />Notes</Link>
-    <Link href={`/jobs/${job.jobId}`} className="min-h-12 rounded-xl border border-black/10 bg-white px-3 py-3 text-center text-xs font-black text-ink"><CheckCircleIcon className="mx-auto mb-1 size-5" />Checklist</Link>
-    {permissions.employeeCanSendReadyReview && <Link href={`/jobs/${job.jobId}#complete-job`} className="min-h-12 rounded-xl bg-emerald-50 px-3 py-3 text-center text-xs font-black text-emerald-900"><CheckCircleIcon className="mx-auto mb-1 size-5" />Complete</Link>}
-    {permissions.employeeCanSendReadyReview && <button type="button" onClick={onReadyReview} disabled={saving || !reviewReady || job.status === "Needs Inspection"} className="min-h-12 rounded-xl bg-forest px-3 py-3 text-center text-xs font-black text-white disabled:opacity-50"><ClipboardDocumentCheckIcon className="mx-auto mb-1 size-5" />{saving ? "Saving" : reviewButtonLabel}</button>}
-    {permissions.employeeCanAddSignoffs && <Link href={`/jobs/${job.jobId}#signoffs`} className="min-h-12 rounded-xl border border-black/10 bg-white px-3 py-3 text-center text-xs font-black text-ink"><DocumentTextIcon className="mx-auto mb-1 size-5" />Sign</Link>}
-    {permissions.employeeCanViewPackets && <Link href={`/jobs/${job.jobId}/packet`} className="min-h-12 rounded-xl border border-black/10 bg-white px-3 py-3 text-center text-xs font-black text-ink"><ClipboardDocumentCheckIcon className="mx-auto mb-1 size-5" />Packet</Link>}
+    <a href={`tel:${job.phone}`} className={`min-h-12 rounded-xl px-3 py-3 text-center text-xs font-bold ${job.phone ? "bg-forest text-white" : "pointer-events-none bg-content/5 text-content/65"}`}><PhoneIcon className="mx-auto mb-1 size-5" />Call</a>
+    <a href={`sms:${job.phone}?&body=${encodeURIComponent(formatCustomerText(customerTextTemplate, job))}`} className={`min-h-12 rounded-xl px-3 py-3 text-center text-xs font-bold ${job.phone ? "border border-content/10 bg-surface text-content" : "pointer-events-none bg-content/5 text-content/65"}`}><PhoneIcon className="mx-auto mb-1 size-5" />Text</a>
+    <a href={`https://maps.google.com/?q=${encodeURIComponent(`${job.address}, ${job.city}`)}`} target="_blank" className="min-h-12 rounded-xl bg-ink px-3 py-3 text-center text-xs font-bold text-white"><MapPinIcon className="mx-auto mb-1 size-5" />Map</a>
+    {permissions.employeeCanRequestHelp && <button type="button" onClick={onNeedHelp} disabled={saving} className="min-h-12 rounded-xl bg-red-100 px-3 py-3 text-center text-xs font-bold text-red-900 disabled:opacity-50"><ExclamationTriangleIcon className="mx-auto mb-1 size-5" />Need Help</button>}
+    {permissions.employeeCanRequestHelp && fieldSupportPhone && <a href={`tel:${fieldSupportPhone}`} className="min-h-12 rounded-xl bg-red-600 px-3 py-3 text-center text-xs font-bold text-white"><PhoneIcon className="mx-auto mb-1 size-5" />{fieldSupportName || "Office"}</a>}
+    {permissions.employeeCanRequestHelp && fieldSupportPhone && <a href={`sms:${fieldSupportPhone}?&body=${encodeURIComponent(supportText)}`} className="min-h-12 rounded-xl bg-red-50 px-3 py-3 text-center text-xs font-bold text-red-900"><PhoneIcon className="mx-auto mb-1 size-5" />Text Office</a>}
+    {permissions.employeeCanStartJobs && (session.started ? <Link href={`/jobs/${job.jobId}`} className="min-h-12 rounded-xl bg-blue-100 px-3 py-3 text-center text-xs font-bold text-blue-900"><PlayIcon className="mx-auto mb-1 size-5" />Continue</Link> : <button type="button" onClick={onStart} disabled={saving} className="min-h-12 rounded-xl bg-blue-100 px-3 py-3 text-center text-xs font-bold text-blue-900 disabled:opacity-50"><PlayIcon className="mx-auto mb-1 size-5" />{saving ? "Saving" : "Start"}</button>)}
+    {job.dueDate && <Link href={`/jobs/${job.jobId}#scheduling`} className="min-h-12 rounded-xl bg-blue-50 px-3 py-3 text-center text-xs font-bold text-blue-900"><CalendarDaysIcon className="mx-auto mb-1 size-5" />RTS Calendar</Link>}
+    {job.companyCamProjectUrl && <a href={job.companyCamProjectUrl} target="_blank" className="min-h-12 rounded-xl bg-yellow-50 px-3 py-3 text-center text-xs font-bold text-yellow-900"><CameraIcon className="mx-auto mb-1 size-5" />CompanyCam</a>}
+    <Link href={`/jobs/${job.jobId}#time-log`} className="min-h-12 rounded-xl bg-sand px-3 py-3 text-center text-xs font-bold text-content"><ClockIcon className="mx-auto mb-1 size-5" />Time</Link>
+    {permissions.employeeCanUploadFiles && <Link href={`/jobs/${job.jobId}#paperwork`} className="min-h-12 rounded-xl bg-purple-50 px-3 py-3 text-center text-xs font-bold text-purple-900"><DocumentTextIcon className="mx-auto mb-1 size-5" />Paperwork</Link>}
+    {permissions.employeeCanUploadFiles && <Link href={`/jobs/${job.jobId}#photos`} className="min-h-12 rounded-xl bg-lime px-3 py-3 text-center text-xs font-bold text-ink"><CameraIcon className="mx-auto mb-1 size-5" />Photos</Link>}
+    {permissions.employeeCanUploadFiles && <Link href={`/jobs/${job.jobId}#receipts`} className="min-h-12 rounded-xl bg-blue-50 px-3 py-3 text-center text-xs font-bold text-blue-900"><ReceiptPercentIcon className="mx-auto mb-1 size-5" />Receipts</Link>}
+    <Link href={`/jobs/${job.jobId}#additional-issue`} className="min-h-12 rounded-xl bg-orange-50 px-3 py-3 text-center text-xs font-bold text-orange-900"><ExclamationTriangleIcon className="mx-auto mb-1 size-5" />Additional Issue</Link>
+    {permissions.employeeCanRequestParts && <Link href={`/jobs/${job.jobId}#parts-needed`} className="min-h-12 rounded-xl bg-orange-50 px-3 py-3 text-center text-xs font-bold text-orange-900"><WrenchScrewdriverIcon className="mx-auto mb-1 size-5" />Parts</Link>}
+    <Link href={`/jobs/${job.jobId}#operations`} className="min-h-12 rounded-xl bg-sand px-3 py-3 text-center text-xs font-bold text-content"><ClipboardDocumentCheckIcon className="mx-auto mb-1 size-5" />Notes</Link>
+    <Link href={`/jobs/${job.jobId}`} className="min-h-12 rounded-xl border border-content/10 bg-surface px-3 py-3 text-center text-xs font-bold text-content"><CheckCircleIcon className="mx-auto mb-1 size-5" />Checklist</Link>
+    {permissions.employeeCanSendReadyReview && <Link href={`/jobs/${job.jobId}#complete-job`} className="min-h-12 rounded-xl bg-emerald-50 px-3 py-3 text-center text-xs font-bold text-emerald-900"><CheckCircleIcon className="mx-auto mb-1 size-5" />Complete</Link>}
+    {permissions.employeeCanSendReadyReview && <button type="button" onClick={onReadyReview} disabled={saving || !reviewReady || job.status === "Needs Inspection"} className="min-h-12 rounded-xl bg-forest px-3 py-3 text-center text-xs font-bold text-white disabled:opacity-50"><ClipboardDocumentCheckIcon className="mx-auto mb-1 size-5" />{saving ? "Saving" : reviewButtonLabel}</button>}
+    {permissions.employeeCanAddSignoffs && <Link href={`/jobs/${job.jobId}#signoffs`} className="min-h-12 rounded-xl border border-content/10 bg-surface px-3 py-3 text-center text-xs font-bold text-content"><DocumentTextIcon className="mx-auto mb-1 size-5" />Sign</Link>}
+    {permissions.employeeCanViewPackets && <Link href={`/jobs/${job.jobId}/packet`} className="min-h-12 rounded-xl border border-content/10 bg-surface px-3 py-3 text-center text-xs font-bold text-content"><ClipboardDocumentCheckIcon className="mx-auto mb-1 size-5" />Packet</Link>}
     </div>
   </div>;
 }
@@ -1036,29 +1036,29 @@ function FieldButtons({ job, saving, permissions, customerTextTemplate, fieldSup
 function ProgressBar({ job }: { job: Job }) {
   const { total, complete, remaining, percent } = checklistProgress(job);
   return <div className="mt-3">
-    <div className="mb-1 flex items-center justify-between text-xs font-black text-black/45"><span>Job completion: {percent}%</span><span>{complete}/{total} · {remaining} remaining</span></div>
-    <div className="h-2 overflow-hidden rounded-full bg-black/5"><div className="h-full rounded-full bg-forest transition-all" style={{ width: `${percent}%` }} /></div>
+    <div className="mb-1 flex items-center justify-between text-xs font-bold text-content/65"><span>Job completion: {percent}%</span><span>{complete}/{total} · {remaining} remaining</span></div>
+    <div className="h-2 overflow-hidden rounded-full bg-content/5"><div className="h-full rounded-full bg-forest transition-all" style={{ width: `${percent}%` }} /></div>
   </div>;
 }
 
 function FieldDueStatus({ job }: { job: Job }) {
   const today = new Date().toLocaleDateString("en-CA");
   const label = !job.dueDate ? "Unscheduled" : job.dueDate < today ? "Overdue" : job.dueDate === today ? "Due today" : "Upcoming";
-  const tone = label === "Overdue" ? "bg-red-100 text-red-800" : label === "Due today" ? "bg-lime text-ink" : label === "Upcoming" ? "bg-blue-100 text-blue-800" : "bg-sand text-black/55";
-  return <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-black/10 bg-white p-3">
+  const tone = label === "Overdue" ? "bg-red-100 text-red-800" : label === "Due today" ? "bg-lime text-ink" : label === "Upcoming" ? "bg-blue-100 text-blue-800" : "bg-sand text-content/65";
+  return <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-content/10 bg-surface p-3">
     <div>
-      <p className="text-xs font-black uppercase tracking-wide text-black/35">Schedule status</p>
-      <p className="mt-1 text-sm font-semibold text-black/65">{formatDue(job.dueDate)}</p>
+      <p className="text-xs font-bold uppercase tracking-wide text-content/65">Schedule status</p>
+      <p className="mt-1 text-sm font-semibold text-content/65">{formatDue(job.dueDate)}</p>
     </div>
-    <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-black uppercase tracking-wide ${tone}`}>{label}</span>
+    <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide ${tone}`}>{label}</span>
   </div>;
 }
 
 function FieldWorkSessionBadge({ job }: { job: Job }) {
   const session = getWorkSession(job);
-  return <div className="mt-3 rounded-2xl border border-black/10 bg-white p-3">
-    <p className="text-xs font-black uppercase tracking-wide text-black/35">Work session</p>
-    <p className="mt-1 text-sm font-semibold text-black/65">{session.started ? `Started ${formatShortDateTime(session.started.createdAt)}` : "Not Started"}</p>
+  return <div className="mt-3 rounded-2xl border border-content/10 bg-surface p-3">
+    <p className="text-xs font-bold uppercase tracking-wide text-content/65">Work session</p>
+    <p className="mt-1 text-sm font-semibold text-content/65">{session.started ? `Started ${formatShortDateTime(session.started.createdAt)}` : "Not Started"}</p>
   </div>;
 }
 
@@ -1240,7 +1240,7 @@ function pickFieldPermissions(settings: Partial<BusinessSettings> | null): Parti
 function Metric({ label, value, icon }: { label: string; value: number; icon: React.ReactNode }) {
   return <div className="card p-4">
     <div className="mb-3 grid size-10 place-items-center rounded-xl bg-lime/70 [&>svg]:size-5">{icon}</div>
-    <p className="text-3xl font-black">{value}</p>
-    <p className="mt-1 text-xs font-bold text-black/45">{label}</p>
+    <p className="text-3xl font-bold">{value}</p>
+    <p className="mt-1 text-xs font-bold text-content/65">{label}</p>
   </div>;
 }

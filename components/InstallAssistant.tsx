@@ -54,28 +54,28 @@ export function InstallAssistant() {
 
   return <section className="card overflow-hidden">
     <div className="bg-ink p-4 text-white">
-      <p className="text-xs font-black uppercase tracking-widest text-lime">Install readiness</p>
-      <h2 className="mt-1 text-2xl font-black">Phone app status</h2>
-      <p className="mt-1 text-sm text-white/55">Use this before handing the link to a crew member.</p>
+      <p className="text-xs font-bold uppercase tracking-widest text-lime">Install readiness</p>
+      <h2 className="mt-1 text-2xl font-bold">Phone app status</h2>
+      <p className="mt-1 text-sm text-white/65">Use this before handing the link to a crew member.</p>
     </div>
     <div className="grid gap-3 p-4 sm:grid-cols-3">
       <StatusTile label="Internet" value={online ? "Online" : "Offline"} ready={online} icon={<SignalIcon />} />
       <StatusTile label="Installed view" value={standalone ? "Home screen" : "Browser"} ready={standalone} icon={<CheckCircleIcon />} />
       <StatusTile label="Offline shell" value={serviceWorkerReady ? "Ready" : "Loading"} ready={serviceWorkerReady} icon={<ArrowPathIcon />} />
     </div>
-    <div className="grid gap-2 border-t border-black/5 p-4 sm:grid-cols-3">
-      <button type="button" onClick={copyLink} className="min-h-12 rounded-xl border-2 border-black/10 bg-white px-4 py-3 font-black text-ink"><ClipboardDocumentIcon className="mr-2 inline size-5" />Copy app link</button>
-      <button type="button" onClick={copyCrewInstructions} className="min-h-12 rounded-xl border-2 border-black/10 bg-white px-4 py-3 font-black text-ink"><ClipboardDocumentIcon className="mr-2 inline size-5" />Copy instructions</button>
-      <button type="button" onClick={shareApp} className="min-h-12 rounded-xl bg-forest px-4 py-3 font-black text-white"><ShareIcon className="mr-2 inline size-5" />Share to crew</button>
+    <div className="grid gap-2 border-t border-content/5 p-4 sm:grid-cols-3">
+      <button type="button" onClick={copyLink} className="min-h-12 rounded-xl border-2 border-content/10 bg-surface px-4 py-3 font-bold text-content"><ClipboardDocumentIcon className="mr-2 inline size-5" />Copy app link</button>
+      <button type="button" onClick={copyCrewInstructions} className="min-h-12 rounded-xl border-2 border-content/10 bg-surface px-4 py-3 font-bold text-content"><ClipboardDocumentIcon className="mr-2 inline size-5" />Copy instructions</button>
+      <button type="button" onClick={shareApp} className="min-h-12 rounded-xl bg-forest px-4 py-3 font-bold text-white"><ShareIcon className="mr-2 inline size-5" />Share to crew</button>
     </div>
-    {message && <p className="mx-4 mb-4 rounded-xl border border-forest/20 bg-forest/5 p-3 text-sm font-bold text-forest">{message}</p>}
+    {message && <p className="mx-4 mb-4 rounded-xl border border-forest/20 bg-forest/5 p-3 text-sm font-bold text-accent">{message}</p>}
   </section>;
 }
 
 function StatusTile({ label, value, ready, icon }: { label: string; value: string; ready: boolean; icon: React.ReactNode }) {
-  return <div className={`rounded-2xl p-4 ${ready ? "bg-forest/5 text-forest" : "bg-orange-50 text-orange-900"}`}>
+  return <div className={`rounded-2xl p-4 ${ready ? "bg-forest/5 text-accent" : "bg-orange-50 text-orange-900"}`}>
     <div className="[&>svg]:size-5">{icon}</div>
-    <p className="mt-3 text-xl font-black">{value}</p>
-    <p className="mt-1 text-xs font-black uppercase tracking-wide opacity-70">{label}</p>
+    <p className="mt-3 text-xl font-bold">{value}</p>
+    <p className="mt-1 text-xs font-bold uppercase tracking-wide opacity-70">{label}</p>
   </div>;
 }

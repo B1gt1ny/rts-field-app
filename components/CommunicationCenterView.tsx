@@ -173,17 +173,17 @@ export function CommunicationCenterView({ jobs }: { jobs: Job[] }) {
   }
 
   return <div className="mx-auto max-w-7xl space-y-5">
-    <section className="rounded-3xl bg-ink p-5 text-white sm:p-7">
+    <section className="rounded-2xl bg-ink p-5 text-white sm:p-7">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3">
           <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-lime text-ink"><ChatBubbleLeftRightIcon className="size-7" /></span>
           <div>
-            <p className="text-xs font-black uppercase tracking-widest text-lime">Communication command</p>
-            <h1 className="text-3xl font-black">Messages & follow-ups</h1>
-            <p className="mt-1 text-sm text-white/55">Customer calls, dealer/factory notices, crew notes, billing questions, and follow-up reminders in one feed.</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-lime">Communication command</p>
+            <h1 className="text-3xl font-bold">Messages & follow-ups</h1>
+            <p className="mt-1 text-sm text-white/65">Customer calls, dealer/factory notices, crew notes, billing questions, and follow-up reminders in one feed.</p>
           </div>
         </div>
-        <a href="/api/reports/export?type=communications" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-lime px-4 py-3 font-black text-ink print:hidden"><ClipboardDocumentListIcon className="size-5" />Export CSV</a>
+        <a href="/api/reports/export?type=communications" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-lime px-4 py-3 font-bold text-ink print:hidden"><ClipboardDocumentListIcon className="size-5" />Export CSV</a>
       </div>
       <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-6">
         <HeroMetric label="Open follow-ups" value={followUps} />
@@ -213,8 +213,8 @@ export function CommunicationCenterView({ jobs }: { jobs: Job[] }) {
       <div className="mb-4 flex items-start gap-3">
         <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-lime text-ink"><ChatBubbleLeftRightIcon className="size-5" /></span>
         <div>
-          <h2 className="text-lg font-black">Add communication</h2>
-          <p className="text-sm text-black/50">Log a customer call, source update, billing question, or field note without opening the job first.</p>
+          <h2 className="text-lg font-bold">Add communication</h2>
+          <p className="text-sm text-content/65">Log a customer call, source update, billing question, or field note without opening the job first.</p>
         </div>
       </div>
       <form onSubmit={saveCommunication} className="grid gap-3">
@@ -233,18 +233,18 @@ export function CommunicationCenterView({ jobs }: { jobs: Job[] }) {
         </div>
         <textarea value={entryMessage} onChange={(event) => setEntryMessage(event.target.value)} className="field min-h-28 resize-y" placeholder="Example: Customer called asking for ETA. Ronnie to call back after crew checks parts." />
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <label className="flex min-h-11 items-center gap-2 rounded-xl border border-black/10 bg-sand px-3 py-2 text-sm font-black"><input type="checkbox" checked={entryNotify} onChange={(event) => { setEntryNotify(event.target.checked); if (event.target.checked && !entryDueDate) setEntryDueDate(today); }} className="size-4 accent-forest" /> Flag for follow-up</label>
-          <button disabled={saving || !selectedJob || !entryMessage.trim()} className="min-h-12 rounded-xl bg-forest px-5 py-3 font-black text-white disabled:opacity-50">{saving ? "Saving…" : "Save Communication"}</button>
+          <label className="flex min-h-11 items-center gap-2 rounded-xl border border-content/10 bg-sand px-3 py-2 text-sm font-bold"><input type="checkbox" checked={entryNotify} onChange={(event) => { setEntryNotify(event.target.checked); if (event.target.checked && !entryDueDate) setEntryDueDate(today); }} className="size-4 accent-forest" /> Flag for follow-up</label>
+          <button disabled={saving || !selectedJob || !entryMessage.trim()} className="min-h-12 rounded-xl bg-forest px-5 py-3 font-bold text-white disabled:opacity-50">{saving ? "Saving…" : "Save Communication"}</button>
         </div>
       </form>
       <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-        {quickTemplates.map((template) => <button key={template.label} type="button" onClick={() => applyTemplate(template)} className="min-h-11 rounded-xl border border-black/10 bg-sand px-3 py-2 text-xs font-black text-ink">{template.label}</button>)}
+        {quickTemplates.map((template) => <button key={template.label} type="button" onClick={() => applyTemplate(template)} className="min-h-11 rounded-xl border border-content/10 bg-sand px-3 py-2 text-xs font-bold text-content">{template.label}</button>)}
       </div>
-      {formMessage && <p className={`mt-3 rounded-xl p-3 text-sm font-bold ${formMessage.includes("could not") ? "bg-red-50 text-red-700" : "bg-forest/5 text-forest"}`}>{formMessage}</p>}
+      {formMessage && <p className={`mt-3 rounded-xl p-3 text-sm font-bold ${formMessage.includes("could not") ? "bg-red-50 text-red-700" : "bg-forest/5 text-accent"}`}>{formMessage}</p>}
     </section>
 
     <section className="card p-3 sm:p-4 print:hidden">
-      <div className="mb-3 flex items-center gap-2 text-sm font-black text-black/45"><FunnelIcon className="size-5" />Filter communication</div>
+      <div className="mb-3 flex items-center gap-2 text-sm font-bold text-content/65"><FunnelIcon className="size-5" />Filter communication</div>
       <div className="grid gap-2 lg:grid-cols-[1fr_.35fr_.35fr_auto]">
         <input value={search} onChange={(event) => setSearch(event.target.value)} className="field !min-h-11 !py-2 text-sm" placeholder="Search job, customer, city, note, employee..." />
         <select value={type} onChange={(event) => setType(event.target.value as JobActivity["type"] | "All")} className="field !min-h-11 !py-2 text-sm font-bold">
@@ -253,7 +253,7 @@ export function CommunicationCenterView({ jobs }: { jobs: Job[] }) {
         <select value={audience} onChange={(event) => setAudience(event.target.value as NonNullable<JobActivity["audience"]> | "All")} className="field !min-h-11 !py-2 text-sm font-bold">
           {audienceOptions.map((option) => <option key={option}>{option}</option>)}
         </select>
-        <label className="flex min-h-11 items-center gap-2 rounded-xl border border-black/10 bg-sand px-3 py-2 text-sm font-black">
+        <label className="flex min-h-11 items-center gap-2 rounded-xl border border-content/10 bg-sand px-3 py-2 text-sm font-bold">
           <input type="checkbox" checked={followUpOnly} onChange={(event) => setFollowUpOnly(event.target.checked)} className="size-4 accent-forest" />
           Follow-up only
         </label>
@@ -263,49 +263,49 @@ export function CommunicationCenterView({ jobs }: { jobs: Job[] }) {
     <section className="card overflow-hidden">
       <div className="flex items-center justify-between gap-3 bg-sand p-4">
         <div>
-          <h2 className="text-lg font-black">Communication log</h2>
-          <p className="text-sm font-semibold text-black/45">{filtered.length} of {rows.length} updates shown</p>
+          <h2 className="text-lg font-bold">Communication log</h2>
+          <p className="text-sm font-semibold text-content/65">{filtered.length} of {rows.length} updates shown</p>
         </div>
-        <Link href="/jobs" className="text-sm font-black text-forest print:hidden">All jobs</Link>
+        <Link href="/jobs" className="text-sm font-bold text-accent print:hidden">All jobs</Link>
       </div>
-      <div className="divide-y divide-black/5">
+      <div className="divide-y divide-content/5">
         {filtered.length ? filtered.slice(0, 80).map((row) => {
           const { job, entry } = row;
-          return <div key={`${job.jobId}-${entry.id}`} className="p-4 hover:bg-black/[.02]">
+          return <div key={`${job.jobId}-${entry.id}`} className="p-4 hover:bg-content/[.02]">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <Link href={`/jobs/${job.jobId}#operations`} className="text-xs font-black uppercase tracking-wide text-forest">{job.jobId} · {job.customerName} · {job.city}</Link>
-                {entry.notify && !entry.resolvedAt && <span className="rounded-full bg-orange-100 px-2 py-1 text-[10px] font-black uppercase tracking-wide text-orange-800">Follow-up</span>}
-                {entry.notify && !entry.resolvedAt && entry.followUpDueDate && <span className={`rounded-full px-2 py-1 text-[10px] font-black uppercase tracking-wide ${reminderTone(entry.followUpDueDate, today)}`}>{reminderLabel(entry.followUpDueDate, today)}</span>}
-                {entry.resolvedAt && <span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-black uppercase tracking-wide text-emerald-800">Resolved</span>}
+                <Link href={`/jobs/${job.jobId}#operations`} className="text-xs font-bold uppercase tracking-wide text-accent">{job.jobId} · {job.customerName} · {job.city}</Link>
+                {entry.notify && !entry.resolvedAt && <span className="rounded-full bg-orange-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-orange-800">Follow-up</span>}
+                {entry.notify && !entry.resolvedAt && entry.followUpDueDate && <span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wide ${reminderTone(entry.followUpDueDate, today)}`}>{reminderLabel(entry.followUpDueDate, today)}</span>}
+                {entry.resolvedAt && <span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-800">Resolved</span>}
               </div>
-              <h3 className="mt-1 font-black">{entry.message}</h3>
-              <p className="mt-1 text-xs font-semibold text-black/45">{entry.type} · {entry.createdBy} · {new Date(entry.createdAt).toLocaleString()} · Audience: {entry.audience || "All"}</p>
+              <h3 className="mt-1 font-bold">{entry.message}</h3>
+              <p className="mt-1 text-xs font-semibold text-content/65">{entry.type} · {entry.createdBy} · {new Date(entry.createdAt).toLocaleString()} · Audience: {entry.audience || "All"}</p>
               {entry.notify && !entry.resolvedAt && entry.followUpDueDate && <p className="mt-1 text-xs font-semibold text-orange-700">Reminder: {formatReminderDate(entry.followUpDueDate)}</p>}
               {entry.resolvedAt && <p className="mt-1 text-xs font-semibold text-emerald-700">Resolved by {entry.resolvedBy || "Manager"} · {new Date(entry.resolvedAt).toLocaleString()}</p>}
             </div>
             <StatusBadge status={job.status} />
           </div>
           <div className="mt-3 flex flex-wrap gap-2 print:hidden">
-            <a href={`tel:${job.phone}`} className={`min-h-10 rounded-xl px-3 py-2 text-xs font-black ${job.phone ? "bg-forest text-white" : "pointer-events-none bg-black/5 text-black/25"}`}>Call</a>
-            <a href={`sms:${job.phone}?&body=${encodeURIComponent(buildCustomerText(job))}`} className={`min-h-10 rounded-xl px-3 py-2 text-xs font-black ${job.phone ? "border border-black/10 bg-white text-ink" : "pointer-events-none bg-black/5 text-black/25"}`}>Text</a>
-            <Link href={`/jobs/${job.jobId}#operations`} className="min-h-10 rounded-xl border border-black/10 bg-white px-3 py-2 text-xs font-black text-ink">Open Job</Link>
-            <Link href={`/jobs/${job.jobId}#scheduling`} className="min-h-10 rounded-xl border border-black/10 bg-white px-3 py-2 text-xs font-black text-ink">Schedule</Link>
-            <Link href={`/jobs/${job.jobId}/packet`} className="min-h-10 rounded-xl border border-black/10 bg-white px-3 py-2 text-xs font-black text-ink">Packet</Link>
-            <a href={`https://maps.google.com/?q=${encodeURIComponent(`${job.address}, ${job.city}`)}`} target="_blank" className="min-h-10 rounded-xl bg-ink px-3 py-2 text-xs font-black text-white">Map <ArrowTopRightOnSquareIcon className="inline size-3" /></a>
-            <button type="button" onClick={() => copyCommunicationBrief(row)} className="min-h-10 rounded-xl border border-black/10 bg-lime px-3 py-2 text-xs font-black text-ink">{copiedRowKey === `${job.jobId}-${entry.id}` ? "Copied" : "Copy Brief"}</button>
-            {entry.notify && !entry.resolvedAt && <button type="button" onClick={() => setFollowUpResolved(row, true)} className="min-h-10 rounded-xl bg-forest px-3 py-2 text-xs font-black text-white">Resolve Follow-up</button>}
-            {entry.resolvedAt && <button type="button" onClick={() => setFollowUpResolved(row, false)} className="min-h-10 rounded-xl border border-black/10 bg-white px-3 py-2 text-xs font-black text-ink">Reopen</button>}
+            <a href={`tel:${job.phone}`} className={`min-h-11 rounded-xl px-3 py-2 text-xs font-bold ${job.phone ? "bg-forest text-white" : "pointer-events-none bg-content/5 text-content/65"}`}>Call</a>
+            <a href={`sms:${job.phone}?&body=${encodeURIComponent(buildCustomerText(job))}`} className={`min-h-11 rounded-xl px-3 py-2 text-xs font-bold ${job.phone ? "border border-content/10 bg-surface text-content" : "pointer-events-none bg-content/5 text-content/65"}`}>Text</a>
+            <Link href={`/jobs/${job.jobId}#operations`} className="min-h-11 rounded-xl border border-content/10 bg-surface px-3 py-2 text-xs font-bold text-content">Open Job</Link>
+            <Link href={`/jobs/${job.jobId}#scheduling`} className="min-h-11 rounded-xl border border-content/10 bg-surface px-3 py-2 text-xs font-bold text-content">Schedule</Link>
+            <Link href={`/jobs/${job.jobId}/packet`} className="min-h-11 rounded-xl border border-content/10 bg-surface px-3 py-2 text-xs font-bold text-content">Packet</Link>
+            <a href={`https://maps.google.com/?q=${encodeURIComponent(`${job.address}, ${job.city}`)}`} target="_blank" className="min-h-11 rounded-xl bg-ink px-3 py-2 text-xs font-bold text-white">Map <ArrowTopRightOnSquareIcon className="inline size-3" /></a>
+            <button type="button" onClick={() => copyCommunicationBrief(row)} className="min-h-11 rounded-xl border border-content/10 bg-lime px-3 py-2 text-xs font-bold text-ink">{copiedRowKey === `${job.jobId}-${entry.id}` ? "Copied" : "Copy Brief"}</button>
+            {entry.notify && !entry.resolvedAt && <button type="button" onClick={() => setFollowUpResolved(row, true)} className="min-h-11 rounded-xl bg-forest px-3 py-2 text-xs font-bold text-white">Resolve Follow-up</button>}
+            {entry.resolvedAt && <button type="button" onClick={() => setFollowUpResolved(row, false)} className="min-h-11 rounded-xl border border-content/10 bg-surface px-3 py-2 text-xs font-bold text-content">Reopen</button>}
           </div>
           {entry.notify && !entry.resolvedAt && <div className="mt-2 grid grid-cols-2 gap-2 rounded-2xl bg-sand p-2 sm:grid-cols-4 print:hidden">
-            <button type="button" onClick={() => setFollowUpDueDate(row, today)} className="min-h-10 rounded-xl bg-white px-3 py-2 text-xs font-black text-ink">Due today</button>
-            <button type="button" onClick={() => setFollowUpDueDate(row, addDays(today, 1))} className="min-h-10 rounded-xl bg-white px-3 py-2 text-xs font-black text-ink">Tomorrow</button>
-            <button type="button" onClick={() => setFollowUpDueDate(row, addDays(today, 7))} className="min-h-10 rounded-xl bg-white px-3 py-2 text-xs font-black text-ink">Next week</button>
-            <button type="button" onClick={() => setFollowUpDueDate(row, "")} className="min-h-10 rounded-xl bg-white px-3 py-2 text-xs font-black text-ink">No date</button>
+            <button type="button" onClick={() => setFollowUpDueDate(row, today)} className="min-h-11 rounded-xl bg-surface px-3 py-2 text-xs font-bold text-content">Due today</button>
+            <button type="button" onClick={() => setFollowUpDueDate(row, addDays(today, 1))} className="min-h-11 rounded-xl bg-surface px-3 py-2 text-xs font-bold text-content">Tomorrow</button>
+            <button type="button" onClick={() => setFollowUpDueDate(row, addDays(today, 7))} className="min-h-11 rounded-xl bg-surface px-3 py-2 text-xs font-bold text-content">Next week</button>
+            <button type="button" onClick={() => setFollowUpDueDate(row, "")} className="min-h-11 rounded-xl bg-surface px-3 py-2 text-xs font-bold text-content">No date</button>
           </div>}
         </div>;
-        }) : <p className="p-8 text-center text-sm font-semibold text-black/35">No communication entries match this filter.</p>}
+        }) : <p className="p-8 text-center text-sm font-semibold text-content/65">No communication entries match this filter.</p>}
       </div>
     </section>
   </div>;
@@ -313,8 +313,8 @@ export function CommunicationCenterView({ jobs }: { jobs: Job[] }) {
 
 function HeroMetric({ label, value }: { label: string; value: number }) {
   return <div className="rounded-2xl bg-white/10 p-4">
-    <p className="text-3xl font-black">{value}</p>
-    <p className="mt-1 text-xs font-bold text-white/55">{label}</p>
+    <p className="text-3xl font-bold">{value}</p>
+    <p className="mt-1 text-xs font-bold text-white/65">{label}</p>
   </div>;
 }
 
@@ -323,10 +323,10 @@ function CommandLane({ label, value, detail, icon, onClick }: { label: string; v
     <div className="mb-3 grid size-10 place-items-center rounded-xl bg-lime text-ink [&>svg]:size-5">{icon}</div>
     <div className="flex items-end justify-between gap-3">
       <div>
-        <h2 className="font-black">{label}</h2>
-        <p className="mt-1 text-xs font-semibold text-black/45">{detail}</p>
+        <h2 className="font-bold">{label}</h2>
+        <p className="mt-1 text-xs font-semibold text-content/65">{detail}</p>
       </div>
-      <p className="text-3xl font-black">{value}</p>
+      <p className="text-3xl font-bold">{value}</p>
     </div>
   </button>;
 }
@@ -334,8 +334,8 @@ function CommandLane({ label, value, detail, icon, onClick }: { label: string; v
 function Metric({ label, value, tone, icon }: { label: string; value: number; tone: string; icon: React.ReactNode }) {
   return <div className="card p-4">
     <div className={`mb-3 grid size-10 place-items-center rounded-xl ${tone} [&>svg]:size-5`}>{icon}</div>
-    <p className="text-3xl font-black">{value}</p>
-    <p className="mt-1 text-xs font-bold text-black/45">{label}</p>
+    <p className="text-3xl font-bold">{value}</p>
+    <p className="mt-1 text-xs font-bold text-content/65">{label}</p>
   </div>;
 }
 

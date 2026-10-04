@@ -31,13 +31,13 @@ export function TodayCommandView({ jobs }: { jobs: Job[] }) {
     .slice(0, 5);
 
   return <div className="mx-auto max-w-5xl space-y-5">
-    <section className="rounded-3xl bg-ink p-5 text-white sm:p-7">
+    <section className="rounded-2xl bg-ink p-5 text-white sm:p-7">
       <div className="flex items-start gap-3">
         <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-lime text-ink"><CalendarDaysIcon className="size-7" /></span>
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-black uppercase tracking-widest text-lime">{new Date(`${today}T12:00:00`).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</p>
-          <h1 className="mt-1 text-3xl font-black">Today</h1>
-          <p className="mt-1 text-sm text-white/55">Daily execution list for what must happen today.</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-lime">{new Date(`${today}T12:00:00`).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</p>
+          <h1 className="mt-1 text-3xl font-bold">Today</h1>
+          <p className="mt-1 text-sm text-white/65">Daily execution list for what must happen today.</p>
         </div>
       </div>
       <div className="mt-5 grid grid-cols-2 gap-3">
@@ -48,29 +48,29 @@ export function TodayCommandView({ jobs }: { jobs: Job[] }) {
 
     <section className="card overflow-hidden">
       <SectionHeader title="Today’s Jobs" subtitle={`${todaysJobs.length} active job${todaysJobs.length === 1 ? "" : "s"} due or scheduled today`} href="/jobs" />
-      <div className="divide-y divide-black/5">
+      <div className="divide-y divide-content/5">
         {todaysJobs.length ? todaysJobs.map((job) => <TodayJobRow key={job.jobId} job={job} />) : <Empty text="No active jobs are scheduled for today." />}
       </div>
     </section>
 
     <section className="card overflow-hidden">
       <SectionHeader title="Immediate Actions" subtitle={`${immediateActions.length} item${immediateActions.length === 1 ? "" : "s"} blocking today’s work`} href="/tasks" />
-      <div className="divide-y divide-black/5">
+      <div className="divide-y divide-content/5">
         {immediateActions.length ? immediateActions.map((item) => <ActionRow key={item.id} item={item} />) : <Empty text="No immediate blockers for today’s jobs." />}
       </div>
     </section>
 
     <section className="card overflow-hidden">
       <SectionHeader title="Today’s Reminders" subtitle="Due-today reminders plus overdue follow-ups tied to today’s work" href="/reminders" />
-      <div className="divide-y divide-black/5">
-        {reminders.length ? reminders.map((reminder) => <Link key={reminder.id} href={`/jobs/${reminder.job.jobId}#operations`} className="block p-4 hover:bg-black/[.02]">
+      <div className="divide-y divide-content/5">
+        {reminders.length ? reminders.map((reminder) => <Link key={reminder.id} href={`/jobs/${reminder.job.jobId}#operations`} className="block p-4 hover:bg-content/[.02]">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="truncate text-xs font-black uppercase tracking-wide text-forest">{reminder.job.jobId} · {reminder.job.customerName}</p>
-              <h3 className="mt-1 line-clamp-2 font-black">{reminder.entry.message}</h3>
-              <p className="mt-1 text-xs font-semibold text-black/45">{formatReminderDate(reminder.dueDate)} · {reminder.entry.type}</p>
+              <p className="truncate text-xs font-bold uppercase tracking-wide text-accent">{reminder.job.jobId} · {reminder.job.customerName}</p>
+              <h3 className="mt-1 line-clamp-2 font-bold">{reminder.entry.message}</h3>
+              <p className="mt-1 text-xs font-semibold text-content/65">{formatReminderDate(reminder.dueDate)} · {reminder.entry.type}</p>
             </div>
-            <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-black ${reminderTone(reminder.bucket)}`}>{reminder.bucket === "Today" ? "Due today" : "Overdue"}</span>
+            <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${reminderTone(reminder.bucket)}`}>{reminder.bucket === "Today" ? "Due today" : "Overdue"}</span>
           </div>
         </Link>) : <Empty text="No reminders tied to today’s work." />}
       </div>
@@ -78,7 +78,7 @@ export function TodayCommandView({ jobs }: { jobs: Job[] }) {
 
     <section className="card overflow-hidden">
       <SectionHeader title="Today’s Field Updates" subtitle={`${fieldActivityRows.length} update${fieldActivityRows.length === 1 ? "" : "s"} logged today`} href="/communication" />
-      <div className="divide-y divide-black/5">
+      <div className="divide-y divide-content/5">
         {fieldActivityRows.length ? fieldActivityRows.map(({ job, entry }) => <FieldUpdateRow key={`${job.jobId}-${entry.id}`} job={job} entry={entry} />) : <Empty text="No field updates logged today yet." />}
       </div>
     </section>
@@ -86,46 +86,46 @@ export function TodayCommandView({ jobs }: { jobs: Job[] }) {
 }
 
 function TodayJobRow({ job }: { job: Job }) {
-  return <div className="p-4 hover:bg-black/[.02]">
+  return <div className="p-4 hover:bg-content/[.02]">
     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
       <div className="min-w-0">
-        <p className="truncate text-xs font-black uppercase tracking-wide text-forest">{job.jobId}</p>
-        <h2 className="mt-1 text-lg font-black">{job.customerName}</h2>
-        <p className="mt-1 text-sm font-semibold text-black/50">{job.city || "No city"} · {job.assignedCrew || "Unassigned"}</p>
-        <p className="mt-2 text-sm font-semibold text-black/55">{nextAction(job)}</p>
+        <p className="truncate text-xs font-bold uppercase tracking-wide text-accent">{job.jobId}</p>
+        <h2 className="mt-1 text-lg font-bold">{job.customerName}</h2>
+        <p className="mt-1 text-sm font-semibold text-content/65">{job.city || "No city"} · {job.assignedCrew || "Unassigned"}</p>
+        <p className="mt-2 text-sm font-semibold text-content/65">{nextAction(job)}</p>
       </div>
       <StatusBadge status={job.status} />
     </div>
     <div className="mt-3 grid grid-cols-3 gap-2">
-      <a href={`tel:${job.phone}`} className={`min-h-11 rounded-xl px-3 py-2 text-center text-sm font-black ${job.phone ? "bg-forest text-white" : "pointer-events-none bg-black/5 text-black/25"}`}><PhoneIcon className="mx-auto mb-0.5 size-5" />Call</a>
-      <a href={`https://maps.google.com/?q=${encodeURIComponent(`${job.address}, ${job.city}`)}`} target="_blank" className="min-h-11 rounded-xl bg-ink px-3 py-2 text-center text-sm font-black text-white"><MapPinIcon className="mx-auto mb-0.5 size-5" />Map</a>
-      <Link href={`/jobs/${job.jobId}`} className="min-h-11 rounded-xl bg-lime px-3 py-2 text-center text-sm font-black text-ink"><CheckCircleIcon className="mx-auto mb-0.5 size-5" />Open</Link>
+      <a href={`tel:${job.phone}`} className={`min-h-11 rounded-xl px-3 py-2 text-center text-sm font-bold ${job.phone ? "bg-forest text-white" : "pointer-events-none bg-content/5 text-content/65"}`}><PhoneIcon className="mx-auto mb-0.5 size-5" />Call</a>
+      <a href={`https://maps.google.com/?q=${encodeURIComponent(`${job.address}, ${job.city}`)}`} target="_blank" className="min-h-11 rounded-xl bg-ink px-3 py-2 text-center text-sm font-bold text-white"><MapPinIcon className="mx-auto mb-0.5 size-5" />Map</a>
+      <Link href={`/jobs/${job.jobId}`} className="min-h-11 rounded-xl bg-lime px-3 py-2 text-center text-sm font-bold text-ink"><CheckCircleIcon className="mx-auto mb-0.5 size-5" />Open</Link>
     </div>
   </div>;
 }
 
 function ActionRow({ item }: { item: TodayAction }) {
-  return <div className="p-4 hover:bg-black/[.02]">
+  return <div className="p-4 hover:bg-content/[.02]">
     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
       <div className="min-w-0">
-        <p className="truncate text-xs font-black uppercase tracking-wide text-forest">{item.job.jobId} · {item.job.customerName}</p>
-        <h3 className="mt-1 font-black">{item.title}</h3>
-        <p className="mt-1 text-sm font-semibold text-black/50">{item.detail}</p>
+        <p className="truncate text-xs font-bold uppercase tracking-wide text-accent">{item.job.jobId} · {item.job.customerName}</p>
+        <h3 className="mt-1 font-bold">{item.title}</h3>
+        <p className="mt-1 text-sm font-semibold text-content/65">{item.detail}</p>
       </div>
       <StatusBadge status={item.job.status} />
     </div>
     <div className="mt-3 grid grid-cols-2 gap-2">
-      <Link href={item.href} className="min-h-11 rounded-xl bg-forest px-3 py-2 text-center text-sm font-black text-white">{item.actionLabel}</Link>
-      <Link href={`/jobs/${item.job.jobId}`} className="min-h-11 rounded-xl border border-black/10 bg-white px-3 py-2 text-center text-sm font-black text-ink">Open Job</Link>
+      <Link href={item.href} className="min-h-11 rounded-xl bg-forest px-3 py-2 text-center text-sm font-bold text-white">{item.actionLabel}</Link>
+      <Link href={`/jobs/${item.job.jobId}`} className="min-h-11 rounded-xl border border-content/10 bg-surface px-3 py-2 text-center text-sm font-bold text-content">Open Job</Link>
     </div>
   </div>;
 }
 
 function FieldUpdateRow({ job, entry }: { job: Job; entry: JobActivity }) {
-  return <Link href={`/jobs/${job.jobId}#operations`} className="block p-4 hover:bg-black/[.02]">
-    <p className="truncate text-xs font-black uppercase tracking-wide text-forest">{job.jobId} · {job.customerName}</p>
-    <h3 className="mt-1 line-clamp-2 font-black">{entry.message}</h3>
-    <p className="mt-1 text-xs font-semibold text-black/45">{entry.createdBy || "Crew"} · {formatActivityTime(entry.createdAt)} · {entry.type}</p>
+  return <Link href={`/jobs/${job.jobId}#operations`} className="block p-4 hover:bg-content/[.02]">
+    <p className="truncate text-xs font-bold uppercase tracking-wide text-accent">{job.jobId} · {job.customerName}</p>
+    <h3 className="mt-1 line-clamp-2 font-bold">{entry.message}</h3>
+    <p className="mt-1 text-xs font-semibold text-content/65">{entry.createdBy || "Crew"} · {formatActivityTime(entry.createdAt)} · {entry.type}</p>
   </Link>;
 }
 
@@ -162,17 +162,17 @@ function nextAction(job: Job) {
 
 function SectionHeader({ title, subtitle, href }: { title: string; subtitle: string; href: string }) {
   return <div className="flex items-center justify-between gap-3 bg-sand p-4">
-    <div><h2 className="text-lg font-black">{title}</h2><p className="text-sm font-semibold text-black/45">{subtitle}</p></div>
-    <Link href={href} className="text-sm font-black text-forest">View</Link>
+    <div><h2 className="text-lg font-bold">{title}</h2><p className="text-sm font-semibold text-content/65">{subtitle}</p></div>
+    <Link href={href} className="text-sm font-bold text-accent">View</Link>
   </div>;
 }
 
 function HeroMetric({ label, value }: { label: string; value: number }) {
-  return <div className="rounded-2xl bg-white/10 p-4"><p className="text-3xl font-black">{value}</p><p className="mt-1 text-xs font-bold text-white/55">{label}</p></div>;
+  return <div className="rounded-2xl bg-white/10 p-4"><p className="text-3xl font-bold">{value}</p><p className="mt-1 text-xs font-bold text-white/65">{label}</p></div>;
 }
 
 function Empty({ text }: { text: string }) {
-  return <p className="p-5 text-center text-sm font-semibold text-black/35">{text}</p>;
+  return <p className="p-5 text-center text-sm font-semibold text-content/65">{text}</p>;
 }
 
 function formatActivityTime(createdAt: string) {
