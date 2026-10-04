@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     const updated = await db.auth.admin.updateUserById(current.id, {
       password,
       email_confirm: true,
-      user_metadata: { ...(current.user_metadata || {}), role: "Admin" },
+      app_metadata: { ...current.app_metadata, rtsRole: "Admin", rtsAccessActive: true },
     });
     if (updated.error) return NextResponse.json({ error: updated.error.message }, { status: 500 });
     return NextResponse.json({ id: current.id, email: current.email, role: "Admin", updated: true });
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     email: normalizedEmail,
     password,
     email_confirm: true,
-    user_metadata: { role: "Admin" },
+    app_metadata: { rtsRole: "Admin", rtsAccessActive: true },
   });
   if (created.error || !created.data.user) return NextResponse.json({ error: created.error?.message || "Admin user could not be created." }, { status: 500 });
   return NextResponse.json({ id: created.data.user.id, email: created.data.user.email, role: "Admin", created: true }, { status: 201 });

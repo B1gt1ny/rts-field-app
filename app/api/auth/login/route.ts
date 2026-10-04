@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { authClient, getUserRole } from "@/lib/auth";
+import { authClient, getUserRole, hasTrustedAccess } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +13,7 @@ export async function POST(request: Request) {
   if (error || !data.session?.access_token || !data.user) {
     return NextResponse.json({ error: error?.message || "Login failed." }, { status: 401 });
   }
+  if (!hasTrustedAccess(data.user)) return NextResponse.json({ error: "Account access is not active. Contact an admin." }, { status: 403 });
 
   const response = NextResponse.json({
     user: {

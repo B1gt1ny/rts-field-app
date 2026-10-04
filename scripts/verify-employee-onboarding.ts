@@ -14,6 +14,7 @@ const users: EmployeeAccessUser[] = [
 assertEqual(linkedEmployeeUser([], employee.id), undefined, "Employee without a login remains unlinked");
 assertEqual(employeeOnboardingStatus(employee, []), "Needs login", "Missing login status");
 assertEqual(employeeOnboardingStatus(employee, users), "Never signed in", "First sign-in status");
+assertEqual(employeeOnboardingStatus(employee, [{ ...users[1], accessActive: false }]), "Login disabled", "Disabled login status");
 assertEqual(employeeOnboardingStatus(employee, [{ ...users[1], lastSignInAt: "2026-09-03T12:00:00Z" }]), "Ready", "Ready status");
 assertEqual(employeeLinkConflict(users, employee.id)?.id, "employee-user-1", "Duplicate link is detected");
 assertEqual(employeeLinkConflict(users, employee.id, "employee-user-1"), undefined, "A user can keep its own link");

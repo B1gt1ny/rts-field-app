@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { authClient, canEmployeeAccessJob, getUserRole, isDatabaseConfigured, type AppUser, type UserRole } from "./auth";
+import { authClient, canEmployeeAccessJob, getUserRole, hasTrustedAccess, isDatabaseConfigured, type AppUser, type UserRole } from "./auth";
 import type { Job } from "./types";
 
 export async function getServerUser(): Promise<AppUser | null> {
@@ -9,7 +9,7 @@ export async function getServerUser(): Promise<AppUser | null> {
   const token = (await cookies()).get("cc-access-token")?.value;
   if (!db || !token) return null;
   const { data, error } = await db.auth.getUser(token);
-  if (error || !data.user) return null;
+  if (error || !hasTrustedAccess(data.user)) return null;
   return data.user;
 }
 

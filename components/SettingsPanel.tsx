@@ -21,7 +21,7 @@ type SetupStatus = {
   companyCamUserEmail?: boolean;
   authSetupCode?: boolean;
 };
-type AccessUser = { id: string; email: string; role: UserRole; employeeId?: string; employeeName?: string; createdAt?: string; lastSignInAt?: string };
+type AccessUser = { id: string; email: string; role: UserRole; employeeId?: string; employeeName?: string; createdAt?: string; lastSignInAt?: string; accessActive?: boolean };
 
 const defaultCompany: BusinessSettings = {
   businessId: "rts",
@@ -295,7 +295,7 @@ export function SettingsPanel() {
     setNewUserEmployeeId("");
   }
 
-  async function updateUserAccess(userId: string, changes: Partial<Pick<AccessUser, "role" | "employeeId">>) {
+  async function updateUserAccess(userId: string, changes: Partial<Pick<AccessUser, "role" | "employeeId" | "accessActive">>) {
     const current = users.find((user) => user.id === userId);
     if (!current) return;
     const employeeId = changes.employeeId ?? current.employeeId ?? "";
@@ -305,14 +305,14 @@ export function SettingsPanel() {
     const response = await authFetch("/api/admin/users", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, role, employeeId, employeeName: linkedEmployee?.name || "" }),
+      body: JSON.stringify({ userId, role, employeeId, employeeName: linkedEmployee?.name || "", accessActive: changes.accessActive }),
     });
     const result = await response.json();
     if (!response.ok) {
       setSaved(result.error || "User access could not be updated.");
       return;
     }
-    setUsers((old) => old.map((user) => user.id === userId ? { ...user, role, employeeId, employeeName: linkedEmployee?.name || "" } : user));
+    setUsers((old) => old.map((user) => user.id === userId ? { ...user, role, employeeId, employeeName: linkedEmployee?.name || "", accessActive: result.accessActive } : user));
     setSaved("User access updated.");
   }
 
@@ -525,7 +525,7 @@ export function SettingsPanel() {
       <p className="mt-3 text-xs font-semibold text-content/65">The temporary password is sent once to Supabase Auth, never saved in employee records, and cannot be viewed here again. Give it to the employee separately and have them change it from My Account after first sign-in.</p>
       <div className="mt-5 space-y-2">
         {users.length ? users.map((user) => <div key={user.id} className="flex flex-col gap-3 rounded-xl bg-sand p-3 sm:flex-row sm:items-center sm:justify-between">
-          <div><p className="font-bold">{user.email}</p><p className="text-xs font-semibold text-content/65">{user.employeeName ? `Linked to ${user.employeeName}` : "No employee linked"} · {user.lastSignInAt ? `Last sign in: ${new Date(user.lastSignInAt).toLocaleDateString()}` : "No sign-in yet"}</p></div>
+          <div><p className="font-bold">{user.email}</p><p className="text-xs font-semibold text-content/65">{user.accessActive === false ? "Login disabled" : "Login active"} · {user.employeeName ? `Linked to ${user.employeeName}` : "No employee linked"} · {user.lastSignInAt ? `Last sign in: ${new Date(user.lastSignInAt).toLocaleDateString()}` : "No sign-in yet"}</p></div>
           <div className="grid gap-2 sm:grid-cols-2">
             <select className="field !min-h-11 !w-auto !py-2 text-sm font-bold" value={user.role} onChange={(event) => updateUserAccess(user.id, { role: event.target.value as UserRole })}>
               {(["Employee", "Manager", "Admin"] as UserRole[]).map((role) => <option key={role}>{role}</option>)}
@@ -534,6 +534,7 @@ export function SettingsPanel() {
               <option value="">Not linked</option>
               {employees.map((employee) => <option key={employee.id} value={employee.id}>{employee.name}</option>)}
             </select>
+            <button type="button" className="btn-secondary sm:col-span-2" onClick={() => updateUserAccess(user.id, { accessActive: user.accessActive === false })}>{user.accessActive === false ? "Reactivate login" : "Disable login"}</button>
           </div>
         </div>) : <p className="rounded-xl bg-sand p-3 text-sm font-semibold text-content/65">No users loaded yet. If this stays empty, confirm Supabase Auth env vars are set.</p>}
       </div>

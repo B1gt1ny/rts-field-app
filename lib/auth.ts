@@ -6,9 +6,14 @@ export type AppUser = {
   email?: string;
   user_metadata?: Record<string, unknown>;
   app_metadata?: Record<string, unknown>;
+  banned_until?: string;
 };
 
 export const roles: UserRole[] = ["Admin", "Manager", "Employee"];
+
+export function hasTrustedAccess(user: AppUser | null) {
+  return Boolean(user && user.app_metadata?.rtsAccessActive === true && roles.includes(user.app_metadata?.rtsRole as UserRole) && !(user.banned_until && new Date(user.banned_until).getTime() > Date.now()));
+}
 
 export function isAuthConfigured() {
   return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY);
@@ -29,28 +34,22 @@ export async function getRequestUser(request: Request) {
   const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") || getCookie(request, "cc-access-token");
   if (!db || !token) return null;
   const { data, error } = await db.auth.getUser(token);
-  if (error || !data.user) return null;
+  if (error || !hasTrustedAccess(data.user)) return null;
   return data.user;
 }
 
 export function getUserRole(user: AppUser | null): UserRole {
   if (!user) return "Employee";
-  const metadataRole = String(user.user_metadata?.role || user.app_metadata?.role || "");
+  const metadataRole = String(user.app_metadata?.rtsRole || "");
   if (roles.includes(metadataRole as UserRole)) return metadataRole as UserRole;
-
-  const email = String(user.email || "").toLowerCase();
-  const admins = splitEmails(process.env.ADMIN_EMAILS || "b1g_t1ny@yahoo.com");
-  const managers = splitEmails(process.env.MANAGER_EMAILS || "Texastrimout@gmail.com");
-  if (admins.includes(email)) return "Admin";
-  if (managers.includes(email)) return "Manager";
   return "Employee";
 }
 
 export function getUserEmployee(user: AppUser | null) {
   if (!user) return { employeeId: "", employeeName: "" };
   return {
-    employeeId: String(user.user_metadata?.employeeId || user.app_metadata?.employeeId || ""),
-    employeeName: String(user.user_metadata?.employeeName || user.app_metadata?.employeeName || ""),
+    employeeId: String(user.app_metadata?.rtsEmployeeId || ""),
+    employeeName: String(user.app_metadata?.rtsEmployeeName || ""),
   };
 }
 
@@ -59,7 +58,7 @@ export function canEmployeeAccessJob(user: AppUser | null, job: { assignedCrew?:
   if (job.fullCrew) return true;
   const { employeeId, employeeName } = getUserEmployee(user);
   if (employeeId && job.assignedEmployeeIds?.includes(employeeId)) return true;
-  if (employeeName && job.assignedCrew?.toLowerCase().includes(employeeName.toLowerCase())) return true;
+  if (!job.assignedEmployeeIds?.length && employeeName && job.assignedCrew?.split(",").some((name) => name.trim().toLowerCase() === employeeName.trim().toLowerCase())) return true;
   return false;
 }
 
