@@ -19,9 +19,6 @@ type PlatformStatus = {
 };
 type SetupStatus = {
   companyCamUserEmail?: boolean;
-  googleCalendarId?: string;
-  googleCalendarConfigured?: boolean;
-  googleCalendarError?: string;
   authSetupCode?: boolean;
 };
 type AccessUser = { id: string; email: string; role: UserRole; employeeId?: string; employeeName?: string; createdAt?: string; lastSignInAt?: string };
@@ -88,7 +85,6 @@ const defaultCompany: BusinessSettings = {
 
 const integrationCards = [
   { key: "companyCam", name: "CompanyCam", stage: "Live connector", description: "Photo project creation/opening from each real job profile.", icon: CameraIcon, action: "Needs COMPANYCAM_ACCESS_TOKEN in Vercel; user email is recommended.", appPath: "/jobs", safety: "Job-by-job only. Does not create projects for mock/test jobs." },
-  { key: "googleCalendar", name: "Google Calendar", stage: "Live connector", description: "Explicit job scheduling, Google event links, and monthly dashboard reference.", icon: CalendarDaysIcon, action: "Needs Google OAuth client ID, secret, refresh token, and calendar ID.", appPath: "/schedule", safety: "Job-by-job only. Mock jobs are not auto-added." },
   { key: "openAiExtraction", name: "AI work-order extraction", stage: "Key-ready", description: "Read work-order photos/PDFs and fill customer profiles.", icon: SparklesIcon, action: "Needs OPENAI_API_KEY, then extraction endpoint/UI can be turned on.", appPath: "/import", safety: "Current app stores the original file and parses pasted text." },
   { key: "invoiceSimple", name: "Invoice Simple", stage: "Manual workflow", description: "Invoice status, ready-to-bill handoff, invoice sent, on-hold, paid tracking.", icon: ReceiptPercentIcon, action: "Future API key/account decision. Manual copy summaries work now.", appPath: "/billing", safety: "No invoices or payments are created automatically." },
   { key: "zenzap", name: "ZenZap-style communication", stage: "Built-in workflow", description: "Job notes, activity feed, reminder dates, follow-ups, and employee communication.", icon: ChatBubbleLeftRightIcon, action: "Future API connection optional; internal communication tools work now.", appPath: "/communication", safety: "No external messages are sent automatically." },
@@ -172,11 +168,10 @@ export function SettingsPanel() {
     { title: "Company email", done: Boolean(company.email?.trim()) },
     { title: "Employees added", done: employees.length > 0 },
     { title: "Admin users created", done: users.length > 0 },
-    { title: "Calendar connection", done: Boolean(integrations.googleCalendar) },
     { title: "CompanyCam connection", done: Boolean(integrations.companyCam) },
     { title: "AI extraction key", done: Boolean(integrations.openAiExtraction) },
     { title: "Merch shop link", done: Boolean(company.merchandiseLink?.trim()) },
-  ], [company.companyName, company.email, company.merchandiseLink, company.phone, employees.length, integrations.companyCam, integrations.googleCalendar, integrations.openAiExtraction, users.length]);
+  ], [company.companyName, company.email, company.merchandiseLink, company.phone, employees.length, integrations.companyCam, integrations.openAiExtraction, users.length]);
   const setupComplete = setupChecklist.filter((item) => item.done).length;
   const setupPercent = Math.round((setupComplete / setupChecklist.length) * 100);
   const platformChecklist = useMemo(() => [
@@ -492,7 +487,7 @@ export function SettingsPanel() {
             <h3 className="font-bold">{name}</h3>
             <p className="mt-1 text-xs font-bold uppercase tracking-wide text-accent">{stage}</p>
             <p className="mt-1 text-sm text-content/65">{description}</p>
-            <p className={`mt-3 rounded-xl p-3 text-xs font-bold ${key === "googleCalendar" && setupStatus.googleCalendarError ? "bg-red-50 text-red-800" : "bg-surface text-content/65"}`}>{key === "googleCalendar" && setupStatus.googleCalendarError ? setupStatus.googleCalendarError : action}</p>
+            <p className="mt-3 rounded-xl bg-surface p-3 text-xs font-bold text-content/65">{action}</p>
             <p className="mt-2 rounded-xl bg-surface/70 p-3 text-xs font-semibold text-content/65">{safety}</p>
             <Link href={appPath} className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-ink px-3 py-2 text-xs font-bold text-white">Open workflow</Link>
           </div>;
@@ -760,7 +755,7 @@ function AdminControlMap({ employees, users }: { employees: number; users: numbe
     { title: "Employee", detail: "Assigned field jobs, checklist, photos/files, notes, time log, sign-off, and Ready Review.", tone: "bg-sand text-content" },
   ];
   const adminRules = [
-    { title: "Real jobs only for external apps", detail: "CompanyCam and Google Calendar stay job-by-job. Do not sync sample/mock jobs.", href: "/schedule" },
+    { title: "Real jobs only for external apps", detail: "CompanyCam stays job-by-job. Do not sync sample/mock jobs.", href: "/jobs" },
     { title: "Employees see assigned work", detail: "Assign one employee, multiple employees, or Full Crew from the job edit screen.", href: "/employees" },
     { title: "Closeout goes to manager", detail: "Crew taps Ready Review; manager approves or sends back before billing.", href: "/ready-check" },
     { title: "Communication is logged first", detail: "The app prepares texts/messages and records notices; automatic sending is a future decision.", href: "/communication" },
@@ -827,16 +822,6 @@ function buildIntegrationNextSteps(integrations: IntegrationStatus, setupStatus:
         ? `CompanyCam token is present${setupStatus.companyCamUserEmail ? " and user email is set" : "; add COMPANYCAM_USER_EMAIL if CompanyCam requires user context"}.`
         : "Add the CompanyCam access token in Vercel, then create/open projects from real job profiles only.",
       href: "/settings",
-    },
-    {
-      title: "Google Calendar scheduling",
-      done: Boolean(integrations.googleCalendar),
-      detail: integrations.googleCalendar
-        ? `Google Calendar connection verified. Target calendar: ${setupStatus.googleCalendarId || "primary"}.`
-        : setupStatus.googleCalendarConfigured
-          ? setupStatus.googleCalendarError || "Google authorization failed. Reconnect the account and replace the refresh token in Vercel."
-          : "Subscribe to the read-only RTS calendar feed from Google Calendar. RTS remains the source of truth for scheduling.",
-      href: "/schedule",
     },
     {
       title: "AI work-order extraction",

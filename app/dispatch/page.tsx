@@ -5,8 +5,8 @@ import { requireServerRole } from "@/lib/server-auth";
 
 export const dynamic = "force-dynamic";
 
-export default async function DispatchPage({ searchParams }: { searchParams: Promise<{ job?: string; from?: string }> }) {
+export default async function DispatchPage() {
   await requireServerRole(["Admin", "Manager"]);
-  const [{ job, from }, jobs, employees] = await Promise.all([searchParams, getJobs(), getEmployees()]);
-  return <DispatchHandoffView jobs={jobs} employees={employees} focusJobId={from === "calendar" ? job : undefined} />;
+  const [jobs, employees] = await Promise.all([getJobs(), getEmployees()]);
+  return <DispatchHandoffView jobs={jobs} employees={employees} />;
 }

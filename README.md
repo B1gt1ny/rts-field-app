@@ -19,7 +19,6 @@ A mobile-first field operations app for mobile home contractors. Built with Next
 - Home-page monthly field calendar for quick scheduling reference
 - Home-page follow-up reminder widget for overdue, due-today, and unscheduled communication follow-ups
 - Schedule Board with today, tomorrow, upcoming week, and unscheduled active jobs
-- Calendar intake handoff that carries reviewed event details into a new job and opens the saved job in Dispatch for crew confirmation
 - Dedicated Reminders page for overdue, due-today, unscheduled, and upcoming follow-ups
 - Reports page with manager snapshot including missing receipt backup, printable daily dispatch, parts run, billing review, sign-off review, inspection context, document manifest, and CSV exports
 - Reports billing review rows flag missing uploaded receipt backup and open directly to Receipts when needed
@@ -42,7 +41,7 @@ A mobile-first field operations app for mobile home contractors. Built with Next
 - Offline field draft notes saved to the phone browser before pushing to job activity
 - Structured parts tracker with needed, ordered, picked-up, installed, and not-needed statuses
 - Job-level CompanyCam panel to create/open the matching photo project
-- Job-level scheduling panel to add/update Google Calendar and open the linked calendar event
+- Job-level scheduling in RTS with a read-only ICS subscription for Google Calendar
 - Flexible employee assignments (one person, multiple people, or full crew)
 - Employee add, rename, deactivate, and daily dispatch assignment board
 - Settings page for connected apps, platform readiness, integration next steps, admin control map, employee rollout checklist, company details, editable employee field/help instructions, editable customer text template, field support contact, saved employee field permissions, general options, and crew merchandise requests
@@ -79,7 +78,7 @@ A mobile-first field operations app for mobile home contractors. Built with Next
 - Admin cleanup preview for obvious test/demo/smoke records
 - Server-rendered job data pages enforce login/role checks before rendering
 - Supabase Storage file cabinet for work orders, paperwork, signed documents, and receipt files with role-aware file-open checks
-- Admin integration readiness board for Supabase, auth, storage, CompanyCam, Google Calendar, AI extraction, Invoice Simple, communication, Google Sheets, and AppSheet planning
+- Admin integration readiness board for Supabase, auth, storage, CompanyCam, AI extraction, Invoice Simple, communication, Google Sheets, and AppSheet planning
 - 10 realistic mock jobs
 - Local JSON persistence through API routes
 
@@ -134,7 +133,7 @@ Crew members can open `/field` and see jobs assigned to their linked employee re
 
 CompanyCam is intentionally job-by-job. It does not create projects automatically for mock/test jobs. Add `COMPANYCAM_ACCESS_TOKEN` and `COMPANYCAM_USER_EMAIL` in Vercel, then open a real job and tap **Create CompanyCam project**. Invoice Simple integration can be added later; for now, Billing Command and each job profile provide copyable invoice handoff summaries plus manual invoice/payment status buttons.
 
-Google Calendar is also job-by-job and explicit. Use the Scheduling panel on a real job to add/update the Google Calendar event, or use the Google quick-add fallback. The dashboard monthly calendar shows app job due dates and marks jobs that are already linked to Google Calendar.
+RTS is the source of truth for job scheduling. Admins can copy the private ICS subscription link from Settings into Google Calendar under Other calendars → From URL. The dashboard monthly calendar shows RTS job due dates. Google Calendar does not send changes back to RTS.
 
 Communication is intentionally manual for now. Job profiles can prepare customer/source/manager messages, open the phone text app, copy briefs, and log that someone was notified. Future SMS, email, Zenzap, or Slack-style messaging integrations should connect at the job activity layer without automatically sending messages until business rules and user permissions are approved.
 
