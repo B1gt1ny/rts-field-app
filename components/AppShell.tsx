@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { ArrowUpTrayIcon, BellAlertIcon, BriefcaseIcon, CalendarDaysIcon, ChatBubbleLeftRightIcon, Cog6ToothIcon, HomeIcon, MoonIcon, PlusIcon, SunIcon, UserCircleIcon, UsersIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { BellAlertIcon, BriefcaseIcon, CalendarDaysIcon, ChartBarIcon, ChevronDownIcon, Cog6ToothIcon, HomeIcon, MoonIcon, SunIcon, UserCircleIcon, UsersIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { LogoutButton, RoleBadge, useAuthUser } from "./AuthGate";
 
 const adminPrimaryNavigation = [
@@ -22,11 +22,14 @@ const adminMobileNavigation = [
   ...adminPrimaryNavigation,
   { href: "/settings", label: "More", icon: Cog6ToothIcon },
 ];
-const adminMore = [
-  ["/command", "Operations"], ["/today", "Today"], ["/today-command", "Daily command"], ["/ready-check", "Manager review"], ["/customers", "Customers"], ["/install", "Install on Phone"], ["/factory", "Factory Jobs"], ["/dealer", "Dealer Jobs"], ["/individual", "Individual Jobs"], ["/crew", "Employee Assignments"], ["/waiting-on-parts", "Waiting on Parts"], ["/completed", "Completed Jobs"],
+type NavigationSection = { label: string; icon: typeof HomeIcon; links: string[][]; aliases?: string[] };
+const managerSections: NavigationSection[] = [
+  { label: "Dashboard", icon: HomeIcon, links: [["/", "Overview"], ["/today-command", "Today"], ["/command", "Operations"]], aliases: ["/today"] },
+  { label: "Jobs", icon: BriefcaseIcon, links: [["/jobs", "All jobs"], ["/jobs/new", "New job"], ["/import", "Import work order"], ["/completed", "Completed jobs"]], aliases: ["/factory", "/dealer", "/individual", "/waiting-on-parts"] },
+  { label: "Office", icon: UsersIcon, links: [["/dispatch", "Dispatch"], ["/ready-check", "Manager review"], ["/customers", "Customers"], ["/employees", "Employees"], ["/crew", "Crew assignments"], ["/documents", "Documents"], ["/communication", "Communication"], ["/tasks", "Tasks"], ["/reminders", "Reminders"], ["/billing", "Billing"]] },
+  { label: "Admin", icon: Cog6ToothIcon, links: [["/settings", "Settings"], ["/account", "My account"], ["/install", "Install help"]] },
 ];
 const employeeMore = [["/customers", "Customers"], ["/waiting-on-parts", "Waiting on Parts"], ["/install", "Install on Phone"]];
-const admin = [["/employees", "Employees"], ["/dispatch", "Dispatch"], ["/documents", "Documents"], ["/communication", "Communication"], ["/reminders", "Reminders"], ["/tasks", "Tasks"], ["/billing", "Billing"], ["/reports", "Reports"], ["/settings", "Settings"], ["/account", "My Account"]];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -40,7 +43,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (!mobileMenuOpen || !mobileDialog.current) return;
     const dialog = mobileDialog.current;
     const trigger = menuTrigger.current;
-    const focusable = () => Array.from(dialog.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), [tabindex="0"]')).filter(element => element.getClientRects().length > 0);
+    const focusable = () => Array.from(dialog.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), summary, [tabindex="0"]')).filter(element => {
+      const collapsedGroup = element.closest("details:not([open])");
+      return element.getClientRects().length > 0 && (!collapsedGroup || element === collapsedGroup.querySelector("summary"));
+    });
     (focusable()[0] || dialog).focus();
     function handleKey(event: KeyboardEvent) {
       if (event.key === "Escape") {
@@ -98,8 +104,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isEmployee = role === "Employee";
   const visibleNavigation = isEmployee ? employeeNavigation : adminPrimaryNavigation;
   const visibleMobileNavigation = isEmployee ? employeeNavigation : adminMobileNavigation;
-  const visibleMore = isEmployee ? employeeMore : adminMore;
-  const mobileMoreLinks = isEmployee ? [...employeeMore] : [...adminMore, ...admin];
+  const sectionActive = (section: NavigationSection) => [...section.links.map(([href]) => href), ...(section.aliases || [])].some(href => isActiveRoute(pathname, href));
   return <div className="min-h-screen lg:grid lg:grid-cols-[264px_1fr]">
     <a href="#main-content" className="skip-link">Skip to page content</a>
     <aside className="app-sidebar sticky top-0 hidden h-screen overflow-y-auto border-r border-white/10 px-5 py-6 text-white lg:block">
@@ -107,15 +112,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <span className="grid size-11 place-items-center rounded-xl bg-lime text-lg font-bold text-ink">RTS</span>
         <span><span className="block text-lg font-extrabold">RTS Land Solutions</span><span className="text-xs text-white/65">Field App</span></span>
       </Link>
-      <nav className="space-y-1">
-        {visibleNavigation.map(({ href, label, icon: Icon }) => <NavLink key={href} href={href} active={isActiveRoute(pathname, href)}><Icon className="size-5" />{label}</NavLink>)}
+      <nav aria-label="Main navigation" className="space-y-1">
+        {isEmployee ? <>
+          {visibleNavigation.map(({ href, label, icon: Icon }) => <NavLink key={href} href={href} active={isActiveRoute(pathname, href)}><Icon className="size-5" />{label}</NavLink>)}
+          <p className="px-3 pb-1 pt-5 text-xs font-bold uppercase tracking-wider text-white/55">More</p>
+          {employeeMore.map(([href, label]) => <NavLink key={href} href={href} active={pathname === href}>{label}</NavLink>)}
+        </> : <>
+          {managerSections.slice(0, 2).map(section => <NavigationGroup key={`${section.label}:${pathname}`} section={section} active={sectionActive(section)} pathname={pathname} />)}
+          {adminPrimaryNavigation.slice(2).map(({ href, label, icon: Icon }) => <NavLink key={href} href={href} active={isActiveRoute(pathname, href)}><Icon className="size-5" />{label}</NavLink>)}
+          <NavigationGroup key={`Office:${pathname}`} section={managerSections[2]} active={sectionActive(managerSections[2])} pathname={pathname} />
+          <NavLink href="/reports" active={isActiveRoute(pathname, "/reports")}><ChartBarIcon className="size-5" />Reports</NavLink>
+          <NavigationGroup key={`Admin:${pathname}`} section={managerSections[3]} active={sectionActive(managerSections[3])} pathname={pathname} />
+        </>}
       </nav>
-      {visibleMore.length > 0 && <><p className="mb-2 mt-8 px-3 text-[11px] font-bold uppercase tracking-widest text-white/65">More</p>
-      <nav className="space-y-1">{visibleMore.map(([href, label]) => <NavLink key={href} href={href} active={pathname === href}>{label}</NavLink>)}</nav></>}
-      {!isEmployee && <><p className="mb-2 mt-8 px-3 text-[11px] font-bold uppercase tracking-widest text-white/65">Admin</p>
-      <nav className="space-y-1">{admin.map(([href, label]) => <NavLink key={href} href={href} active={pathname === href}>{href === "/communication" ? <ChatBubbleLeftRightIcon className="size-5" /> : href === "/employees" ? <UsersIcon className="size-5" /> : <Cog6ToothIcon className="size-5" />}{label}</NavLink>)}</nav></>}
-      {!isEmployee && <Link href="/jobs/new" className="mt-8 flex min-h-12 items-center justify-center gap-2 rounded-xl bg-lime font-extrabold text-ink shadow-lg shadow-lime/10 transition hover:-translate-y-px"><PlusIcon className="size-5" />New Job</Link>}
-      {!isEmployee && <Link href="/import" className="mt-3 flex min-h-12 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/10 font-extrabold text-white transition hover:bg-white/15"><ArrowUpTrayIcon className="size-5" />Import Work Order</Link>}
     </aside>
     <div className="min-w-0">
       <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-content/[.06] bg-surface/90 px-4 backdrop-blur-md lg:px-8">
@@ -132,7 +141,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     {mobileMenuOpen && <div ref={mobileDialog} id="app-pages-dialog" tabIndex={-1} className="fixed inset-0 z-50 bg-black/50 p-3 lg:hidden" role="dialog" aria-modal="true" aria-labelledby="app-pages-title">
       <div className="ml-auto flex h-full w-full max-w-sm flex-col rounded-2xl bg-surface shadow-2xl">
         <div className="flex items-center justify-between border-b border-content/10 p-4"><div><p className="eyebrow">RTS Field App</p><h2 id="app-pages-title" className="text-xl font-bold">All pages</h2></div><button type="button" onClick={() => setMobileMenuOpen(false)} className="grid size-11 place-items-center rounded-xl border border-content/10" aria-label="Close all pages"><XMarkIcon className="size-5" /></button></div>
-        <nav className="grid gap-1 overflow-y-auto p-3">{mobileMoreLinks.map(([href, label]) => <Link key={href} href={href} onClick={() => setMobileMenuOpen(false)} aria-current={pathname === href ? "page" : undefined} className={`flex min-h-12 items-center rounded-xl px-4 text-sm font-bold ${pathname === href ? "bg-forest text-white" : "hover:bg-sand"}`}>{label}</Link>)}</nav>
+        <nav aria-label="More navigation" className="grid gap-1 overflow-y-auto p-3">
+          {isEmployee ? employeeMore.map(([href, label]) => <Link key={href} href={href} onClick={() => setMobileMenuOpen(false)} aria-current={pathname === href ? "page" : undefined} className="flex min-h-12 items-center rounded-xl px-4 text-sm font-bold hover:bg-sand">{label}</Link>) : <>
+            {managerSections.slice(0, 3).map(section => <NavigationGroup key={`${section.label}:${pathname}`} section={{ ...section, links: section.links.filter(([href]) => href !== "/" && href !== "/jobs") }} active={sectionActive(section)} pathname={pathname} mobile onNavigate={() => setMobileMenuOpen(false)} />)}
+            <Link href="/reports" onClick={() => setMobileMenuOpen(false)} aria-current={pathname === "/reports" ? "page" : undefined} className="flex min-h-12 items-center gap-3 rounded-xl px-4 text-sm font-bold hover:bg-sand"><ChartBarIcon className="size-5" />Reports</Link>
+            <NavigationGroup key={`Admin:${pathname}`} section={managerSections[3]} active={sectionActive(managerSections[3])} pathname={pathname} mobile onNavigate={() => setMobileMenuOpen(false)} />
+          </>}
+        </nav>
       </div>
     </div>}
   </div>;
@@ -145,4 +160,14 @@ function NavLink({ href, active, children }: { href: string; active: boolean; ch
 function isActiveRoute(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
   return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function NavigationGroup({ section, active, pathname, mobile = false, onNavigate }: { section: NavigationSection; active: boolean; pathname: string; mobile?: boolean; onNavigate?: () => void }) {
+  const Icon = section.icon;
+  return <details open={active} className="group/nav">
+    <summary className={`flex min-h-12 cursor-pointer list-none items-center gap-3 rounded-xl px-3 text-sm font-semibold [&::-webkit-details-marker]:hidden ${mobile ? "text-content hover:bg-sand" : active ? "bg-forest/25 text-white" : "text-white/65 hover:bg-white/5 hover:text-white"}`}><Icon className="size-5" />{section.label}<ChevronDownIcon className="ml-auto size-4 transition group-open/nav:rotate-180" /></summary>
+    <div className={`ml-5 space-y-1 border-l pl-2 ${mobile ? "border-content/10" : "border-white/10"}`}>
+      {section.links.map(([href, label]) => mobile ? <Link key={href} href={href} onClick={onNavigate} aria-current={isActiveRoute(pathname, href) && !(href === "/jobs" && pathname !== "/jobs") ? "page" : undefined} className={`flex min-h-12 items-center rounded-xl px-3 text-sm font-semibold ${pathname === href ? "bg-forest text-white" : "hover:bg-sand"}`}>{label}</Link> : <NavLink key={href} href={href} active={pathname === href}>{label}</NavLink>)}
+    </div>
+  </details>;
 }

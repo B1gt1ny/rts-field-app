@@ -92,17 +92,6 @@ const integrationCards = [
   { key: "appSheet", name: "AppSheet", stage: "Future bridge", description: "Optional compatibility for businesses already using AppSheet.", icon: DocumentTextIcon, action: "Future AppSheet app ID after business model is decided.", appPath: "/documents", safety: "No AppSheet sync runs yet." },
 ];
 
-const adminShortcuts = [
-  { href: "/employees", title: "Employees", description: "Add employees and keep selectable crews flexible.", icon: BuildingOffice2Icon },
-  { href: "/dispatch", title: "Dispatch", description: "See work that is ready to hand off.", icon: BellAlertIcon },
-  { href: "/ready-check", title: "Ready check", description: "Check paperwork, materials, photos, and notes.", icon: DocumentTextIcon },
-  { href: "/schedule", title: "Schedule", description: "Place jobs on the calendar and review the month.", icon: CalendarDaysIcon },
-  { href: "/documents", title: "Paperwork", description: "Work orders, receipts, photos, and printable files.", icon: TableCellsIcon },
-  { href: "/communication", title: "Communication", description: "Job updates, notifications, and follow-ups.", icon: ChatBubbleLeftRightIcon },
-  { href: "/billing", title: "Billing", description: "Invoices, ready-to-bill jobs, and payment status.", icon: ReceiptPercentIcon },
-  { href: "/install", title: "Install app", description: "Phone install steps for iPhone and Android.", icon: ArrowTopRightOnSquareIcon },
-];
-
 export function SettingsPanel() {
   const [integrations, setIntegrations] = useState<IntegrationStatus>({});
   const [platform, setPlatform] = useState<PlatformStatus>({});
@@ -407,18 +396,6 @@ export function SettingsPanel() {
             <Link href={step.href} className="mt-3 inline-flex min-h-11 items-center justify-center rounded-xl bg-sand px-3 py-2 text-xs font-bold text-accent">Open related app area</Link>
           </div>)}
         </div>
-      </div>
-    </section>
-
-    <section className="card p-4 sm:p-6">
-      <h2 className="text-lg font-bold">Admin shortcuts</h2>
-      <p className="mt-1 text-sm text-content/65">Fast buttons for the parts of the app an owner or manager touches most.</p>
-      <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {adminShortcuts.map(({ href, title, description, icon: Icon }) => <Link key={href} href={href} className="group rounded-2xl border border-content/10 bg-sand p-4 transition hover:-translate-y-0.5 hover:bg-surface hover:shadow-sm">
-          <span className="grid size-11 place-items-center rounded-xl bg-surface text-accent group-hover:bg-forest group-hover:text-white"><Icon className="size-5" /></span>
-          <p className="mt-3 font-bold">{title}</p>
-          <p className="mt-1 text-sm text-content/65">{description}</p>
-        </Link>)}
       </div>
     </section>
 
