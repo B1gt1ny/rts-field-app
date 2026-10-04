@@ -18,4 +18,8 @@ jobs:
       - run: npm ci
       - run: npm run verify:factory-billing
       - run: npm run typecheck
+      - run: npm run verify:work-order-extraction
+      - run: npm run verify:job-save-feedback
+      - run: npm run verify:privacy-export
       - run: npm run build
+      - run: npm run verify:production-boundaries

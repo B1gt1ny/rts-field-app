@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useAuthUser } from "./AuthGate";
+import { accountDraftKey, removeLegacyDrafts } from "@/lib/client-drafts";
 import { useRouter } from "next/navigation";
 import { ArrowUpTrayIcon, ClipboardDocumentListIcon, DocumentTextIcon, SparklesIcon } from "@heroicons/react/24/outline";
 import { type AIWorkOrderImport, type Job, type WorkOrderFile } from "@/lib/types";
@@ -27,6 +29,8 @@ const defaultDraft: ImportDraft = {
 
 export function WorkOrderImport() {
   const router = useRouter();
+  const user = useAuthUser();
+  const importKey = accountDraftKey(user?.id, "work-order-import");
   const [file, setFile] = useState<WorkOrderFile | null>(null);
   const [workOrderText, setWorkOrderText] = useState("");
   const [draft, setDraft] = useState<ImportDraft>(defaultDraft);
@@ -39,7 +43,7 @@ export function WorkOrderImport() {
   const [copied, setCopied] = useState(false);
   const [extractionReady, setExtractionReady] = useState(false);
   const [lastExtractionFailed, setLastExtractionFailed] = useState(false);
-  const importDraftKey = "company-command-import-draft";
+  const importDraftKey = accountDraftKey(user?.id, "import");
   const supportedFileTypes = new Set(["application/pdf", "image/jpeg", "image/png", "image/webp"]);
 
   const parsedPreview = useMemo(() => parseWorkOrderText(workOrderText), [workOrderText]);
@@ -53,7 +57,9 @@ export function WorkOrderImport() {
   }, []);
 
   useEffect(() => {
+    if (!importDraftKey) return;
     try {
+      removeLegacyDrafts(window.localStorage);
       const raw = window.localStorage.getItem(importDraftKey);
       if (raw) {
         const parsed = JSON.parse(raw) as typeof savedDraft;
@@ -64,10 +70,10 @@ export function WorkOrderImport() {
     } finally {
       setDraftLoaded(true);
     }
-  }, []);
+  }, [importDraftKey]);
 
   useEffect(() => {
-    if (!draftLoaded || !draftDirty) return;
+    if (!importDraftKey || !draftLoaded || !draftDirty) return;
     const timer = window.setTimeout(() => {
       try {
         window.localStorage.setItem(importDraftKey, JSON.stringify({ draft, file, savedAt: new Date().toISOString() }));
@@ -77,7 +83,7 @@ export function WorkOrderImport() {
       }
     }, 400);
     return () => window.clearTimeout(timer);
-  }, [draft, draftDirty, draftLoaded, file]);
+  }, [draft, draftDirty, draftLoaded, file, importDraftKey]);
 
   function updateDraft(updater: (old: ImportDraft) => ImportDraft) {
     setDraftDirty(true);
@@ -99,7 +105,7 @@ export function WorkOrderImport() {
   }
 
   function discardDraft() {
-    window.localStorage.removeItem(importDraftKey);
+    if (importDraftKey) window.localStorage.removeItem(importDraftKey);
     setSavedDraft(null);
     setDraftDirty(false);
     setDraftStatus("Import draft discarded from this phone.");
@@ -109,7 +115,9 @@ export function WorkOrderImport() {
     if (!selected) return;
     setError("");
     if (!supportedFileTypes.has(selected.type)) { setError("Upload a PDF, JPG, PNG, or WEBP work-order file."); return; }
-    const uploaded = await uploadFile(selected, "draft", "Work Order");
+    let uploaded: WorkOrderFile;
+    try { uploaded = await uploadFile(selected, "draft", "Work Order"); }
+    catch (error) { setError(error instanceof Error ? error.message : "Upload failed. Keep your file and try again."); return; }
     if (!uploaded.storagePath) { setError("Private storage is required to extract this work order. Enter the job manually or try the upload again after storage is available."); return; }
     setDraftDirty(true);
     setLastExtractionFailed(false);
@@ -137,8 +145,8 @@ export function WorkOrderImport() {
   }
 
   function continueToJobForm(proposal: AIWorkOrderImport) {
-    window.sessionStorage.setItem("company-command-work-order-import", JSON.stringify({ proposal, file }));
-    window.localStorage.removeItem(importDraftKey);
+    if (importKey) window.sessionStorage.setItem(importKey, JSON.stringify({ proposal, file }));
+    if (importDraftKey) window.localStorage.removeItem(importDraftKey);
     setDraftDirty(false);
     router.push("/jobs/new");
   }
@@ -441,24 +449,8 @@ async function uploadFile(file: File, jobId: string, category: string): Promise<
   formData.append("category", category);
   const response = await authFetch("/api/files/upload", { method: "POST", body: formData });
   if (response.ok) return response.json();
-  return fallbackFile(file, category);
-}
-
-function fallbackFile(file: File, category: string) {
-  return new Promise<WorkOrderFile>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve({
-      id: `file-${Date.now()}`,
-      fileName: file.name,
-      fileType: file.type || "application/octet-stream",
-      fileSize: file.size,
-      dataUrl: String(reader.result || ""),
-      category: category as WorkOrderFile["category"],
-      uploadedAt: new Date().toISOString(),
-    });
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
+  const result = await response.json().catch(() => ({}));
+  throw new Error(result.error || "Upload failed. Keep your file and try again.");
 }
 
 function formatDraftTime(value: string) {

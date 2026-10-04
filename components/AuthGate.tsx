@@ -6,6 +6,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { ArrowRightOnRectangleIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
 import type { AuthUser } from "@/lib/client-auth";
 
+import { clearBrowserDrafts } from "@/lib/client-drafts";
+
 const publicPaths = ["/login"];
 
 export function AuthGate({ children }: { children: React.ReactNode }) {
@@ -18,12 +20,14 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     fetch("/api/auth/me", { credentials: "include" }).then(async (response) => {
       if (!response.ok) {
+        setUser(null);
         if (authRequired) router.replace("/login");
         setLoading(false);
         return;
       }
       const data = await response.json();
       if (!data.user && authRequired) {
+        setUser(null);
         router.replace("/login");
         return;
       }
@@ -42,7 +46,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   if (loading) return <div className="grid min-h-screen place-items-center bg-sand p-6"><div role="status" className="card flex items-center gap-3 p-5"><ShieldCheckIcon className="size-6 text-accent" /><p className="font-semibold text-content/75">Checking access…</p></div></div>;
   if (authRequired && !user) return null;
 
-  return <AuthContext.Provider value={user}>
+  return <AuthContext.Provider key={user?.id} value={user}>
     {children}
   </AuthContext.Provider>;
 }
@@ -54,10 +58,11 @@ export function useAuthUser() {
 }
 
 export function LogoutButton() {
-  const router = useRouter();
   async function logout() {
-    await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
-    router.replace("/login");
+    const response = await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+    if (!response.ok) return;
+    try { clearBrowserDrafts(window.localStorage, window.sessionStorage); } catch { /* Browser storage may be unavailable. */ }
+    window.location.replace("/login");
   }
   return <button type="button" onClick={logout} className="btn-secondary !min-h-11 !px-3 !py-2"><ArrowRightOnRectangleIcon className="size-5" /><span className="hidden sm:inline">Logout</span></button>;
 }

@@ -269,7 +269,9 @@ function toCsv(rows: Record<string, unknown>[]) {
 }
 
 function csvCell(value: unknown) {
-  const text = String(value ?? "");
+  const raw = String(value ?? "");
+  // Keep numbers numeric; spreadsheet formulas are a risk in untrusted text.
+  const text = typeof value === "string" && /^[\s\u0000-\u001f]*[=+@-]/.test(raw) ? `'${raw}` : raw;
   return `"${text.replaceAll('"', '""')}"`;
 }
 

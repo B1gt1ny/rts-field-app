@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useAuthUser } from "./AuthGate";
+import { accountDraftKey, removeLegacyDrafts } from "@/lib/client-drafts";
 import { useRouter } from "next/navigation";
 import { intakeCompleteness } from "@/lib/job-readiness";
 import { emptyJob, jobTypeOptions, priorities, sources, statuses, type AIWorkOrderImport, type BusinessSettings, type Employee, type Job, type WorkOrderFile } from "@/lib/types";
@@ -15,6 +17,8 @@ const defaultOptions: { jobTypeOptions: string[]; statusOptions: string[]; prior
 
 export function JobForm({ initialJob }: { initialJob?: Job }) {
   const router = useRouter();
+  const user = useAuthUser();
+  const importKey = accountDraftKey(user?.id, "work-order-import");
   const [job, setJob] = useState<Job>(initialJob || emptyJob);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -27,20 +31,21 @@ export function JobForm({ initialJob }: { initialJob?: Job }) {
   const [options, setOptions] = useState(defaultOptions);
   const [importPreview, setImportPreview] = useState<AIWorkOrderImport | null>(null);
   const [importFile, setImportFile] = useState<WorkOrderFile | null>(null);
-  const draftKey = initialJob ? `company-command-job-draft-${initialJob.jobId}` : "company-command-job-draft-new";
+  const draftKey = accountDraftKey(user?.id, initialJob ? `job-${initialJob.jobId}` : "job-new");
   const previewCompleteness = useMemo(() => importPreview ? intakeCompleteness({ ...job, ...importPreview }) : null, [importPreview, job]);
   useEffect(() => { fetch("/api/employees").then((response) => response.json()).then(setEmployees).catch(() => setError("Employees could not be loaded.")); }, []);
   useEffect(() => {
-    if (initialJob) return;
+    if (initialJob || !importKey) return;
     try {
-      const raw = window.sessionStorage.getItem("company-command-work-order-import");
+      removeLegacyDrafts(window.sessionStorage);
+      const raw = window.sessionStorage.getItem(importKey);
       if (!raw) return;
       const imported = JSON.parse(raw) as { proposal?: AIWorkOrderImport; file?: WorkOrderFile | null };
       if (imported.proposal) setImportPreview(imported.proposal);
       if (imported.file) setImportFile(imported.file);
-      window.sessionStorage.removeItem("company-command-work-order-import");
+      window.sessionStorage.removeItem(importKey);
     } catch { setImportPreview(null); setImportFile(null); }
-  }, [initialJob]);
+  }, [initialJob, importKey]);
   useEffect(() => {
     authFetch("/api/settings").then((response) => response.ok ? response.json() : Promise.reject(new Error("Settings unavailable"))).then((settings: BusinessSettings) => setOptions({
       jobTypeOptions: settings.jobTypeOptions?.length ? settings.jobTypeOptions : defaultOptions.jobTypeOptions,
@@ -50,7 +55,9 @@ export function JobForm({ initialJob }: { initialJob?: Job }) {
     })).catch(() => setOptions(defaultOptions));
   }, []);
   useEffect(() => {
+    if (!draftKey) return;
     try {
+      removeLegacyDrafts(window.localStorage);
       const raw = window.localStorage.getItem(draftKey);
       if (raw) {
         const parsed = JSON.parse(raw) as { job?: Job; savedAt?: string };
@@ -63,7 +70,7 @@ export function JobForm({ initialJob }: { initialJob?: Job }) {
     }
   }, [draftKey]);
   useEffect(() => {
-    if (!draftLoaded || !draftDirty) return;
+    if (!draftKey || !draftLoaded || !draftDirty) return;
     const timer = window.setTimeout(() => {
       try {
         window.localStorage.setItem(draftKey, JSON.stringify({ job, savedAt: new Date().toISOString() }));
@@ -87,7 +94,7 @@ export function JobForm({ initialJob }: { initialJob?: Job }) {
     setDraftStatus("Draft restored. Review it, then save the job.");
   }
   function discardDraft() {
-    window.localStorage.removeItem(draftKey);
+    if (draftKey) window.localStorage.removeItem(draftKey);
     setSavedDraft(null);
     setDraftDirty(false);
     setDraftStatus("Draft discarded from this phone.");
@@ -111,7 +118,7 @@ export function JobForm({ initialJob }: { initialJob?: Job }) {
       const response = await authFetch(initialJob ? `/api/jobs/${initialJob.jobId}` : "/api/jobs", { method: initialJob ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: initialJob ? jobUpdateBody(initialJob, payload) : JSON.stringify(payload) });
       const saved = await response.json();
       if (!response.ok) throw new Error(saved.error || "The job could not be saved.");
-      window.localStorage.removeItem(draftKey);
+      if (draftKey) window.localStorage.removeItem(draftKey);
       setDraftDirty(false);
       router.push(`/jobs/${encodeURIComponent(saved.jobId)}`);
     } catch (caught) {

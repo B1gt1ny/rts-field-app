@@ -17,12 +17,13 @@
     "verify:parts-closeout": "tsc --target ES2020 --module commonjs --moduleResolution node --esModuleInterop --skipLibCheck --outDir node_modules/.cache/rts-parts-closeout-check scripts/verify-parts-closeout.ts lib/job-readiness.ts lib/receipt-backup.ts lib/types.ts && node node_modules/.cache/rts-parts-closeout-check/scripts/verify-parts-closeout.js",
     "verify:employee-onboarding": "tsc --target ES2020 --module commonjs --moduleResolution node --esModuleInterop --skipLibCheck --outDir node_modules/.cache/rts-employee-onboarding-check scripts/verify-employee-onboarding.ts lib/employee-onboarding.ts lib/types.ts && node node_modules/.cache/rts-employee-onboarding-check/scripts/verify-employee-onboarding.js",
     "verify:auth-boundaries": "tsc --target ES2020 --module commonjs --moduleResolution node --esModuleInterop --skipLibCheck --outDir node_modules/.cache/rts-auth-boundaries-check scripts/verify-auth-boundaries.ts lib/auth.ts lib/auth-migration.ts && node node_modules/.cache/rts-auth-boundaries-check/scripts/verify-auth-boundaries.js",
-    "auth:migration-inventory": "tsc --target ES2020 --module commonjs --moduleResolution node --esModuleInterop --skipLibCheck --outDir node_modules/.cache/rts-auth-migration-inventory scripts/auth-migration-inventory.ts lib/auth-migration.ts lib/auth.ts && node node_modules/.cache/rts-auth-migration-inventory/scripts/auth-migration-inventory.js"
+    "auth:migration-inventory": "tsc --target ES2020 --module commonjs --moduleResolution node --esModuleInterop --skipLibCheck --outDir node_modules/.cache/rts-auth-migration-inventory scripts/auth-migration-inventory.ts lib/auth-migration.ts lib/auth.ts && node node_modules/.cache/rts-auth-migration-inventory/scripts/auth-migration-inventory.js",
+    "verify:privacy-export": "node scripts/verify-privacy-export.mjs"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
     "@supabase/supabase-js": "^2.52.0",
-    "next": "^15.3.0",
+    "next": "15.5.27",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

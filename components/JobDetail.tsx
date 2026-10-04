@@ -1,5 +1,6 @@
 "use client";
 
+import { accountDraftKey, removeLegacyDrafts } from "@/lib/client-drafts";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ArrowPathIcon, ArrowTopRightOnSquareIcon, BanknotesIcon, CalendarDaysIcon, CameraIcon, ChatBubbleLeftRightIcon, CheckCircleIcon, CheckIcon, ClipboardDocumentListIcon, ClockIcon, MapPinIcon, PencilSquareIcon, PhoneIcon, PrinterIcon, ReceiptPercentIcon, ShareIcon, UserGroupIcon, WrenchScrewdriverIcon } from "@heroicons/react/24/outline";
@@ -2143,14 +2144,13 @@ function OperationsPanel({ job, setJob, mode }: { job: Job; setJob: React.Dispat
     setError("");
     const next = { ...job, ...patch };
     const correctionPatch = correctionResolutionPatch(job, next);
-    const finalNext = { ...next, ...correctionPatch };
     const patchToSave = { ...patch, ...correctionPatch };
-    setJob(finalNext);
     try {
       const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: jobUpdateBody(job, patchToSave) });
       const saved = await response.json();
       if (!response.ok) throw new Error(saved.error || "The job update could not be saved.");
       setJob((old) => ({ ...old, ...saved, checklist: saved.checklist?.length ? saved.checklist : old.checklist }));
+      return saved as Job;
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "The job update could not be saved.");
     } finally {
@@ -2186,12 +2186,15 @@ function OperationsPanel({ job, setJob, mode }: { job: Job; setJob: React.Dispat
 
   async function addReceipt(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const formData = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const formData = new FormData(form);
     const vendor = String(formData.get("vendor") || "").trim();
     const amount = String(formData.get("amount") || "").trim();
     const file = formData.get("receiptFile");
     if (!vendor && !amount && !(file instanceof File && file.size > 0)) return;
-    const uploadedFile = file instanceof File && file.size > 0 ? await uploadStoredFile(file, job.jobId, "Receipt") : undefined;
+    let uploadedFile: WorkOrderFile | undefined;
+    try { uploadedFile = file instanceof File && file.size > 0 ? await uploadStoredFile(file, job.jobId, "Receipt") : undefined; }
+    catch (caught) { setError(caught instanceof Error ? caught.message : "Upload failed. Keep your file and try again."); return; }
     const receipt: ReceiptItem = {
       id: `receipt-${Date.now()}`,
       vendor: vendor || "Receipt",
@@ -2202,13 +2205,15 @@ function OperationsPanel({ job, setJob, mode }: { job: Job; setJob: React.Dispat
       notes: String(formData.get("notes") || "").trim(),
       file: uploadedFile,
     };
-    await savePatch({ receipts: [receipt, ...receipts], activityLog: addActivity(`Receipt added: ${receipt.vendor}${receipt.amount ? ` $${receipt.amount}` : ""}.`, "Receipt") });
-    event.currentTarget.reset();
+    const saved = await savePatch({ receipts: [receipt, ...receipts], activityLog: addActivity(`Receipt added: ${receipt.vendor}${receipt.amount ? ` $${receipt.amount}` : ""}.`, "Receipt") });
+    if (saved) form.reset();
   }
 
   async function addPaperworkFile(file: File | undefined, category: FileCategory) {
     if (!file) return;
-    const uploaded = await uploadStoredFile(file, job.jobId, category);
+    let uploaded: WorkOrderFile;
+    try { uploaded = await uploadStoredFile(file, job.jobId, category); }
+    catch (caught) { setError(caught instanceof Error ? caught.message : "Upload failed. Keep your file and try again."); return; }
     await savePatch({
       workOrderFiles: [uploaded, ...workOrderFiles],
       paperworkItems: paperwork.map((item) => item.id === "work-order" ? { ...item, status: "Collected", notes: uploaded.fileName } : item),
@@ -2357,12 +2362,15 @@ function OfflineDraftPanel({ job, saving, onSave }: { job: Job; saving: boolean;
   const [lastSaved, setLastSaved] = useState("");
   const [online, setOnline] = useState(true);
   const [message, setMessage] = useState("");
-  const storageKey = `company-command-draft-${job.jobId}`;
+  const user = useAuthUser();
+  const storageKey = accountDraftKey(user?.id, `note-${job.jobId}`);
 
   useEffect(() => {
     setOnline(navigator.onLine);
-    const saved = window.localStorage.getItem(storageKey) || "";
-    setDraft(saved);
+    try {
+      removeLegacyDrafts(window.localStorage);
+      setDraft(storageKey ? window.localStorage.getItem(storageKey) || "" : "");
+    } catch { setMessage("Draft storage is unavailable on this phone."); }
     const handleOnline = () => setOnline(true);
     const handleOffline = () => setOnline(false);
     window.addEventListener("online", handleOnline);
@@ -2375,9 +2383,12 @@ function OfflineDraftPanel({ job, saving, onSave }: { job: Job; saving: boolean;
 
   function saveDraft(value: string) {
     setDraft(value);
-    window.localStorage.setItem(storageKey, value);
-    setLastSaved(new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }));
-    setMessage("");
+    try {
+      if (!storageKey) return;
+      window.localStorage.setItem(storageKey, value);
+      setLastSaved(new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }));
+      setMessage("");
+    } catch { setMessage("Draft could not be saved on this phone. Keep this page open and push it when connected."); }
   }
 
   async function pushDraft() {
@@ -2386,7 +2397,7 @@ function OfflineDraftPanel({ job, saving, onSave }: { job: Job; saving: boolean;
     const entry = addJobActivity(job, `Field draft note: ${trimmed}`, "Note");
     const saved = await onSave({ activityLog: entry });
     if (saved) {
-      window.localStorage.removeItem(storageKey);
+      if (storageKey) window.localStorage.removeItem(storageKey);
       setDraft("");
       setMessage("Draft pushed to job activity.");
     } else {
@@ -2395,7 +2406,7 @@ function OfflineDraftPanel({ job, saving, onSave }: { job: Job; saving: boolean;
   }
 
   function clearDraft() {
-    window.localStorage.removeItem(storageKey);
+    if (storageKey) window.localStorage.removeItem(storageKey);
     setDraft("");
     setMessage("Draft cleared from this phone.");
   }
@@ -2687,25 +2698,8 @@ async function uploadStoredFile(file: File, jobId: string, category: FileCategor
   if (caption) formData.append("caption", caption);
   const response = await authFetch("/api/files/upload", { method: "POST", body: formData });
   if (response.ok) return response.json();
-  return fallbackStoredFile(file, category, caption);
-}
-
-function fallbackStoredFile(file: File, category: FileCategory, caption = "") {
-  return new Promise<WorkOrderFile>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve({
-      id: `file-${Date.now()}`,
-      fileName: file.name,
-      fileType: file.type || "application/octet-stream",
-      fileSize: file.size,
-      dataUrl: String(reader.result || ""),
-      category,
-      caption: caption || undefined,
-      uploadedAt: new Date().toISOString(),
-    });
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
+  const result = await response.json().catch(() => ({}));
+  throw new Error(result.error || "Upload failed. Keep your file and try again.");
 }
 
 function CompanyCamPanel({ job, status, setStatus, onJobSynced }: { job: Job; status: CompanyCamState; setStatus: React.Dispatch<React.SetStateAction<CompanyCamState>>; onJobSynced: React.Dispatch<React.SetStateAction<Job>> }) {

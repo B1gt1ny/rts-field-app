@@ -41,7 +41,10 @@ export async function POST(request: Request) {
     : `${jobId}/${cleanSegment(category)}/${id}.${extension}`;
 
   const db = database();
-  if (!db) return NextResponse.json(await fallbackFile(file, buffer, id, category, caption, uploadedBy));
+  if (!db) {
+    if (process.env.NODE_ENV === "production") return NextResponse.json({ error: "Private file storage is unavailable. Keep your file and try again." }, { status: 503 });
+    return NextResponse.json(await fallbackFile(file, buffer, id, category, caption, uploadedBy));
+  }
 
   const bucket = await db.storage.getBucket(bucketName);
   if (bucket.error) {
@@ -54,8 +57,7 @@ export async function POST(request: Request) {
   });
 
   if (upload.error) {
-    console.warn(`Supabase Storage upload failed; using data URL fallback: ${upload.error.message}`);
-    return NextResponse.json(await fallbackFile(file, buffer, id, category, caption, uploadedBy));
+    return NextResponse.json({ error: "File upload failed. Keep your file and try again." }, { status: 503 });
   }
 
   const storedFile: WorkOrderFile = {

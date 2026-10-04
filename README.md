@@ -103,9 +103,9 @@ npm start
 
 ## Storage
 
-In production, jobs, employees, admin company settings, and merchandise requests are stored in Supabase Postgres. Apply `supabase/schema.sql`, then set the variables shown in `.env.example`. The service-role key is server-only and must never use a `NEXT_PUBLIC_` prefix.
+In production, jobs, employees, admin company settings, and merchandise requests are stored in Supabase Postgres. For a new installation, review `supabase/schema.sql` and `.env.example` before setup. Do not run schema/setup scripts against an existing production project without explicit owner approval. Checked-in schema is not proof of live RLS configuration. The service-role key is server-only and must never use a `NEXT_PUBLIC_` prefix.
 
-Without Supabase environment variables, local development falls back to `data/jobs.json`, `data/employees.json`, `data/settings.json`, and `data/merch-requests.json`. Missing settings and merchandise files start from safe built-in defaults and are created on the first save. A new empty hosted jobs table is seeded once from the included mock job data.
+Without Supabase environment variables, local development falls back to `data/jobs.json`, `data/employees.json`, `data/settings.json`, and `data/merch-requests.json`. Missing settings and merchandise files start from safe built-in defaults and are created on the first save. An empty hosted jobs table stays empty; it is never seeded with mock jobs automatically. Local fixtures are for development only.
 
 The repository boundaries in `lib/jobs.ts`, `lib/employees.ts`, and `lib/settings.ts` are the intended replacement points for SQLite, Google Sheets, AppSheet, or a fuller multi-company database model.
 
@@ -113,21 +113,21 @@ The repository boundaries in `lib/jobs.ts`, `lib/employees.ts`, and `lib/setting
 
 The app uses Supabase Storage as the file cabinet for work orders, paperwork, signed documents, and receipt uploads. Set `SUPABASE_STORAGE_BUCKET=job-files` or leave it unset to use the default bucket name.
 
-The upload API attempts to create the `job-files` bucket automatically with the server-only Supabase service role key. If storage is not configured yet, the app falls back to saving a data URL on the job record so the field workflow still works during setup.
+The upload API uses a private bucket with server-side access checks. Production storage failures return a retryable error; the browser must keep the selected file and confirm upload/save success before clearing it. Inline data URLs are permitted only in unconfigured local development. Existing inline attachments remain readable; there is no migration or removal of historical files. Bucket creation on a missing bucket remains part of the existing upload setup behavior.
 
 Photos can continue living in CompanyCam for now. Company Command should store the job profile, work orders, receipts, paperwork, and links back to CompanyCam photo projects.
 
 ## Admin and employee versions
 
-The app uses Supabase Auth for login and role routing. Login runs through server-side API routes and secure cookies, so the browser does not need the Supabase anon key. Set `ADMIN_EMAILS` and `MANAGER_EMAILS` in Vercel. Emails listed in `ADMIN_EMAILS` are treated as Admin even before metadata roles are set.
+The app uses Supabase Auth for login and role routing. Login runs through server-side API routes and secure cookies, so the browser does not need the Supabase anon key. Authorization comes exclusively from server-controlled Supabase `app_metadata`: `rtsRole` (Admin, Manager or Employee), `rtsEmployeeId` (existing employee ID) and `rtsAccessActive` (boolean). User-editable `user_metadata` and email allow-lists do not grant application authority. The Supabase ban state also blocks access. Disabling/reactivating a login preserves employee/job history.
 
-First-admin setup can be done through `/api/auth/bootstrap-admin` for emails listed in `ADMIN_EMAILS`. After an admin account exists, the bootstrap route refuses password resets unless `AUTH_SETUP_CODE` is configured and supplied.
+`/api/auth/bootstrap-admin` is for an unclaimed installation only: it requires `AUTH_SETUP_CODE`, exactly one approved `ADMIN_EMAILS` identity, and no existing Admin or matching account. It never resets an existing password. It returns 404 when setup is disabled and 409 when ownership is already claimed. Normal account recovery must use the established Auth recovery process; never enable setup to work around a login test. Never commit secrets or snapshots.
 
 Roles:
 
 - Admin: settings, users, employees, delete jobs, integrations
 - Manager: jobs, scheduling, paperwork, employees, billing status
-- Employee: assigned field work, job checklist, notes, file uploads, closeout readiness, Ready for Manager Review, and complete-job workflow
+- Employee: assigned field work, job checklist, notes, file uploads, closeout readiness and Ready for Manager Review. Manager/Admin reviews and completes jobs.
 
 Crew members can open `/field` and see jobs assigned to their linked employee record or assigned to the full crew. Admins can link a login to an employee from Settings. Field closeout can move a job to **Needs Inspection** for manager review before an admin/manager marks the job complete and ready for billing.
 
@@ -137,10 +137,38 @@ RTS is the source of truth for job scheduling. Admins can copy the private ICS s
 
 Communication is intentionally manual for now. Job profiles can prepare customer/source/manager messages, open the phone text app, copy briefs, and log that someone was notified. Future SMS, email, Zenzap, or Slack-style messaging integrations should connect at the job activity layer without automatically sending messages until business rules and user permissions are approved.
 
-Work-order import currently stores the original uploaded file on the job, auto-fills customer/job fields from text-based files or pasted text, shows a detected-field preview, scores the import for review, and links to duplicate-search checks before creating the profile. Photo/PDF OCR can plug into `components/WorkOrderImport.tsx` later using an OCR or AI document-extraction service once an API key is approved.
+Work-order import currently stores the original uploaded file on the job, auto-fills customer/job fields from text-based files or pasted text, shows a detected-field preview, scores the import for review, and links to duplicate-search checks before creating the profile. When configured, OpenAI photo/PDF extraction reads a private upload and returns a validated proposal. The Responses API parser accepts documented output message text as well as an SDK text aggregate. Extraction does not create a job: a manager reviews/applies the proposal, then explicitly saves the new job. Do not repeat paid provider tests without approval.
 
 The Settings page includes a safe readiness board and an admin control map. It shows whether Supabase database/auth/storage and optional integration keys are present without exposing secrets, explains Admin/Manager/Employee responsibilities, lets admin edit the instructions and customer text template employees use in the field app, controls the field support contact and employee field permissions for phone actions like Need Help, start, notes, photos, parts, sign-offs, packets, and Ready Review, and shows what is live, staged, manual, or future so admins know the next setup step from the phone.
 
 ## Current scope
 
-Automatic outbound notifications, full multi-company billing, true OCR/AI extraction, and advanced external sync rules are still future work. Authentication, file uploads, role-aware screens, manual communication logging, and job-by-job integration buttons are now part of the working app.
+Automatic outbound notifications, full multi-company billing, and advanced external sync rules are still future work. OpenAI extraction is implemented and production verified. Authentication, file uploads, role-aware screens, manual communication logging, and job-by-job integration buttons are now part of the working app.
+
+
+## Operator verification and release controls
+
+The owner-maintained **RTS production completion ledger** (`outputs/completion-ledger.md` in the Codex task workspace, outside this repository) is the authoritative verification record. Use its latest section, the exact production deployment commit, and PR checks together; older pending sections are historical. A passing build or committed change does not authorize production release.
+
+- Production Supabase project: `jegdchdjfntyrxufuqkg`. Do not substitute an accessible duplicate project.
+- Current deployed baseline at documentation update: `e33fde3` (approved `a68ee59` plus the extraction parser correction). AUD-001–008 candidates remain outside production until explicitly approved.
+- CompanyCam read verification passed. Write verification remains **UNVERIFIED**, pending safe cleanup/deletion authority; a Standard account cannot provide that cleanup. Do not create an unremovable disposable project.
+- RTS scheduling is authoritative; private ICS subscriptions are read-only. Protect feed tokens and never restore the deprecated Google Calendar writer.
+- Drafts belong to the signed-in account on this browser. Logout clears this device's drafts, including old unowned drafts; save important work before signing out. Existing unowned drafts are discarded, never assigned to whichever user signs in next. This is local recovery, not full offline synchronization.
+- Job saves use revision conflict checks. On 409, refresh and review current work before retrying; do not blindly replay stale edits. After rollout, refresh older open tabs.
+- Production account/password/role, RLS, schema, environment, credential and deployment changes require their own explicit authorization. Do not record credentials in logs, reports, screenshots or source.
+
+Run local fixtures without real accounts, customer data, provider writes or paid extraction:
+
+```bash
+npm run typecheck
+npm run verify:factory-billing
+npm run verify:employee-onboarding
+npm run verify:work-order-extraction
+npm run verify:job-save-feedback
+npm run verify:privacy-export
+npm run build
+npm run verify:production-boundaries
+```
+
+The production-boundary fixture starts the built app against loopback Auth/PostgREST/Storage mocks. It checks role/assignment denial, disabled access, concurrency and storage failures. It never targets the production Supabase project. PR gates run these existing checks; synthetic success is not a claim that live provider writes were verified.

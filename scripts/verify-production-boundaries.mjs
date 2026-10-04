@@ -11,6 +11,7 @@ const roster = [{ id: 'own', name: 'Worker', active: true }, { id: 'other', name
 const privateNote = { id: 'private', audience: 'Manager', type: 'Note', message: 'Private fixture', createdBy: 'Manager', createdAt: '2026-10-01' };
 let jobs = ['own-job', 'other-job'].map((jobId, index) => ({ ...emptyJob, jobId, assignedCrew: index ? 'Other' : 'Worker', assignedEmployeeIds: [index ? 'other' : 'own'], customerName: 'Fixture', activityLog: [privateNote], factoryCost: { ...defaultFactoryCost(), workRate: '50' } }));
 let writes = 0;
+let storageFailure = false;
 let readGate = null;
 let waitingReads = [];
 const mock = createServer(async (req, res) => {
@@ -60,6 +61,7 @@ const mock = createServer(async (req, res) => {
     jobs[index] = row.data; writes++; return send({ data: row.data });
   }
   if (url.pathname.startsWith('/storage/v1/')) {
+    if (storageFailure && req.method === 'POST' && url.pathname.startsWith('/storage/v1/object/')) return send({ message: 'Fixture storage outage' }, 503);
     if (req.method !== 'GET') writes++;
     if (url.pathname.startsWith('/storage/v1/object/sign/')) return send({ signedURL: '/object/sign/job-files/fixture' });
     return send({ id: 'job-files', name: 'job-files', public: false, Key: 'fixture' });
@@ -148,6 +150,15 @@ try {
   assert.equal((await patchJob('employee', { travelLegs: [{ id: 'fixture-travel', date: '2026-10-04', from: 'Office', to: 'Fixture site', miles: '12' }] })).status, 200);
   assert.equal(jobs[0].travelLegs[0].employeeName, 'Worker');
   const ownUpload = new FormData(); ownUpload.set('file', new Blob(['fixture photo'], { type: 'image/jpeg' }), 'fixture.jpg'); ownUpload.set('jobId', 'own-job'); ownUpload.set('category', 'After');
+  storageFailure = true;
+  const beforeFailedUpload = JSON.stringify(jobs);
+  const failedUpload = await request('/api/files/upload', 'employee', { method: 'POST', body: ownUpload });
+  assert.equal(failedUpload.status, 503);
+  const failedBody = await failedUpload.json();
+  assert.match(failedBody.error, /Keep your file/);
+  assert.equal(failedBody.dataUrl, undefined, 'Storage outage cannot silently become an inline attachment');
+  assert.equal(JSON.stringify(jobs), beforeFailedUpload, 'Failed upload cannot change jobs');
+  storageFailure = false;
   const uploaded = await request('/api/files/upload', 'employee', { method: 'POST', body: ownUpload }); assert.equal(uploaded.status, 201); const attachment = await uploaded.json();
   const fileView = await request(attachment.dataUrl, 'employee'); assert.equal(fileView.status, 307); assert.ok(fileView.headers.get('location').startsWith(fixtureUrl), 'Assigned file opens through fixture storage only');
   assert.equal((await patchJob('employee', { afterPhotos: [attachment.dataUrl], workOrderFiles: [attachment], completionNotes: 'Fixture field work complete', checklist: [{ id: 'complete', label: 'Work completed', complete: true }] })).status, 200);
