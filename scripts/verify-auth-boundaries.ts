@@ -29,6 +29,20 @@ check(rejected, "Unknown employee link must be rejected");
 rejected = false;
 try { validateApprovedMigration([employee], [{ userId: "worker", role: "Employee", employeeId: "own", employeeName: "Other", accessActive: true }], [{ id: "own", name: "Worker" }]); } catch { rejected = true; }
 check(rejected, "Mismatched employee name must be rejected");
+async function verifyFailClosedConfiguration() {
+  const savedUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const savedKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+  delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+  try {
+    const result = await requireRole(new Request("http://localhost/api/admin/users"), ["Admin"]);
+    check(result.ok === false && result.status === 503, "Missing authorization configuration must fail closed");
+  } finally {
+    if (savedUrl === undefined) delete process.env.NEXT_PUBLIC_SUPABASE_URL; else process.env.NEXT_PUBLIC_SUPABASE_URL = savedUrl;
+    if (savedKey === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY; else process.env.SUPABASE_SERVICE_ROLE_KEY = savedKey;
+  }
+}
+
 async function verifyServerAuthorization() {
   const identities: Record<string, AppUser> = {
     worker: employee,
@@ -57,4 +71,4 @@ async function verifyServerAuthorization() {
     server.close();
   }
 }
-verifyServerAuthorization().then(() => console.log("Auth boundary fixtures passed.")).catch((error) => { console.error(error); process.exitCode = 1; });
+verifyFailClosedConfiguration().then(verifyServerAuthorization).then(() => console.log("Auth boundary fixtures passed.")).catch((error) => { console.error(error); process.exitCode = 1; });
