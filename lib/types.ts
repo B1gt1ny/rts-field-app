@@ -185,6 +185,7 @@ export type WorkOrderFile = {
 };
 
 export interface Job {
+  revision?: string;
   jobId: string;
   source: JobSource;
   manufacturer?: string;

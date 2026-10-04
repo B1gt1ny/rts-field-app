@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ArrowTopRightOnSquareIcon, BellAlertIcon, CalendarDaysIcon, ChatBubbleLeftRightIcon, ClipboardDocumentListIcon, FunnelIcon, PhoneIcon } from "@heroicons/react/24/outline";
-import { authFetch } from "@/lib/client-auth";
+import { authFetch, jobUpdateBody } from "@/lib/client-auth";
 import type { Job, JobActivity } from "@/lib/types";
 import { StatusBadge } from "./StatusBadge";
 
@@ -96,7 +96,7 @@ export function CommunicationCenterView({ jobs }: { jobs: Job[] }) {
       const response = await authFetch(`/api/jobs/${selectedJob.jobId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ activityLog: nextActivity } satisfies Partial<Job>),
+        body: jobUpdateBody(selectedJob, { activityLog: nextActivity } satisfies Partial<Job>),
       });
       const saved = await response.json();
       if (!response.ok) throw new Error(saved.error || "Communication could not be saved.");
@@ -125,7 +125,7 @@ export function CommunicationCenterView({ jobs }: { jobs: Job[] }) {
       const response = await authFetch(`/api/jobs/${row.job.jobId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ activityLog: nextActivity } satisfies Partial<Job>),
+        body: jobUpdateBody(row.job, { activityLog: nextActivity } satisfies Partial<Job>),
       });
       const saved = await response.json();
       if (!response.ok) throw new Error(saved.error || "Follow-up could not be updated.");
@@ -149,7 +149,7 @@ export function CommunicationCenterView({ jobs }: { jobs: Job[] }) {
       const response = await authFetch(`/api/jobs/${row.job.jobId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ activityLog: nextActivity } satisfies Partial<Job>),
+        body: jobUpdateBody(row.job, { activityLog: nextActivity } satisfies Partial<Job>),
       });
       const saved = await response.json();
       if (!response.ok) throw new Error(saved.error || "Follow-up date could not be updated.");

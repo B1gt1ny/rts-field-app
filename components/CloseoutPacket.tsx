@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeftIcon, CameraIcon, CheckCircleIcon, ClipboardDocumentListIcon, PrinterIcon, ReceiptPercentIcon, WrenchScrewdriverIcon } from "@heroicons/react/24/outline";
-import { authFetch } from "@/lib/client-auth";
+import { authFetch, jobUpdateBody } from "@/lib/client-auth";
 import { factoryCostGrandTotal, getFactoryCostTotals } from "@/lib/factory-costs";
 import { isReceiptBackupMissing } from "@/lib/receipt-backup";
 import type { Job, JobActivity, PaperworkItem } from "@/lib/types";
@@ -168,8 +168,13 @@ function BillingPacketActions({ job, blockers }: { job: Job; blockers: number })
   const factoryTotal = factoryCostGrandTotal(job);
   const factoryCosts = getFactoryCostTotals(job.factoryCost);
 
+  const [savedJob, setSavedJob] = useState(job);
+  const [saveError, setSaveError] = useState("");
+
   async function updateBilling(nextStatus: string, message: string, extra: Partial<Job> = {}) {
     setSaving(nextStatus);
+    setSaveError("");
+    try {
     const activity: JobActivity = {
       id: `activity-${Date.now()}`,
       type: "Invoice",
@@ -182,14 +187,18 @@ function BillingPacketActions({ job, blockers }: { job: Job; blockers: number })
     const response = await authFetch(`/api/jobs/${job.jobId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+      body: jobUpdateBody(savedJob, {
         ...extra,
         invoiceStatus: nextStatus,
-        activityLog: [activity, ...(job.activityLog || [])].slice(0, 50),
+        activityLog: [activity, ...(savedJob.activityLog || [])].slice(0, 50),
       } satisfies Partial<Job>),
     });
-    if (response.ok) setInvoiceStatus(nextStatus);
-    setSaving("");
+    const saved = await response.json();
+    if (!response.ok) throw new Error(saved.error || "Billing update could not be saved.");
+    setSavedJob(saved);
+    setInvoiceStatus(nextStatus);
+    } catch (caught) { setSaveError(caught instanceof Error ? caught.message : "Billing update could not be saved."); }
+    finally { setSaving(""); }
   }
 
   async function copyBillingSummary() {
@@ -218,6 +227,7 @@ function BillingPacketActions({ job, blockers }: { job: Job; blockers: number })
   }
 
   return <section id="billing-handoff" className="card p-5 sm:p-7 print:hidden">
+    {saveError && <p role="alert" className="mb-3 rounded-xl bg-orange-50 p-3 text-sm font-bold text-orange-800">{saveError}</p>}
     <div className="mb-4 flex items-start gap-3">
       <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-lime text-ink"><ReceiptPercentIcon className="size-5" /></span>
       <div>

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { BriefcaseIcon, CameraIcon, CalendarDaysIcon, CheckCircleIcon, ClipboardDocumentCheckIcon, ClockIcon, DocumentTextIcon, ExclamationTriangleIcon, MapPinIcon, PhoneIcon, PlayIcon, ReceiptPercentIcon, UserCircleIcon, UserGroupIcon, WrenchScrewdriverIcon } from "@heroicons/react/24/outline";
 import { defaultFactoryCost, type BusinessSettings, type Employee, type FactoryCostTracker, type Job, type JobActivity, type TravelLeg } from "@/lib/types";
-import { authFetch } from "@/lib/client-auth";
+import { authFetch, jobUpdateBody } from "@/lib/client-auth";
 import { getFactoryCostTotals, hasFactoryCostWork } from "@/lib/factory-costs";
 import { hasReceiptDollars, hasUploadedReceiptBackup } from "@/lib/receipt-backup";
 import { checklistProgress } from "@/lib/job-readiness";
@@ -46,6 +46,7 @@ export function FieldAppView() {
   const [savingJobId, setSavingJobId] = useState("");
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
   const [crewFilter, setCrewFilter] = useState<CrewFilter>("today");
+  const [fieldSaveError, setFieldSaveError] = useState("");
   const [fieldNotice, setFieldNotice] = useState("Open your assigned job, check the scope, take required photos, add notes, and send it to the manager when field work is complete.");
   const [reviewInstructions, setReviewInstructions] = useState("Manager review checks after photos, completion notes, work completed, and open parts before billing.");
   const [customerTextTemplate, setCustomerTextTemplate] = useState("Company update for {customerName}: crew is on your job {jobId}.");
@@ -144,6 +145,7 @@ export function FieldAppView() {
   };
 
   async function startJob(job: Job) {
+    setFieldSaveError("");
     setSavingJobId(job.jobId);
     const employeeName = employee?.name || user?.employeeName || "Crew";
     const session = getWorkSession(job);
@@ -169,9 +171,12 @@ export function FieldAppView() {
       timeEntries: timeEntry ? [timeEntry, ...(job.timeEntries || [])].slice(0, 100) : job.timeEntries || [],
     };
     try {
-      const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
+      const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: jobUpdateBody(job, patch) });
       const saved = await response.json();
-      if (response.ok) setJobs((old) => old.map((item) => item.jobId === job.jobId ? { ...item, ...saved } : item));
+      if (!response.ok) throw new Error(saved.error || "The job update could not be saved. Refresh and try again.");
+      setJobs((old) => old.map((item) => item.jobId === job.jobId ? { ...item, ...saved } : item));
+    } catch (caught) {
+      setFieldSaveError(caught instanceof Error ? caught.message : "The job update could not be saved. Your entry has not been submitted.");
     } finally {
       setSavingJobId("");
     }
@@ -180,6 +185,7 @@ export function FieldAppView() {
   async function startTravel(job: Job) {
     const travel = getTravelState(job);
     if (travel.active) return;
+    setFieldSaveError("");
     setSavingJobId(job.jobId);
     const employeeName = employee?.name || user?.employeeName || "Crew";
     const now = new Date().toISOString();
@@ -202,13 +208,16 @@ export function FieldAppView() {
       const response = await authFetch(`/api/jobs/${job.jobId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+        body: jobUpdateBody(job, {
           activityLog: [activity, ...(job.activityLog || [])].slice(0, 50),
           timeEntries: [timeEntry, ...(job.timeEntries || [])].slice(0, 100),
         }),
       });
       const saved = await response.json();
-      if (response.ok) setJobs((old) => old.map((item) => item.jobId === job.jobId ? { ...item, ...saved } : item));
+      if (!response.ok) throw new Error(saved.error || "The job update could not be saved. Refresh and try again.");
+      setJobs((old) => old.map((item) => item.jobId === job.jobId ? { ...item, ...saved } : item));
+    } catch (caught) {
+      setFieldSaveError(caught instanceof Error ? caught.message : "The job update could not be saved. Your entry has not been submitted.");
     } finally {
       setSavingJobId("");
     }
@@ -217,6 +226,7 @@ export function FieldAppView() {
   async function arriveAtJob(job: Job) {
     const travel = getTravelState(job);
     if (!travel.active) return;
+    setFieldSaveError("");
     setSavingJobId(job.jobId);
     const employeeName = employee?.name || user?.employeeName || "Crew";
     const now = new Date().toISOString();
@@ -239,19 +249,23 @@ export function FieldAppView() {
       const response = await authFetch(`/api/jobs/${job.jobId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+        body: jobUpdateBody(job, {
           activityLog: [activity, ...(job.activityLog || [])].slice(0, 50),
           timeEntries: [timeEntry, ...(job.timeEntries || [])].slice(0, 100),
         }),
       });
       const saved = await response.json();
-      if (response.ok) setJobs((old) => old.map((item) => item.jobId === job.jobId ? { ...item, ...saved } : item));
+      if (!response.ok) throw new Error(saved.error || "The job update could not be saved. Refresh and try again.");
+      setJobs((old) => old.map((item) => item.jobId === job.jobId ? { ...item, ...saved } : item));
+    } catch (caught) {
+      setFieldSaveError(caught instanceof Error ? caught.message : "The job update could not be saved. Your entry has not been submitted.");
     } finally {
       setSavingJobId("");
     }
   }
 
   async function toggleChecklist(job: Job, itemId: string) {
+    setFieldSaveError("");
     setSavingJobId(job.jobId);
     const employeeName = employee?.name || user?.employeeName || "Crew";
     const checklist = (job.checklist || []).map((item) => item.id === itemId ? { ...item, complete: !item.complete } : item);
@@ -268,10 +282,13 @@ export function FieldAppView() {
       const response = await authFetch(`/api/jobs/${job.jobId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ checklist, activityLog: [activity, ...(job.activityLog || [])].slice(0, 50) }),
+        body: jobUpdateBody(job, { checklist, activityLog: [activity, ...(job.activityLog || [])].slice(0, 50) }),
       });
       const saved = await response.json();
-      if (response.ok) setJobs((old) => old.map((item) => item.jobId === job.jobId ? { ...item, ...saved, checklist: saved.checklist?.length ? saved.checklist : checklist } : item));
+      if (!response.ok) throw new Error(saved.error || "The job update could not be saved. Refresh and try again.");
+      setJobs((old) => old.map((item) => item.jobId === job.jobId ? { ...item, ...saved, checklist: saved.checklist?.length ? saved.checklist : checklist } : item));
+    } catch (caught) {
+      setFieldSaveError(caught instanceof Error ? caught.message : "The job update could not be saved. Your entry has not been submitted.");
     } finally {
       setSavingJobId("");
     }
@@ -280,6 +297,7 @@ export function FieldAppView() {
   async function saveFieldNote(job: Job, message: string, type: JobActivity["type"] = "Note") {
     const trimmed = message.trim();
     if (!trimmed) return;
+    setFieldSaveError("");
     setSavingJobId(job.jobId);
     const employeeName = employee?.name || user?.employeeName || "Crew";
     const activity: JobActivity = {
@@ -296,30 +314,40 @@ export function FieldAppView() {
       const response = await authFetch(`/api/jobs/${job.jobId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ activityLog: [activity, ...(job.activityLog || [])].slice(0, 50) }),
+        body: jobUpdateBody(job, { activityLog: [activity, ...(job.activityLog || [])].slice(0, 50) }),
       });
       const saved = await response.json();
-      if (response.ok) {
+      if (!response.ok) throw new Error(saved.error || "The job update could not be saved. Refresh and try again.");
+      {
         setJobs((old) => old.map((item) => item.jobId === job.jobId ? { ...item, ...saved } : item));
         setNoteDrafts((old) => ({ ...old, [job.jobId]: "" }));
       }
+    } catch (caught) {
+      setFieldSaveError(caught instanceof Error ? caught.message : "The job update could not be saved. Your entry has not been submitted.");
     } finally {
       setSavingJobId("");
     }
   }
 
   async function saveTravelLeg(job: Job, leg: Omit<TravelLeg, "id" | "employeeName">) {
+    setFieldSaveError("");
     setSavingJobId(job.jobId);
     const employeeName = employee?.name || user?.employeeName || "Crew";
     const travelLeg: TravelLeg = { ...leg, id: `travel-${Date.now()}`, employeeName };
     try {
-      const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ travelLegs: [...(job.travelLegs || []), travelLeg] }) });
+      const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: jobUpdateBody(job, { travelLegs: [...(job.travelLegs || []), travelLeg] }) });
       const saved = await response.json();
-      if (response.ok) setJobs((old) => old.map((item) => item.jobId === job.jobId ? { ...item, ...saved } : item));
+      if (!response.ok) throw new Error(saved.error || "The job update could not be saved. Refresh and try again.");
+      setJobs((old) => old.map((item) => item.jobId === job.jobId ? { ...item, ...saved } : item));
+      return true;
+    } catch (caught) {
+      setFieldSaveError(caught instanceof Error ? caught.message : "Travel could not be saved. Keep your entry and try again.");
+      return false;
     } finally { setSavingJobId(""); }
   }
 
   async function saveFactoryCost(job: Job, costPatch: Partial<FactoryCostTracker>) {
+    setFieldSaveError("");
     setSavingJobId(job.jobId);
     const employeeName = employee?.name || user?.employeeName || "Crew";
     const factoryCost = { ...defaultFactoryCost(), ...(job.factoryCost || {}), ...costPatch };
@@ -337,10 +365,13 @@ export function FieldAppView() {
       const response = await authFetch(`/api/jobs/${job.jobId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ factoryCost, activityLog: [activity, ...(job.activityLog || [])].slice(0, 50) }),
+        body: jobUpdateBody(job, { factoryCost, activityLog: [activity, ...(job.activityLog || [])].slice(0, 50) }),
       });
       const saved = await response.json();
-      if (response.ok) setJobs((old) => old.map((item) => item.jobId === job.jobId ? { ...item, ...saved } : item));
+      if (!response.ok) throw new Error(saved.error || "The job update could not be saved. Refresh and try again.");
+      setJobs((old) => old.map((item) => item.jobId === job.jobId ? { ...item, ...saved } : item));
+    } catch (caught) {
+      setFieldSaveError(caught instanceof Error ? caught.message : "The job update could not be saved. Your entry has not been submitted.");
     } finally {
       setSavingJobId("");
     }
@@ -349,6 +380,7 @@ export function FieldAppView() {
   async function saveCompletionNotes(job: Job, completionNotes: string) {
     const trimmed = completionNotes.trim();
     if (!trimmed) return;
+    setFieldSaveError("");
     setSavingJobId(job.jobId);
     const employeeName = employee?.name || user?.employeeName || "Crew";
     const checklist = (job.checklist || []).map((item) => item.label === "Completion notes added" ? { ...item, complete: true } : item);
@@ -364,16 +396,20 @@ export function FieldAppView() {
       const response = await authFetch(`/api/jobs/${job.jobId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ completionNotes: trimmed, checklist, activityLog: [activity, ...(job.activityLog || [])].slice(0, 50) }),
+        body: jobUpdateBody(job, { completionNotes: trimmed, checklist, activityLog: [activity, ...(job.activityLog || [])].slice(0, 50) }),
       });
       const saved = await response.json();
-      if (response.ok) setJobs((old) => old.map((item) => item.jobId === job.jobId ? { ...item, ...saved, checklist: saved.checklist?.length ? saved.checklist : checklist } : item));
+      if (!response.ok) throw new Error(saved.error || "The job update could not be saved. Refresh and try again.");
+      setJobs((old) => old.map((item) => item.jobId === job.jobId ? { ...item, ...saved, checklist: saved.checklist?.length ? saved.checklist : checklist } : item));
+    } catch (caught) {
+      setFieldSaveError(caught instanceof Error ? caught.message : "The job update could not be saved. Your entry has not been submitted.");
     } finally {
       setSavingJobId("");
     }
   }
 
   async function readyForManagerReview(job: Job) {
+    setFieldSaveError("");
     setSavingJobId(job.jobId);
     const employeeName = employee?.name || user?.employeeName || "Crew";
     const checklist = (job.checklist || []).map((item) => {
@@ -406,15 +442,19 @@ export function FieldAppView() {
       timeEntries: [timeEntry, ...(job.timeEntries || [])].slice(0, 100),
     };
     try {
-      const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
+      const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: jobUpdateBody(job, patch) });
       const saved = await response.json();
-      if (response.ok) setJobs((old) => old.map((item) => item.jobId === job.jobId ? { ...item, ...saved, checklist: saved.checklist?.length ? saved.checklist : checklist } : item));
+      if (!response.ok) throw new Error(saved.error || "The job update could not be saved. Refresh and try again.");
+      setJobs((old) => old.map((item) => item.jobId === job.jobId ? { ...item, ...saved, checklist: saved.checklist?.length ? saved.checklist : checklist } : item));
+    } catch (caught) {
+      setFieldSaveError(caught instanceof Error ? caught.message : "The job update could not be saved. Your entry has not been submitted.");
     } finally {
       setSavingJobId("");
     }
   }
 
   return <div className="mx-auto max-w-3xl space-y-4">
+    {fieldSaveError && <p role="alert" className="card border border-orange-200 p-4 text-sm font-bold text-orange-800">{fieldSaveError}</p>}
     <section className="rounded-2xl bg-ink p-4 text-white sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -716,7 +756,7 @@ function EmployeeHelpPanel({ employeeName, fieldNotice, reviewInstructions }: { 
   </section>;
 }
 
-function FieldActionCard({ job, noteDraft, saving, permissions, customerTextTemplate, fieldNoteTemplates, reviewInstructions, factoryCostInstructions, requireBeforePhotosForReview, requireSerialTagPhotoForReview, requireDamagePhotosForReview, requireAfterPhotosForReview, requireCompletionNotesForReview, requireWorkCompleteForReview, requirePartsClosedForReview, requireFactoryCostsForReview, requireReceiptBackupForReview, fieldSupportName, fieldSupportPhone, employeeHelpInstructions, onStart, onReadyReview, onChecklist, onNote, onCompletionNotes, onFactoryCost, onSaveTravelLeg, onNoteDraft }: { job: Job; noteDraft: string; saving: boolean; permissions: FieldPermissions; customerTextTemplate: string; fieldNoteTemplates: string[]; reviewInstructions: string; factoryCostInstructions: string; requireBeforePhotosForReview: boolean; requireSerialTagPhotoForReview: boolean; requireDamagePhotosForReview: boolean; requireAfterPhotosForReview: boolean; requireCompletionNotesForReview: boolean; requireWorkCompleteForReview: boolean; requirePartsClosedForReview: boolean; requireFactoryCostsForReview: boolean; requireReceiptBackupForReview: boolean; fieldSupportName: string; fieldSupportPhone: string; employeeHelpInstructions: string; onStart: () => void; onReadyReview: () => void; onChecklist: (itemId: string) => void; onNote: (message: string, type?: JobActivity["type"]) => void; onCompletionNotes: (notes: string) => void; onFactoryCost: (costPatch: Partial<FactoryCostTracker>) => void; onSaveTravelLeg: (leg: Omit<TravelLeg, "id" | "employeeName">) => void; onNoteDraft: (value: string) => void }) {
+function FieldActionCard({ job, noteDraft, saving, permissions, customerTextTemplate, fieldNoteTemplates, reviewInstructions, factoryCostInstructions, requireBeforePhotosForReview, requireSerialTagPhotoForReview, requireDamagePhotosForReview, requireAfterPhotosForReview, requireCompletionNotesForReview, requireWorkCompleteForReview, requirePartsClosedForReview, requireFactoryCostsForReview, requireReceiptBackupForReview, fieldSupportName, fieldSupportPhone, employeeHelpInstructions, onStart, onReadyReview, onChecklist, onNote, onCompletionNotes, onFactoryCost, onSaveTravelLeg, onNoteDraft }: { job: Job; noteDraft: string; saving: boolean; permissions: FieldPermissions; customerTextTemplate: string; fieldNoteTemplates: string[]; reviewInstructions: string; factoryCostInstructions: string; requireBeforePhotosForReview: boolean; requireSerialTagPhotoForReview: boolean; requireDamagePhotosForReview: boolean; requireAfterPhotosForReview: boolean; requireCompletionNotesForReview: boolean; requireWorkCompleteForReview: boolean; requirePartsClosedForReview: boolean; requireFactoryCostsForReview: boolean; requireReceiptBackupForReview: boolean; fieldSupportName: string; fieldSupportPhone: string; employeeHelpInstructions: string; onStart: () => void; onReadyReview: () => void; onChecklist: (itemId: string) => void; onNote: (message: string, type?: JobActivity["type"]) => void; onCompletionNotes: (notes: string) => void; onFactoryCost: (costPatch: Partial<FactoryCostTracker>) => void; onSaveTravelLeg: (leg: Omit<TravelLeg, "id" | "employeeName">) => Promise<boolean>; onNoteDraft: (value: string) => void }) {
   const review = fieldReviewStatus(job, requireFactoryCostsForReview, requireReceiptBackupForReview, requireBeforePhotosForReview, requireSerialTagPhotoForReview, requireDamagePhotosForReview, requireAfterPhotosForReview, requireCompletionNotesForReview, requireWorkCompleteForReview, requirePartsClosedForReview);
   const missing = fieldMissingItems(review);
   const helpMessage = fieldHelpMessage(job, review);
@@ -746,7 +786,7 @@ function FieldActionCard({ job, noteDraft, saving, permissions, customerTextTemp
   </div>;
 }
 
-function FieldJobCard({ job, noteDraft, saving, permissions, customerTextTemplate, fieldNoteTemplates, reviewInstructions, factoryCostInstructions, requireBeforePhotosForReview, requireSerialTagPhotoForReview, requireDamagePhotosForReview, requireAfterPhotosForReview, requireCompletionNotesForReview, requireWorkCompleteForReview, requirePartsClosedForReview, requireFactoryCostsForReview, requireReceiptBackupForReview, fieldSupportName, fieldSupportPhone, employeeHelpInstructions, onStart, onReadyReview, onChecklist, onNote, onCompletionNotes, onFactoryCost, onSaveTravelLeg, onNoteDraft }: { job: Job; noteDraft: string; saving: boolean; permissions: FieldPermissions; customerTextTemplate: string; fieldNoteTemplates: string[]; reviewInstructions: string; factoryCostInstructions: string; requireBeforePhotosForReview: boolean; requireSerialTagPhotoForReview: boolean; requireDamagePhotosForReview: boolean; requireAfterPhotosForReview: boolean; requireCompletionNotesForReview: boolean; requireWorkCompleteForReview: boolean; requirePartsClosedForReview: boolean; requireFactoryCostsForReview: boolean; requireReceiptBackupForReview: boolean; fieldSupportName: string; fieldSupportPhone: string; employeeHelpInstructions: string; onStart: () => void; onReadyReview: () => void; onChecklist: (itemId: string) => void; onNote: (message: string, type?: JobActivity["type"]) => void; onCompletionNotes: (notes: string) => void; onFactoryCost: (costPatch: Partial<FactoryCostTracker>) => void; onSaveTravelLeg: (leg: Omit<TravelLeg, "id" | "employeeName">) => void; onNoteDraft: (value: string) => void }) {
+function FieldJobCard({ job, noteDraft, saving, permissions, customerTextTemplate, fieldNoteTemplates, reviewInstructions, factoryCostInstructions, requireBeforePhotosForReview, requireSerialTagPhotoForReview, requireDamagePhotosForReview, requireAfterPhotosForReview, requireCompletionNotesForReview, requireWorkCompleteForReview, requirePartsClosedForReview, requireFactoryCostsForReview, requireReceiptBackupForReview, fieldSupportName, fieldSupportPhone, employeeHelpInstructions, onStart, onReadyReview, onChecklist, onNote, onCompletionNotes, onFactoryCost, onSaveTravelLeg, onNoteDraft }: { job: Job; noteDraft: string; saving: boolean; permissions: FieldPermissions; customerTextTemplate: string; fieldNoteTemplates: string[]; reviewInstructions: string; factoryCostInstructions: string; requireBeforePhotosForReview: boolean; requireSerialTagPhotoForReview: boolean; requireDamagePhotosForReview: boolean; requireAfterPhotosForReview: boolean; requireCompletionNotesForReview: boolean; requireWorkCompleteForReview: boolean; requirePartsClosedForReview: boolean; requireFactoryCostsForReview: boolean; requireReceiptBackupForReview: boolean; fieldSupportName: string; fieldSupportPhone: string; employeeHelpInstructions: string; onStart: () => void; onReadyReview: () => void; onChecklist: (itemId: string) => void; onNote: (message: string, type?: JobActivity["type"]) => void; onCompletionNotes: (notes: string) => void; onFactoryCost: (costPatch: Partial<FactoryCostTracker>) => void; onSaveTravelLeg: (leg: Omit<TravelLeg, "id" | "employeeName">) => Promise<boolean>; onNoteDraft: (value: string) => void }) {
   const review = fieldReviewStatus(job, requireFactoryCostsForReview, requireReceiptBackupForReview, requireBeforePhotosForReview, requireSerialTagPhotoForReview, requireDamagePhotosForReview, requireAfterPhotosForReview, requireCompletionNotesForReview, requireWorkCompleteForReview, requirePartsClosedForReview);
   const helpMessage = fieldHelpMessage(job, review);
   return <div className="card p-4">
@@ -775,16 +815,16 @@ function FieldJobCard({ job, noteDraft, saving, permissions, customerTextTemplat
   </div>;
 }
 
-function StructuredTravelLegs({ job, saving, onSave }: { job: Job; saving: boolean; onSave: (leg: Omit<TravelLeg, "id" | "employeeName">) => void }) {
+function StructuredTravelLegs({ job, saving, onSave }: { job: Job; saving: boolean; onSave: (leg: Omit<TravelLeg, "id" | "employeeName">) => Promise<boolean> }) {
   const [draft, setDraft] = useState({ date: new Date().toLocaleDateString("en-CA"), from: "", to: "", departureAt: "", arrivalAt: "", miles: "" });
   const legs = job.travelLegs || [];
-  function submit(event: React.FormEvent) {
+  async function submit(event: React.FormEvent) {
     event.preventDefault();
     const miles = Number(draft.miles);
     const departure = draft.departureAt ? Date.parse(draft.departureAt) : undefined;
     const arrival = draft.arrivalAt ? Date.parse(draft.arrivalAt) : undefined;
     if (!draft.date || !draft.from.trim() || !draft.to.trim() || !draft.miles.trim() || !Number.isFinite(miles) || miles < 0 || (departure !== undefined && !Number.isFinite(departure)) || (arrival !== undefined && !Number.isFinite(arrival)) || (departure !== undefined && arrival !== undefined && arrival < departure)) return;
-    onSave({ ...draft, from: draft.from.trim(), to: draft.to.trim(), miles: String(miles) });
+    if (!await onSave({ ...draft, from: draft.from.trim(), to: draft.to.trim(), miles: String(miles) })) return;
     setDraft((old) => ({ ...old, from: "", to: "", departureAt: "", arrivalAt: "", miles: "" }));
   }
   return <section className="mt-3 rounded-2xl border border-content/10 bg-sand p-3"><p className="text-sm font-bold">Travel legs</p><p className="mt-1 text-xs font-semibold text-content/65">Record trip activity only. Rates and dollar amounts stay with the office.</p><form onSubmit={submit} className="mt-3 grid gap-2 sm:grid-cols-2"><input className="field !min-h-11 !py-2 text-sm" type="date" value={draft.date} onChange={(e) => setDraft((old) => ({ ...old, date: e.target.value }))} /><input className="field !min-h-11 !py-2 text-sm" placeholder="From / origin" value={draft.from} onChange={(e) => setDraft((old) => ({ ...old, from: e.target.value }))} required /><input className="field !min-h-11 !py-2 text-sm" placeholder="To / destination" value={draft.to} onChange={(e) => setDraft((old) => ({ ...old, to: e.target.value }))} required /><input className="field !min-h-11 !py-2 text-sm" type="datetime-local" value={draft.departureAt ? draft.departureAt.slice(0, 16) : ""} onChange={(e) => setDraft((old) => ({ ...old, departureAt: e.target.value ? new Date(e.target.value).toISOString() : "" }))} /><input className="field !min-h-11 !py-2 text-sm" type="datetime-local" value={draft.arrivalAt ? draft.arrivalAt.slice(0, 16) : ""} onChange={(e) => setDraft((old) => ({ ...old, arrivalAt: e.target.value ? new Date(e.target.value).toISOString() : "" }))} /><input className="field !min-h-11 !py-2 text-sm" type="number" min="0" step="0.1" inputMode="decimal" placeholder="Miles" value={draft.miles} onChange={(e) => setDraft((old) => ({ ...old, miles: e.target.value }))} required /><button type="submit" disabled={saving} className="min-h-11 rounded-xl bg-forest px-4 py-2 text-sm font-bold text-white sm:col-span-2">{saving ? "Saving..." : "Add travel leg"}</button></form>{legs.length > 0 && <div className="mt-3 space-y-2">{legs.map((leg) => <div key={leg.id} className="rounded-xl bg-surface p-3 text-sm"><p className="font-bold">{leg.date} · {leg.from} → {leg.to}</p><p className="text-xs font-semibold text-content/65">{leg.departureAt ? new Date(leg.departureAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "No departure"} → {leg.arrivalAt ? new Date(leg.arrivalAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "No arrival"} · {leg.miles || "0"} miles</p></div>)}</div>}</section>;

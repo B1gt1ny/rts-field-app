@@ -6,12 +6,13 @@ import { ArrowUturnLeftIcon, CheckCircleIcon, ClipboardDocumentCheckIcon, Exclam
 import { billingBlockers, closeoutChecks, dispatchBlockers, dispatchChecks, dispatchReadinessScore, isReadyForDispatch, readinessScore } from "@/lib/job-readiness";
 import type { Job, JobActivity } from "@/lib/types";
 import { PriorityBadge, StatusBadge } from "./StatusBadge";
-import { authFetch } from "@/lib/client-auth";
+import { authFetch, jobUpdateBody } from "@/lib/client-auth";
 
 const activeStatuses = ["New", "Scheduled", "In Progress", "Waiting on Parts", "Needs Inspection"];
 
 export function ReadyCheckView({ jobs: initialJobs }: { jobs: Job[] }) {
   const [jobs, setJobs] = useState(initialJobs);
+  const [saveError, setSaveError] = useState("");
   const [savingJobId, setSavingJobId] = useState("");
   const [returnNotes, setReturnNotes] = useState<Record<string, string>>({});
   const today = new Date().toLocaleDateString("en-CA");
@@ -24,12 +25,14 @@ export function ReadyCheckView({ jobs: initialJobs }: { jobs: Job[] }) {
   const urgentBlocked = blocked.filter((job) => job.priority === "Urgent" || job.priority === "High");
 
   async function updateInspectionJob(job: Job, patch: Partial<Job>) {
+    setSaveError("");
     setSavingJobId(job.jobId);
     try {
-      const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
+      const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: jobUpdateBody(job, patch) });
       const saved = await response.json();
-      if (response.ok) setJobs((old) => old.map((item) => item.jobId === job.jobId ? { ...item, ...saved } : item));
-    } finally {
+      if (!response.ok) throw new Error(saved.error || "Review could not be saved.");
+      setJobs((old) => old.map((item) => item.jobId === job.jobId ? { ...item, ...saved } : item));
+    } catch (caught) { setSaveError(caught instanceof Error ? caught.message : "Review could not be saved."); } finally {
       setSavingJobId("");
     }
   }
@@ -58,6 +61,7 @@ export function ReadyCheckView({ jobs: initialJobs }: { jobs: Job[] }) {
   }
 
   return <div className="mx-auto max-w-7xl space-y-5">
+    {saveError && <p role="alert" className="card p-4 text-orange-800">{saveError}</p>}
     <section className="rounded-2xl bg-ink p-5 text-white sm:p-7">
       <div className="flex items-start gap-3">
         <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-lime text-ink"><ClipboardDocumentCheckIcon className="size-7" /></span>

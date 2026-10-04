@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { canEmployeeAccessJob, requireRole, sanitizeEmployeeJob } from "@/lib/auth";
-import { getJobs, saveJobs } from "@/lib/jobs";
+import { getJobs, getJob, createJob, saveJobIntegration, JobConflictError } from "@/lib/jobs";
 import { emptyJob, makeChecklist, type Job } from "@/lib/types";
 import { syncJobIntegrations } from "@/lib/integrations/sync";
 
@@ -18,15 +18,17 @@ export async function POST(request: Request) {
   const access = await requireRole(request, ["Admin", "Manager"]);
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
   const input = await request.json() as Partial<Job>;
-  const jobs = await getJobs();
-  const nextNumber = Math.max(0, ...jobs.map((job) => Number(job.jobId.replace(/\D/g, "")) || 0)) + 1;
-  const job: Job = { ...emptyJob, ...input, jobId: input.jobId || `RTS-${nextNumber}`, checklist: input.checklist?.length ? input.checklist : makeChecklist() };
-  jobs.unshift(job);
-  await saveJobs(jobs);
-  const synced = await syncJobIntegrations(job);
-  if (synced.job !== job) {
-    jobs[0] = synced.job;
-    await saveJobs(jobs);
+  try {
+    const job = await createJob({ ...emptyJob, ...input, jobId: input.jobId || "", checklist: input.checklist?.length ? input.checklist : makeChecklist() });
+    const synced = await syncJobIntegrations(job);
+    let saved = job;
+    if (synced.job !== job) {
+      try { saved = await saveJobIntegration(synced.job); }
+      catch { synced.warnings.push("Job saved, but its integration link could not be saved. Contact the office before syncing again."); saved = await getJob(job.jobId) || job; }
+    }
+    return NextResponse.json({ ...saved, integrationWarnings: synced.warnings }, { status: 201 });
+  } catch (error) {
+    if (error instanceof JobConflictError) return NextResponse.json({ error: error.message }, { status: 409 });
+    throw error;
   }
-  return NextResponse.json({ ...synced.job, integrationWarnings: synced.warnings }, { status: 201 });
 }

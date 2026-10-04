@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { intakeCompleteness } from "@/lib/job-readiness";
 import { emptyJob, jobTypeOptions, priorities, sources, statuses, type AIWorkOrderImport, type BusinessSettings, type Employee, type Job, type WorkOrderFile } from "@/lib/types";
-import { authFetch } from "@/lib/client-auth";
+import { authFetch, jobUpdateBody } from "@/lib/client-auth";
 
 const defaultOptions: { jobTypeOptions: string[]; statusOptions: string[]; priorityOptions: string[]; checklistOptions: string[] } = {
   jobTypeOptions: [...jobTypeOptions],
@@ -108,7 +108,7 @@ export function JobForm({ initialJob }: { initialJob?: Job }) {
       const selected = employees.filter((employee) => job.assignedEmployeeIds?.includes(employee.id));
       const assignment = job.fullCrew ? "Full Crew" : selected.length ? selected.map((employee) => employee.name).join(", ") : "Unassigned";
       const payload = { ...job, assignedCrew: assignment, checklist: initialJob ? job.checklist : makeChecklistFromLabels(options.checklistOptions, job.checklist) };
-      const response = await authFetch(initialJob ? `/api/jobs/${initialJob.jobId}` : "/api/jobs", { method: initialJob ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      const response = await authFetch(initialJob ? `/api/jobs/${initialJob.jobId}` : "/api/jobs", { method: initialJob ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: initialJob ? jobUpdateBody(initialJob, payload) : JSON.stringify(payload) });
       const saved = await response.json();
       if (!response.ok) throw new Error(saved.error || "The job could not be saved.");
       window.localStorage.removeItem(draftKey);

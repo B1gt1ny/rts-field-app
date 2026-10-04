@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "verify:production-boundaries": "npm run verify:auth-boundaries && node scripts/verify-production-boundaries.mjs",
+    "verify:job-save-feedback": "node scripts/verify-job-save-feedback.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

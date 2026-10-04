@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { ArrowPathIcon, ArrowTopRightOnSquareIcon, BanknotesIcon, CalendarDaysIcon, CameraIcon, ChatBubbleLeftRightIcon, CheckCircleIcon, CheckIcon, ClipboardDocumentListIcon, ClockIcon, MapPinIcon, PencilSquareIcon, PhoneIcon, PrinterIcon, ReceiptPercentIcon, ShareIcon, UserGroupIcon, WrenchScrewdriverIcon } from "@heroicons/react/24/outline";
 import { defaultFactoryCost, makeChecklist, type BusinessSettings, type CustomerSurvey, type FactoryCostTracker, type FileCategory, type Job, type JobActivity, type PaperworkItem, type PartItem, type ReceiptItem, type SignoffItem, type TimeEntry, type WorkOrderFile } from "@/lib/types";
 import { PriorityBadge, StatusBadge } from "./StatusBadge";
-import { authFetch } from "@/lib/client-auth";
+import { authFetch, jobUpdateBody } from "@/lib/client-auth";
 import { getFactoryCostTotals, hasFactoryCostWork } from "@/lib/factory-costs";
 import { isReceiptBackupMissing } from "@/lib/receipt-backup";
 import { activeCorrectionCategories, billingBlockers, buildCorrectionActivity, checklistProgress, closeoutChecks, correctionCategories, correctionCategoryComplete, correctionResolutionPatch, dispatchBlockers, dispatchReadinessScore, hasActiveCorrections, intakeCompleteness, readinessScore, type CorrectionCategory } from "@/lib/job-readiness";
@@ -63,9 +63,17 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
     const patchToSave = { ...patch, ...correctionPatch };
     setJob(finalNext);
     try {
-      const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patchToSave) });
+      const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: jobUpdateBody(job, patchToSave) });
       const saved = await response.json();
-      if (!response.ok) throw new Error(saved.error || "The job update could not be saved.");
+      if (!response.ok) {
+        if (response.status === 409) {
+          const latest = await authFetch(`/api/jobs/${job.jobId}`);
+          if (latest.ok) setJob(await latest.json());
+          setDetailMessage(saved.error || "This job changed. Review it before trying again.");
+          return undefined;
+        }
+        throw new Error(saved.error || "The job update could not be saved.");
+      }
       setJob((old) => ({ ...old, ...saved, checklist: saved.checklist?.length ? saved.checklist : old.checklist }));
       return saved as Job;
     } catch (caught) {
@@ -1001,6 +1009,7 @@ const photoCategories: { category: NativePhotoCategory; label: string; help: str
 function PhotoUploadPanel({ job, saving, onSave }: { job: Job; saving: boolean; onSave: (patch: Partial<Job>) => Promise<Job | undefined> }) {
   const [selectedCategory, setSelectedCategory] = useState<NativePhotoCategory>("Before");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [pendingUploads, setPendingUploads] = useState<WorkOrderFile[]>([]);
   const [caption, setCaption] = useState("");
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState("");
@@ -1016,6 +1025,7 @@ function PhotoUploadPanel({ job, saving, onSave }: { job: Job; saving: boolean; 
   const totalPhotos = photoTotal(job);
 
   function chooseFiles(files: FileList | null) {
+    if (pendingUploads.length) return;
     setSelectedFiles(Array.from(files || []).filter((file) => file.type.startsWith("image/")));
     setMessage("");
   }
@@ -1027,23 +1037,29 @@ function PhotoUploadPanel({ job, saving, onSave }: { job: Job; saving: boolean; 
     }
     setUploading(true);
     setMessage("");
-    const uploaded: WorkOrderFile[] = [];
+    const uploaded: WorkOrderFile[] = [...pendingUploads];
     try {
-      for (let index = 0; index < selectedFiles.length; index += 1) {
+      for (let index = uploaded.length; index < selectedFiles.length; index += 1) {
         setUploadProgress(`Uploading ${index + 1} of ${selectedFiles.length}`);
         const prepared = await preparePhotoForUpload(selectedFiles[index]);
         uploaded.push(await uploadStoredFile(prepared, job.jobId, selectedCategory, caption.trim()));
+        setPendingUploads([...uploaded]);
       }
       const patch: Partial<Job> = {
-        workOrderFiles: [...uploaded, ...(job.workOrderFiles || [])],
+        workOrderFiles: [...uploaded.filter((file) => !(job.workOrderFiles || []).some((saved) => saved.id === file.id)), ...(job.workOrderFiles || [])],
         activityLog: addJobActivity(job, `${uploaded.length} ${uploaded.length === 1 ? "photo" : "photos"} uploaded to ${selectedCategory}.`, "Note"),
       };
       const legacyBucket = photoCategories.find((item) => item.category === selectedCategory)?.legacyBucket;
       if (legacyBucket) {
         const urls = uploaded.map((file) => file.storageUrl || file.dataUrl).filter(Boolean);
-        patch[legacyBucket] = [...(job[legacyBucket] || []), ...urls];
+        patch[legacyBucket] = Array.from(new Set([...(job[legacyBucket] || []), ...urls]));
       }
-      await onSave(patch);
+      const saved = await onSave(patch);
+      if (!saved) {
+        setMessage("Photos uploaded, but could not be attached to the job. Keep your selection, review the current job and try attaching again.");
+        return;
+      }
+      setPendingUploads([]);
       setSelectedFiles([]);
       setCaption("");
       setMessage(`${uploaded.length} ${uploaded.length === 1 ? "photo" : "photos"} uploaded to ${selectedCategory}.`);
@@ -1098,33 +1114,33 @@ function PhotoUploadPanel({ job, saving, onSave }: { job: Job; saving: boolean; 
     </div>
     <div className="rounded-2xl border border-content/10 bg-sand p-3 sm:p-4">
       <div className="mb-3 grid gap-2 sm:grid-cols-3">
-        <button type="button" disabled={saving || uploading} onClick={() => setSelectedCategory("Before")} className={`min-h-16 rounded-xl p-3 text-left disabled:opacity-50 ${selectedCategory === "Before" ? "bg-forest text-white" : "bg-surface text-content"}`}>
+        <button type="button" disabled={saving || uploading || pendingUploads.length > 0} onClick={() => setSelectedCategory("Before")} className={`min-h-16 rounded-xl p-3 text-left disabled:opacity-50 ${selectedCategory === "Before" ? "bg-forest text-white" : "bg-surface text-content"}`}>
           <p className="text-xs font-bold uppercase tracking-wide opacity-70">1. Before</p>
           <p className="mt-1 text-sm font-bold">Start photos + serial/VIN</p>
         </button>
-        <button type="button" disabled={saving || uploading} onClick={() => setSelectedCategory("Progress")} className={`min-h-16 rounded-xl p-3 text-left disabled:opacity-50 ${selectedCategory === "Progress" ? "bg-forest text-white" : "bg-surface text-content"}`}>
+        <button type="button" disabled={saving || uploading || pendingUploads.length > 0} onClick={() => setSelectedCategory("Progress")} className={`min-h-16 rounded-xl p-3 text-left disabled:opacity-50 ${selectedCategory === "Progress" ? "bg-forest text-white" : "bg-surface text-content"}`}>
           <p className="text-xs font-bold uppercase tracking-wide opacity-70">2. During</p>
           <p className="mt-1 text-sm font-bold">Progress; use Damage if needed</p>
         </button>
-        <button type="button" disabled={saving || uploading} onClick={() => setSelectedCategory("After")} className={`min-h-16 rounded-xl p-3 text-left disabled:opacity-50 ${selectedCategory === "After" ? "bg-forest text-white" : "bg-surface text-content"}`}>
+        <button type="button" disabled={saving || uploading || pendingUploads.length > 0} onClick={() => setSelectedCategory("After")} className={`min-h-16 rounded-xl p-3 text-left disabled:opacity-50 ${selectedCategory === "After" ? "bg-forest text-white" : "bg-surface text-content"}`}>
           <p className="text-xs font-bold uppercase tracking-wide opacity-70">3. Completed</p>
           <p className="mt-1 text-sm font-bold">Finished work, clean area, no debris</p>
         </button>
       </div>
       <div className="grid gap-3 lg:grid-cols-[1fr_1fr]">
-        <label className="block"><span className="label">Category</span><select className="field" value={selectedCategory} disabled={saving || uploading} onChange={(event) => setSelectedCategory(event.target.value as NativePhotoCategory)}>{photoCategories.map((item) => <option key={item.category} value={item.category}>{item.label}</option>)}</select></label>
-        <label className="block"><span className="label">Optional caption</span><input className="field" value={caption} disabled={saving || uploading} onChange={(event) => setCaption(event.target.value)} placeholder="Short note for this upload batch" /></label>
+        <label className="block"><span className="label">Category</span><select className="field" value={selectedCategory} disabled={saving || uploading || pendingUploads.length > 0} onChange={(event) => setSelectedCategory(event.target.value as NativePhotoCategory)}>{photoCategories.map((item) => <option key={item.category} value={item.category}>{item.label}</option>)}</select></label>
+        <label className="block"><span className="label">Optional caption</span><input className="field" value={caption} disabled={saving || uploading || pendingUploads.length > 0} onChange={(event) => setCaption(event.target.value)} placeholder="Short note for this upload batch" /></label>
       </div>
       <div className="mt-3 grid gap-2 sm:grid-cols-3">
         <label className={`flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-xl bg-forest px-4 py-3 text-center font-bold text-white ${(saving || uploading) ? "opacity-50" : ""}`}>
           <CameraIcon className="size-5" /> Take Photo
-          <input type="file" accept="image/*" capture="environment" className="hidden" disabled={saving || uploading} onChange={(event) => chooseFiles(event.target.files)} />
+          <input type="file" accept="image/*" capture="environment" className="hidden" disabled={saving || uploading || pendingUploads.length > 0} onChange={(event) => chooseFiles(event.target.files)} />
         </label>
         <label className={`flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-content/10 bg-surface px-4 py-3 text-center font-bold text-content ${(saving || uploading) ? "opacity-50" : ""}`}>
           <CameraIcon className="size-5" /> Upload Photos
-          <input type="file" accept="image/*" multiple className="hidden" disabled={saving || uploading} onChange={(event) => chooseFiles(event.target.files)} />
+          <input type="file" accept="image/*" multiple className="hidden" disabled={saving || uploading || pendingUploads.length > 0} onChange={(event) => chooseFiles(event.target.files)} />
         </label>
-        <button type="button" disabled={saving || uploading || selectedFiles.length === 0} onClick={uploadSelectedPhotos} className="min-h-14 rounded-xl bg-lime px-4 py-3 font-bold text-ink disabled:opacity-50">{uploading ? uploadProgress || "Uploading…" : `Upload ${selectedFiles.length || ""}`.trim()}</button>
+        <button type="button" disabled={saving || uploading || selectedFiles.length === 0} onClick={uploadSelectedPhotos} className="min-h-14 rounded-xl bg-lime px-4 py-3 font-bold text-ink disabled:opacity-50">{uploading ? uploadProgress || "Uploading…" : pendingUploads.length ? "Attach uploaded photos" : `Upload ${selectedFiles.length || ""}`.trim()}</button>
       </div>
       <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold text-content/65">
         <span className="rounded-full bg-surface px-3 py-1">{selectedFiles.length ? `${selectedFiles.length} selected` : "No photos selected"}</span>
@@ -2131,7 +2147,7 @@ function OperationsPanel({ job, setJob, mode }: { job: Job; setJob: React.Dispat
     const patchToSave = { ...patch, ...correctionPatch };
     setJob(finalNext);
     try {
-      const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patchToSave) });
+      const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: jobUpdateBody(job, patchToSave) });
       const saved = await response.json();
       if (!response.ok) throw new Error(saved.error || "The job update could not be saved.");
       setJob((old) => ({ ...old, ...saved, checklist: saved.checklist?.length ? saved.checklist : old.checklist }));

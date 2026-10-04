@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { BanknotesIcon, CheckCircleIcon, ClipboardDocumentListIcon, ClockIcon, ExclamationTriangleIcon, ReceiptPercentIcon } from "@heroicons/react/24/outline";
-import { authFetch } from "@/lib/client-auth";
+import { authFetch, jobUpdateBody } from "@/lib/client-auth";
 import { factoryCostGrandTotal, getFactoryCostTotals } from "@/lib/factory-costs";
 import { isReceiptBackupMissing } from "@/lib/receipt-backup";
 import type { Job, JobActivity } from "@/lib/types";
@@ -23,6 +23,7 @@ type PaymentFollowUp = NonNullable<ReturnType<typeof paymentFollowUpForBilling>>
 
 export function BillingView() {
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [saveError, setSaveError] = useState("");
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"All" | BillingBoardState>("Ready to Invoice");
   const [copiedJobId, setCopiedJobId] = useState("");
@@ -71,10 +72,13 @@ export function BillingView() {
       invoiceStatus,
       activityLog: [activity, ...(job.activityLog || [])].slice(0, 50),
     };
-    const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
+    setSaveError("");
+    try {
+    const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: jobUpdateBody(job, patch) });
     const saved = await response.json();
-    if (!response.ok) return;
+    if (!response.ok) throw new Error(saved.error || "Billing update could not be saved.");
     setJobs((old) => old.map((item) => item.jobId === job.jobId ? { ...item, ...saved } : item));
+    } catch (caught) { setSaveError(caught instanceof Error ? caught.message : "Billing update could not be saved."); }
   }
 
   async function copyBillingSummary(job: Job) {
@@ -110,6 +114,7 @@ export function BillingView() {
   }
 
   return <div className="mx-auto max-w-7xl space-y-5">
+    {saveError && <p role="alert" className="card p-4 text-orange-800">{saveError}</p>}
     <section className="rounded-2xl bg-ink p-5 text-white sm:p-7">
       <div className="flex items-start gap-3">
         <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-lime text-ink"><BanknotesIcon className="size-7" /></span>

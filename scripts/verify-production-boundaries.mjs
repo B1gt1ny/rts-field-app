@@ -11,6 +11,8 @@ const roster = [{ id: 'own', name: 'Worker', active: true }, { id: 'other', name
 const privateNote = { id: 'private', audience: 'Manager', type: 'Note', message: 'Private fixture', createdBy: 'Manager', createdAt: '2026-10-01' };
 let jobs = ['own-job', 'other-job'].map((jobId, index) => ({ ...emptyJob, jobId, assignedCrew: index ? 'Other' : 'Worker', assignedEmployeeIds: [index ? 'other' : 'own'], customerName: 'Fixture', activityLog: [privateNote], factoryCost: { ...defaultFactoryCost(), workRate: '50' } }));
 let writes = 0;
+let readGate = null;
+let waitingReads = [];
 const mock = createServer(async (req, res) => {
   const url = new URL(req.url, 'http://fixture');
   const send = (data, status = 200) => { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(data)); };
@@ -37,11 +39,25 @@ const mock = createServer(async (req, res) => {
   if (url.pathname === '/rest/v1/business_settings') return send([{ data: { calendarFeedToken: 'fixture-calendar', factoryCostDefaults: { ...defaultFactoryCost(), workRate: '50' } } }]);
   if (url.pathname === '/rest/v1/jobs' && req.method === 'GET') {
     const id = url.searchParams.get('job_id');
-    return send(jobs.filter(j => !id?.startsWith('eq.') || j.jobId === id.slice(3)).map(j => ({ job_id: j.jobId, data: j })));
+    const rows = jobs.filter(j => !id?.startsWith('eq.') || j.jobId === id.slice(3)).map(j => ({ job_id: j.jobId, data: j }));
+    if (readGate === (id?.slice(3) || 'all')) {
+      waitingReads.push(() => send(rows));
+      if (waitingReads.length === 2) { readGate = null; const ready = waitingReads; waitingReads = []; ready.forEach(reply => reply()); }
+      return;
+    }
+    return send(rows);
   }
   if (url.pathname === '/rest/v1/jobs' && req.method === 'POST') {
-    let body = ''; for await (const chunk of req) body += chunk;
-    jobs = JSON.parse(body).map(row => row.data); writes++; return send([]);
+    const row = await readBody();
+    if (jobs.some(job => job.jobId === row.job_id)) return send({ code: '23505', message: 'Duplicate fixture job' }, 409);
+    jobs.push(row.data); writes++; return send(null, 201);
+  }
+  if (url.pathname === '/rest/v1/jobs' && req.method === 'PATCH') {
+    const row = await readBody();
+    const index = jobs.findIndex(job => job.jobId === url.searchParams.get('job_id')?.slice(3));
+    const guard = url.searchParams.get('data->>revision');
+    if (index < 0 || (guard === 'is.null' ? Boolean(jobs[index].revision) : guard !== `eq.${jobs[index].revision}`)) return send(null);
+    jobs[index] = row.data; writes++; return send({ data: row.data });
   }
   if (url.pathname.startsWith('/storage/v1/')) {
     if (req.method !== 'GET') writes++;
@@ -78,7 +94,14 @@ try {
     await new Promise(resolve => { process.once('SIGINT', resolve); process.once('SIGTERM', resolve); });
     process.exitCode = 0;
   } else {
-  const request = (path, user, init = {}) => fetch(base + path, { ...init, redirect: 'manual', headers: { ...(user ? { Cookie: `cc-access-token=${user}` } : {}), ...init.headers } });
+  const request = (path, user, init = {}) => {
+    if (init.method === 'PUT' && path.startsWith('/api/jobs/')) {
+      const body = JSON.parse(init.body);
+      if (!Object.hasOwn(body, 'expectedRevision')) body.expectedRevision = jobs.find(job => job.jobId === path.split('/').at(-1))?.revision || null;
+      init = { ...init, body: JSON.stringify(body) };
+    }
+    return fetch(base + path, { ...init, redirect: 'manual', headers: { ...(user ? { Cookie: `cc-access-token=${user}` } : {}), ...init.headers } });
+  };
   const json = value => ({ method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value) });
   for (const user of [undefined, 'disabled']) {
     for (const path of ['/api/employees', '/api/jobs', '/api/jobs/own-job', '/api/admin/users', '/api/files/view?path=own-job/before/a.jpg']) assert.equal((await request(path, user)).status, 401, `${user || 'anonymous'} ${path}`);
@@ -156,12 +179,28 @@ try {
   jobs = []; const afterSave = writes; assert.deepEqual(await (await request('/api/jobs', 'admin')).json(), []); assert.equal(writes, afterSave);
   const firstJob = await request('/api/jobs', 'admin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ customerName: 'First fixture job', syncToCompanyCam: false }) });
   assert.equal(firstJob.status, 201); assert.equal((await firstJob.json()).jobId, 'RTS-1', 'First real job must have a finite identifier');
+  // Both requests carry the same browser revision. Exactly one may commit.
+  const first = jobs.find(job => job.jobId === 'RTS-1');
+  readGate = 'RTS-1';
+  const concurrent = await Promise.all(['one', 'two'].map(completionNotes => request('/api/jobs/RTS-1', 'manager', json({ completionNotes, expectedRevision: first.revision }))));
+  assert.deepEqual(concurrent.map(response => response.status).sort(), [200, 409]);
+  const kept = JSON.stringify(jobs.find(job => job.jobId === 'RTS-1'));
+  const duplicate = await request('/api/jobs', 'manager', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jobId: 'RTS-1', customerName: 'Must not overwrite' }) });
+  assert.equal(duplicate.status, 409); assert.equal(JSON.stringify(jobs.find(job => job.jobId === 'RTS-1')), kept);
+  readGate = 'all';
+  const concurrentCreates = await Promise.all(['A', 'B'].map(customerName => request('/api/jobs', 'manager', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ customerName }) })));
+  assert.deepEqual(concurrentCreates.map(response => response.status), [201, 201]);
+  const createdJobs = await Promise.all(concurrentCreates.map(response => response.json()));
+  assert.notEqual(createdJobs[0].jobId, createdJobs[1].jobId);
+  assert.equal(JSON.stringify(jobs.find(job => job.jobId === 'RTS-1')), kept, 'Creating other jobs preserves existing rows');
+  const missingVersion = await request('/api/jobs/RTS-1', 'manager', json({ completionNotes: 'Old client', expectedRevision: null }));
+  assert.equal(missingVersion.status, 409); assert.equal(JSON.stringify(jobs.find(job => job.jobId === 'RTS-1')), kept);
   await stop(); base = await start(false);
   for (const path of ['/api/employees', '/api/jobs', '/api/jobs/own-job', '/api/admin/users']) assert.equal((await request(path)).status, 503, `Unconfigured ${path}`);
   for (const path of ['/settings', '/reports', '/schedule']) {
     const res = await request(path); const html = await res.text();
     assert.ok(res.headers.get('location') === '/login' || (html.includes('NEXT_REDIRECT') && html.includes('/login')), `Unconfigured page ${path} must redirect to login`);
   }
-  console.log('Production route fixtures passed: roles, assignment reads/uploads, private history/rates, job lifecycle, onboarding, disable/reactivation without history loss, bootstrap lock, empty database, missing configuration.');
+  console.log('Production route fixtures passed: roles, assignment reads/uploads, private history/rates, job lifecycle, onboarding, disable/reactivation, bootstrap lock, empty database, missing configuration, forced same-snapshot concurrent saves/creates, stale versions and duplicate IDs.');
   }
 } finally { await stop(); await close(mock); }
