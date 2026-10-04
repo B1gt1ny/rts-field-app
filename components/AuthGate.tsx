@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createContext, useContext } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { ArrowRightOnRectangleIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
-import type { AuthUser } from "@/lib/client-auth";
+import { roleHomePath, type AuthUser } from "@/lib/client-auth";
 
 import { clearBrowserDrafts } from "@/lib/client-drafts";
 
@@ -33,7 +33,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       }
       if (data.user) {
         setUser(data.user);
-        if (pathname === "/login") router.replace(data.user.role === "Employee" ? "/field" : "/");
+        if (pathname === "/login") router.replace(roleHomePath(data.user.role));
       }
       setLoading(false);
     }).catch(() => {
