@@ -20,6 +20,7 @@ jobs:
       - run: npm run typecheck
       - run: npm run verify:work-order-extraction
       - run: npm run verify:job-save-feedback
+      - run: npm run verify:job-cover
       - run: npm run verify:privacy-export
       - run: npm run build
       - run: npm run verify:production-boundaries
