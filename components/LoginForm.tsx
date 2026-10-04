@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { roleHomePath } from "@/lib/client-auth";
 import { ShieldCheckIcon } from "@heroicons/react/24/outline";
 
 export function LoginForm() {
@@ -27,7 +28,7 @@ export function LoginForm() {
         setMessage(result.error || "Login failed. Please try again.");
         return;
       }
-      router.replace(result.user?.role === "Employee" ? "/today-command" : "/");
+      router.replace(roleHomePath(result.user?.role));
     } catch {
       setMessage("Connection problem. Check your signal and try again.");
     } finally {
