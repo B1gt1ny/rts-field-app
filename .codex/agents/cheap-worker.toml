@@ -14,4 +14,5 @@ Do not change schemas, authentication, storage, APIs, billing, or routing.
 Do not give long explanations.
 Stop and report the blocker when architectural judgment is required.
 Return only files changed, result, checks run, and unresolved issues.
+Follow AGENTS.md risk correction and release evidence rules. Read-only roles report and hand off confirmed issues; implementation roles remediate only within user-authorized scope. Check all Actions events for the exact SHA before declaring CI missing. Preserve hard security, data, and release boundaries.
 """
