@@ -1,21 +1,26 @@
-name: Sprint 5.7 validation
+name: Production validation
 
 on:
   pull_request:
     branches: [main]
   push:
-    branches: [sprint-5.7-factory-billing]
+    branches: [main, sprint-5.7-factory-billing]
 
 jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: git diff --check HEAD^ HEAD
+      - run: npm run verify:parts-closeout
+      - run: npm run verify:ics-all-day
       - run: npm run verify:factory-billing
       - run: npm run typecheck
       - run: npm run verify:work-order-extraction
