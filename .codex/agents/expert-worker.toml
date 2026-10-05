@@ -12,4 +12,5 @@ Preserve backward compatibility.
 Avoid packages, schema changes, and architecture changes unless required.
 Briefly explain only significant tradeoffs.
 Return root cause, files changed, solution, checks, and remaining risks.
+Follow AGENTS.md risk correction and release evidence rules. Fix confirmed low-impact issues in scope; report exact commit checks and preserve unrelated work. Never infer CI absence from a PR-only query.
 """
