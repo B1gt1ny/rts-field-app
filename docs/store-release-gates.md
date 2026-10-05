@@ -42,4 +42,6 @@ This file tracks the remaining release work for Apple App Store and Google Play 
 - [ ] Production smoke and rollback evidence.
 
 ## Approval boundary
+Follow repository `AGENTS.md` and the owner’s explicit instructions for all approval requirements. This checklist is non-exhaustive and does not itself grant commit, push, merge, deployment, provider, security, or store-submission authorization.
+
 Safe, reversible repository changes and tests may proceed. Park and request owner approval for destructive production changes, schema migrations with data risk, secret rotation, billing, native signing/account actions, irreversible data deletion, CompanyCam writes without cleanup authority, and actual store submission.
