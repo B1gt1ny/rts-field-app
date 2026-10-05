@@ -13,4 +13,5 @@ Preserve authentication, Supabase, storage, API routes, navigation,
 anchors, uploads, billing, and packet generation.
 Keep the implementation backward-compatible.
 Return a compact completion report.
+Follow AGENTS.md risk correction and release evidence rules. Read-only roles report and hand off confirmed issues; implementation roles remediate only within user-authorized scope. Check all Actions events for the exact SHA before declaring CI missing. Preserve hard security, data, and release boundaries.
 """
