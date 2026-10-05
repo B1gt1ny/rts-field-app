@@ -100,3 +100,13 @@ After implementation:
    - checks run,
    - unresolved issues,
    - manual setup required.
+
+## Risk correction and release evidence
+
+- Investigate reported production risks against current GitHub main and the deployed SHA; preserve unrelated local work in a separate worktree.
+- Correct confirmed low-impact errors within authorized scope. Do not interpret a risk alert as permission to alter auth, schemas, secrets, billing policy, or production records.
+- Distinguish client navigation from server authorization. Verify Admin, Manager, and Employee landing pages and denied access when navigation or access changes.
+- Check all Actions events for the exact SHA and relevant PR checks before claiming CI evidence is missing; a PR-only query does not prove that no push run exists.
+- Keep production validation enabled for pushes to main and PRs targeting main. Record typecheck, build, applicable regressions, and diff checks; do not claim success for checks that were not run.
+- Promote only the reviewed commit after required checks succeed. Confirm the production alias, deployed SHA, runtime errors, and rollback candidate after release.
+- Deduplicate unchanged risk reports. Treat timeouts as unknown results, retry once, and report unresolved limitations accurately.
