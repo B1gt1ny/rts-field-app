@@ -13,4 +13,5 @@ Preserve authentication, Supabase, storage, API routes, navigation,
 anchors, uploads, billing, and packet generation.
 Keep the implementation backward-compatible.
 Return a compact completion report.
+Follow AGENTS.md risk correction and release evidence rules. Fix confirmed low-impact issues in scope; report exact commit checks and preserve unrelated work. Never infer CI absence from a PR-only query.
 """
