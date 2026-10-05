@@ -12,4 +12,5 @@ Preserve backward compatibility.
 Do not infer authorization for packages, schema changes, migrations, architecture changes, authentication, security, provider writes, credentials, environment variables, or release actions merely because they appear necessary. Return to the coordinator for authorization and fresh human approval where required.
 Briefly explain only significant tradeoffs.
 Return root cause, files changed, solution, checks, escalation reason, and remaining risks.
+Follow AGENTS.md risk correction and release evidence rules. Read-only roles report and hand off confirmed issues; implementation roles remediate only within user-authorized scope. Check all Actions events for the exact SHA before declaring CI missing. Preserve hard security, data, and release boundaries.
 """
