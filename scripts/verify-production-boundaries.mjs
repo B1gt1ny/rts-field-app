@@ -146,7 +146,9 @@ try {
   assert.equal(visible[0].factoryCost.workRate, ''); assert.deepEqual(visible[0].activityLog, []);
   assert.equal((await (await request('/api/jobs/own-job', 'manager')).json()).factoryCost.workRate, '50');
   const before = writes;
-  const form = new FormData(); form.set('file', new Blob(['fixture']), 'fixture.txt'); form.set('jobId', 'other-job');
+  assert.equal((await request('/api/jobs/own-job', 'employee', json({ expectedUserId: 'another-account', activityLog: [] }))).status, 403);
+  assert.equal(writes, before, 'Account switch cannot replay another account draft');
+  const form = new FormData(); form.set('file', new Blob(['fixture'], { type: 'text/plain' }), 'fixture.txt'); form.set('jobId', 'other-job');
   assert.equal((await request('/api/files/upload', 'employee', { method: 'POST', body: form })).status, 403); assert.equal(writes, before);
   assert.equal((await request('/api/auth/bootstrap-admin', undefined, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'admin@example.invalid', password: 'fixture-only-password', setupCode: 'fixture-code' }) })).status, 409);
   assert.equal(writes, before, 'Bootstrap must not reset an existing Admin');

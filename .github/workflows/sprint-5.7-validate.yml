@@ -27,5 +27,7 @@ jobs:
       - run: npm run verify:job-save-feedback
       - run: npm run verify:job-cover
       - run: npm run verify:privacy-export
+      - run: node scripts/verify-file-upload.cjs
+      - run: node scripts/verify-settings-patches.cjs
       - run: npm run build
       - run: npm run verify:production-boundaries

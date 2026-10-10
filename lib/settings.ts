@@ -1,5 +1,6 @@
 import { promises as fs } from "fs";
 import path from "path";
+import { appendDropdownOption, validateDropdownOptions, type DropdownKey } from "./dropdown-options";
 import { createClient } from "@supabase/supabase-js";
 import { checklistLabels, defaultFactoryCost, jobTypeOptions, priorities, statuses, type BusinessSettings, type MerchRequest, type MerchRequestStatus } from "./types";
 
@@ -49,6 +50,7 @@ function isMissingFile(error: unknown): error is NodeJS.ErrnoException {
 
 function normalizeSettings(input: Partial<BusinessSettings>): BusinessSettings {
   return {
+    dropdownOptions: validateDropdownOptions(input.dropdownOptions || {}),
     businessId: input.businessId?.trim() || defaultBusinessId,
     appDisplayName: input.appDisplayName?.trim() || "Field Service",
     headerName: input.headerName?.trim() || "Field Service",
@@ -101,6 +103,33 @@ function normalizeSettings(input: Partial<BusinessSettings>): BusinessSettings {
   };
 }
 
+export class SettingsValidationError extends Error {}
+
+export function validateSettingsPatch(input: unknown): Partial<BusinessSettings> {
+  if (!input || typeof input !== "object" || Array.isArray(input)) throw new SettingsValidationError("Settings must be an object.");
+  const defaults = normalizeSettings({});
+  for (const [key, value] of Object.entries(input)) {
+    if (!Object.prototype.hasOwnProperty.call(defaults, key)) throw new SettingsValidationError(`Unknown settings field: ${key}.`);
+    if (value === undefined) continue;
+    const expected = defaults[key as keyof BusinessSettings];
+    if (key === "dropdownOptions") {
+      try { validateDropdownOptions(value); }
+      catch (error) { throw new SettingsValidationError(error instanceof Error ? error.message : "Invalid dropdown options."); }
+    } else if (key === "factoryCostDefaults") {
+      if (!value || typeof value !== "object" || Array.isArray(value)) throw new SettingsValidationError("Factory cost defaults must be an object.");
+      for (const [field, cost] of Object.entries(value)) {
+        if (!Object.prototype.hasOwnProperty.call(defaultFactoryCost(), field) && field !== "notes") throw new SettingsValidationError(`Unknown factory cost field: ${field}.`);
+        if (cost !== undefined && typeof cost !== "string") throw new SettingsValidationError(`Factory cost ${field} must be text.`);
+      }
+    } else if (Array.isArray(expected)) {
+      if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) throw new SettingsValidationError(`${key} must be a list of text values.`);
+    } else if (typeof value !== (key === "calendarFeedToken" ? "string" : typeof expected)) {
+      throw new SettingsValidationError(`${key} has an invalid value type.`);
+    }
+  }
+  return Object.fromEntries(Object.entries(input).filter(([, value]) => value !== undefined)) as Partial<BusinessSettings>;
+}
+
 const defaultFieldNoteTemplates = [
   "Arrived | Crew arrived on site. | Time",
   "Customer not home | Customer not home. Crew needs follow-up before returning. | Customer",
@@ -124,12 +153,14 @@ function merchJobId(id: string) {
 
 type Database = NonNullable<ReturnType<typeof database>>;
 
-async function getSettingsFromJobsTable(db: Database, businessId: string, fallback: BusinessSettings): Promise<BusinessSettings> {
+async function getSettingsFromJobsTable(db: Database, businessId: string, fallback: BusinessSettings, strict = false): Promise<BusinessSettings> {
   const { data, error } = await db.from("jobs").select("data").eq("job_id", settingsJobId(businessId)).maybeSingle();
   if (error) {
+    if (strict) throw new Error("Existing business settings could not be loaded. No changes were saved.");
     console.warn(`Unable to load fallback settings row; using local defaults: ${error.message}`);
     return fallback;
   }
+  if (strict && !data?.data) throw new Error("Existing business settings could not be confirmed. No changes were saved.");
   return normalizeSettings({ ...fallback, ...(data?.data as Partial<BusinessSettings> | undefined), businessId });
 }
 
@@ -172,7 +203,7 @@ async function saveMerchRequestToJobsTable(db: Database, request: MerchRequest):
   return request;
 }
 
-export async function getBusinessSettings(businessId = defaultBusinessId): Promise<BusinessSettings> {
+export async function getBusinessSettings(businessId = defaultBusinessId, strict = false): Promise<BusinessSettings> {
   const fallback = await getLocalSettings();
   const db = database();
   if (!db) return normalizeSettings(fallback);
@@ -180,13 +211,21 @@ export async function getBusinessSettings(businessId = defaultBusinessId): Promi
   const { data, error } = await db.from("business_settings").select("data").eq("business_id", businessId).maybeSingle();
   if (error) {
     console.warn(`Unable to load business settings from Supabase; using jobs-table fallback: ${error.message}`);
-    return getSettingsFromJobsTable(db, businessId, fallback);
+    return getSettingsFromJobsTable(db, businessId, fallback, strict);
   }
   return normalizeSettings({ ...fallback, ...(data?.data as Partial<BusinessSettings> | undefined), businessId });
 }
 
 export async function saveBusinessSettings(input: Partial<BusinessSettings>): Promise<BusinessSettings> {
-  const settings = normalizeSettings(input);
+  const patch = validateSettingsPatch(input);
+  const businessId = patch.businessId?.trim() || defaultBusinessId;
+  const existing = await getBusinessSettings(businessId, true);
+  let dropdownOptions = existing.dropdownOptions || {};
+  for (const [key, options] of Object.entries(patch.dropdownOptions || {})) {
+    for (const option of options || []) dropdownOptions = appendDropdownOption(dropdownOptions, key as DropdownKey, option);
+  }
+  const costPatch = Object.fromEntries(Object.entries(patch.factoryCostDefaults || {}).filter(([, value]) => value !== undefined));
+  const settings = normalizeSettings({ ...existing, ...patch, businessId, dropdownOptions, factoryCostDefaults: { ...existing.factoryCostDefaults, ...costPatch } });
   const db = database();
   if (!db) {
     await saveLocalSettings(settings);

@@ -1,5 +1,7 @@
 "use client";
 
+import { AddNewSelect } from "./AddNewSelect";
+
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -219,16 +221,16 @@ export function CommunicationCenterView({ jobs }: { jobs: Job[] }) {
       </div>
       <form onSubmit={saveCommunication} className="grid gap-3">
         <div className="grid gap-2 lg:grid-cols-[1fr_.35fr_.35fr_.3fr]">
-          <label><span className="label">Job</span><select value={selectedJob?.jobId || ""} onChange={(event) => setSelectedJobId(event.target.value)} className="field">
+          <label><span className="label">Job</span><AddNewSelect choiceKey="job" value={selectedJob?.jobId || ""} onChange={(event) => setSelectedJobId(event.target.value)} className="field">
             {jobOptions.map((job) => <option key={job.jobId} value={job.jobId}>{job.jobId} · {job.customerName} · {job.city}</option>)}
-          </select></label>
-          <label><span className="label">Type</span><select value={entryType} onChange={(event) => setEntryType(event.target.value as JobActivity["type"])} className="field">
+          </AddNewSelect></label>
+          <label><span className="label">Type</span><AddNewSelect choiceKey="communicationType" value={entryType} onChange={(event) => setEntryType(event.target.value as JobActivity["type"])} className="field">
             {entryTypeOptions.map((option) => <option key={option}>{option}</option>)}
-          </select></label>
-          <label><span className="label">Audience</span><select value={entryAudience} onChange={(event) => setEntryAudience(event.target.value as NonNullable<JobActivity["audience"]>)} className="field">
+          </AddNewSelect></label>
+          <label><span className="label">Audience</span><AddNewSelect choiceKey="audience" value={entryAudience} onChange={(event) => setEntryAudience(event.target.value as NonNullable<JobActivity["audience"]>)} className="field">
             {audienceOptions.filter((option) => option !== "All").map((option) => <option key={option}>{option}</option>)}
             <option>All</option>
-          </select></label>
+          </AddNewSelect></label>
           <label><span className="label">Reminder date</span><input type="date" value={entryDueDate} onChange={(event) => setEntryDueDate(event.target.value)} className="field" disabled={!entryNotify} /></label>
         </div>
         <textarea value={entryMessage} onChange={(event) => setEntryMessage(event.target.value)} className="field min-h-28 resize-y" placeholder="Example: Customer called asking for ETA. Ronnie to call back after crew checks parts." />
@@ -247,12 +249,12 @@ export function CommunicationCenterView({ jobs }: { jobs: Job[] }) {
       <div className="mb-3 flex items-center gap-2 text-sm font-bold text-content/65"><FunnelIcon className="size-5" />Filter communication</div>
       <div className="grid gap-2 lg:grid-cols-[1fr_.35fr_.35fr_auto]">
         <input value={search} onChange={(event) => setSearch(event.target.value)} className="field !min-h-11 !py-2 text-sm" placeholder="Search job, customer, city, note, employee..." />
-        <select value={type} onChange={(event) => setType(event.target.value as JobActivity["type"] | "All")} className="field !min-h-11 !py-2 text-sm font-bold">
+        <AddNewSelect choiceKey="communicationType" value={type} onChange={(event) => setType(event.target.value as JobActivity["type"] | "All")} className="field !min-h-11 !py-2 text-sm font-bold">
           {typeOptions.map((option) => <option key={option}>{option}</option>)}
-        </select>
-        <select value={audience} onChange={(event) => setAudience(event.target.value as NonNullable<JobActivity["audience"]> | "All")} className="field !min-h-11 !py-2 text-sm font-bold">
+        </AddNewSelect>
+        <AddNewSelect choiceKey="audience" value={audience} onChange={(event) => setAudience(event.target.value as NonNullable<JobActivity["audience"]> | "All")} className="field !min-h-11 !py-2 text-sm font-bold">
           {audienceOptions.map((option) => <option key={option}>{option}</option>)}
-        </select>
+        </AddNewSelect>
         <label className="flex min-h-11 items-center gap-2 rounded-xl border border-content/10 bg-sand px-3 py-2 text-sm font-bold">
           <input type="checkbox" checked={followUpOnly} onChange={(event) => setFollowUpOnly(event.target.checked)} className="size-4 accent-forest" />
           Follow-up only

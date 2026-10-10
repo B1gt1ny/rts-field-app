@@ -1,5 +1,9 @@
 "use client";
 
+import { AddNewSelect, useNewEmployees } from "./AddNewSelect";
+
+import type { DropdownKey } from "@/lib/dropdown-options";
+
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowTopRightOnSquareIcon, BellAlertIcon, BuildingOffice2Icon, CalendarDaysIcon, CameraIcon, ChatBubbleLeftRightIcon, ClipboardDocumentIcon, Cog6ToothIcon, DevicePhoneMobileIcon, DocumentTextIcon, ReceiptPercentIcon, ShoppingBagIcon, SparklesIcon, TableCellsIcon } from "@heroicons/react/24/outline";
@@ -100,6 +104,7 @@ export function SettingsPanel() {
   const [requests, setRequests] = useState<MerchRequest[]>([]);
   const [users, setUsers] = useState<AccessUser[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  useNewEmployees(setEmployees);
   const [cleanup, setCleanup] = useState<{ testJobs: { jobId: string; customerName: string }[]; smokeTestFiles: string[] } | null>(null);
   const [cleanupConfirm, setCleanupConfirm] = useState("");
   const [saved, setSaved] = useState("");
@@ -495,8 +500,8 @@ export function SettingsPanel() {
       <form id="create-employee-login" onSubmit={createUser} className="grid gap-3 rounded-2xl border border-content/10 bg-surface p-4 lg:grid-cols-[1fr_1fr_.7fr_.9fr_auto]">
         <Input label="Email" name="email" placeholder="employee@email.com" />
         <Input label="One-time temporary password" name="password" placeholder="At least 8 characters" />
-        <Select label="Role" name="role" value={newUserRole} onChange={(value) => { const role = value as UserRole; setNewUserRole(role); if (role !== "Employee") setNewUserEmployeeId(""); }} options={["Employee", "Manager", "Admin"]} />
-        <Select label="Linked employee" name="employeeId" value={newUserEmployeeId} onChange={setNewUserEmployeeId} disabled={newUserRole !== "Employee"} options={["", ...employees.map((employee) => employee.id)]} optionLabels={Object.fromEntries([["", newUserRole === "Employee" ? "Choose employee" : "Admin/Manager not linked"], ...employees.map((employee) => [employee.id, employee.name])])} />
+        <Select choiceKey="userRole" label="Role" name="role" value={newUserRole} onChange={(value) => { const role = value as UserRole; setNewUserRole(role); if (role !== "Employee") setNewUserEmployeeId(""); }} options={["Employee", "Manager", "Admin"]} />
+        <Select choiceKey="employee" label="Linked employee" name="employeeId" value={newUserEmployeeId} onChange={setNewUserEmployeeId} disabled={newUserRole !== "Employee"} options={["", ...employees.map((employee) => employee.id)]} optionLabels={Object.fromEntries([["", newUserRole === "Employee" ? "Choose employee" : "Admin/Manager not linked"], ...employees.map((employee) => [employee.id, employee.name])])} />
         <button className="btn-primary self-end">Create Login</button>
       </form>
       <p className="mt-3 text-xs font-semibold text-content/65">The temporary password is sent once to Supabase Auth, never saved in employee records, and cannot be viewed here again. Give it to the employee separately and have them change it from My Account after first sign-in.</p>
@@ -504,13 +509,13 @@ export function SettingsPanel() {
         {users.length ? users.map((user) => <div key={user.id} className="flex flex-col gap-3 rounded-xl bg-sand p-3 sm:flex-row sm:items-center sm:justify-between">
           <div><p className="font-bold">{user.email}</p><p className="text-xs font-semibold text-content/65">{user.accessActive === false ? "Login disabled" : "Login active"} · {user.employeeName ? `Linked to ${user.employeeName}` : "No employee linked"} · {user.lastSignInAt ? `Last sign in: ${new Date(user.lastSignInAt).toLocaleDateString()}` : "No sign-in yet"}</p></div>
           <div className="grid gap-2 sm:grid-cols-2">
-            <select className="field !min-h-11 !w-auto !py-2 text-sm font-bold" value={user.role} onChange={(event) => updateUserAccess(user.id, { role: event.target.value as UserRole })}>
+            <AddNewSelect choiceKey="userRole" className="field !min-h-11 !w-auto !py-2 text-sm font-bold" value={user.role} onChange={(event) => updateUserAccess(user.id, { role: event.target.value as UserRole })}>
               {(["Employee", "Manager", "Admin"] as UserRole[]).map((role) => <option key={role}>{role}</option>)}
-            </select>
-            <select className="field !min-h-11 !w-auto !py-2 text-sm font-bold" value={user.employeeId || ""} onChange={(event) => updateUserAccess(user.id, { employeeId: event.target.value })}>
+            </AddNewSelect>
+            <AddNewSelect choiceKey="employee" className="field !min-h-11 !w-auto !py-2 text-sm font-bold" value={user.employeeId || ""} onChange={(event) => updateUserAccess(user.id, { employeeId: event.target.value })}>
               <option value="">Not linked</option>
               {employees.map((employee) => <option key={employee.id} value={employee.id}>{employee.name}</option>)}
-            </select>
+            </AddNewSelect>
             <button type="button" className="btn-secondary sm:col-span-2" onClick={() => updateUserAccess(user.id, { accessActive: user.accessActive === false })}>{user.accessActive === false ? "Reactivate login" : "Disable login"}</button>
           </div>
         </div>) : <p className="rounded-xl bg-sand p-3 text-sm font-semibold text-content/65">No users loaded yet. If this stays empty, confirm Supabase Auth env vars are set.</p>}
@@ -679,7 +684,7 @@ export function SettingsPanel() {
       </div>
       <div className="grid gap-5 p-4 sm:p-6 lg:grid-cols-[.9fr_1fr]">
         <form onSubmit={submitMerch} className="grid gap-3">
-          <Select label="Item" name="item" options={["Shirt", "Hat", "Cup", "Hoodie", "Jacket", "Safety vest", "Other"]} />
+          <Select choiceKey="merchItem" label="Item" name="item" options={["Shirt", "Hat", "Cup", "Hoodie", "Jacket", "Safety vest", "Other"]} />
           <div className="grid grid-cols-2 gap-3">
             <Input label="Size" name="size" placeholder="L / XL / 2XL" />
             <Input label="Color" name="color" placeholder="Black / Gray" />
@@ -836,8 +841,8 @@ function Textarea({ label, value, onChange, placeholder }: { label: string; valu
   return <label className="sm:col-span-2"><span className="label">{label}</span><textarea className="field min-h-28 resize-y" value={value || ""} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} /></label>;
 }
 
-function Select({ label, name, options, optionLabels = {}, value, onChange, disabled }: { label: string; name: string; options: string[]; optionLabels?: Record<string, string>; value?: string; onChange?: (value: string) => void; disabled?: boolean }) {
-  return <label><span className="label">{label}</span><select className="field disabled:opacity-50" name={name} value={value} onChange={onChange ? (event) => onChange(event.target.value) : undefined} disabled={disabled}>{options.map((option) => <option key={option || "blank"} value={option}>{optionLabels[option] || option}</option>)}</select></label>;
+function Select({ choiceKey, label, name, options, optionLabels = {}, value, onChange, disabled }: { choiceKey: DropdownKey; label: string; name: string; options: string[]; optionLabels?: Record<string, string>; value?: string; onChange?: (value: string) => void; disabled?: boolean }) {
+  return <label><span className="label">{label}</span><AddNewSelect choiceKey={choiceKey} className="field disabled:opacity-50" name={name} value={value} onChange={onChange ? (event) => onChange(event.target.value) : undefined} disabled={disabled}>{options.map((option) => <option key={option || "blank"} value={option}>{optionLabels[option] || option}</option>)}</AddNewSelect></label>;
 }
 
 function ListEditor({ label, values, onChange, placeholder }: { label: string; values: string[]; onChange: (values: string[]) => void; placeholder: string }) {

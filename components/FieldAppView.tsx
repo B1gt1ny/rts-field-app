@@ -1,5 +1,7 @@
 "use client";
 
+import { AddNewSelect, useNewEmployees } from "./AddNewSelect";
+
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { BriefcaseIcon, CameraIcon, CalendarDaysIcon, CheckCircleIcon, ClipboardDocumentCheckIcon, ClockIcon, DocumentTextIcon, ExclamationTriangleIcon, MapPinIcon, PhoneIcon, PlayIcon, ReceiptPercentIcon, UserCircleIcon, UserGroupIcon, WrenchScrewdriverIcon } from "@heroicons/react/24/outline";
@@ -42,6 +44,7 @@ const defaultFieldPermissions: FieldPermissions = {
 export function FieldAppView() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  useNewEmployees(setEmployees);
   const [employeeId, setEmployeeId] = useState("");
   const [loading, setLoading] = useState(true);
   const [savingJobId, setSavingJobId] = useState("");
@@ -468,9 +471,9 @@ export function FieldAppView() {
       </div>
       {employees.length > 0 && !lockedToLogin && <label className="mt-4 block">
         <span className="mb-2 block text-xs font-bold uppercase tracking-wide text-white/60">Viewing employee</span>
-        <select value={employeeId} onChange={(event) => chooseEmployee(event.target.value)} className="field bg-surface text-content">
+        <AddNewSelect choiceKey="employee" value={employeeId} onChange={(event) => chooseEmployee(event.target.value)} className="field bg-surface text-content">
           {employees.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-        </select>
+        </AddNewSelect>
       </label>}
       {lockedToLogin && <p className="mt-3 text-xs font-bold text-white/65">This login is locked to {user?.employeeName || "the linked employee"}.</p>}
     </section>

@@ -1,5 +1,9 @@
 "use client";
 
+import { AddNewSelect, useNewEmployees } from "./AddNewSelect";
+
+import type { DropdownKey } from "@/lib/dropdown-options";
+
 import { useEffect, useMemo, useState } from "react";
 import { useAuthUser } from "./AuthGate";
 import { accountDraftKey, removeLegacyDrafts } from "@/lib/client-drafts";
@@ -28,12 +32,33 @@ export function JobForm({ initialJob }: { initialJob?: Job }) {
   const [savedDraft, setSavedDraft] = useState<{ job: Job; savedAt: string } | null>(null);
   const [draftStatus, setDraftStatus] = useState("");
   const [employees, setEmployees] = useState<Employee[]>([]);
+  useNewEmployees(setEmployees);
+  const [employeeLoadStatus, setEmployeeLoadStatus] = useState<"loading" | "loaded" | "failed">("loading");
+  const [assignmentEdited, setAssignmentEdited] = useState(false);
   const [options, setOptions] = useState(defaultOptions);
   const [importPreview, setImportPreview] = useState<AIWorkOrderImport | null>(null);
   const [importFile, setImportFile] = useState<WorkOrderFile | null>(null);
   const draftKey = accountDraftKey(user?.id, initialJob ? `job-${initialJob.jobId}` : "job-new");
   const previewCompleteness = useMemo(() => importPreview ? intakeCompleteness({ ...job, ...importPreview }) : null, [importPreview, job]);
-  useEffect(() => { fetch("/api/employees").then((response) => response.json()).then(setEmployees).catch(() => setError("Employees could not be loaded.")); }, []);
+  useEffect(() => {
+    let active = true;
+    async function loadEmployees() {
+      try {
+        const response = await fetch("/api/employees");
+        if (!response.ok) throw new Error("Employee list request failed.");
+        const roster: unknown = await response.json();
+        if (!Array.isArray(roster) || !roster.every((item) => item && typeof item.id === "string" && typeof item.name === "string")) throw new Error("Employee list response was invalid.");
+        if (!active) return;
+        setEmployees(roster as Employee[]);
+        setEmployeeLoadStatus("loaded");
+      } catch {
+        if (!active) return;
+        setEmployeeLoadStatus("failed");
+      }
+    }
+    void loadEmployees();
+    return () => { active = false; };
+  }, []);
   useEffect(() => {
     if (initialJob || !importKey) return;
     try {
@@ -110,10 +135,14 @@ export function JobForm({ initialJob }: { initialJob?: Job }) {
     setDraftStatus("Preview applied to the new job form. Review and save when ready.");
   }
   async function submit(event: React.FormEvent) {
-    event.preventDefault(); setSaving(true); setError("");
+    event.preventDefault(); setError("");
+    setSaving(true);
     try {
-      const selected = employees.filter((employee) => job.assignedEmployeeIds?.includes(employee.id));
-      const assignment = job.fullCrew ? "Full Crew" : selected.length ? selected.map((employee) => employee.name).join(", ") : "Unassigned";
+      const assignedIds = job.assignedEmployeeIds || [];
+      const selected = employees.filter((employee) => assignedIds.includes(employee.id));
+      const rosterComplete = employeeLoadStatus === "loaded" && assignedIds.every((id) => employees.some((employee) => employee.id === id));
+      const preserveAssignment = !assignmentEdited && (!rosterComplete || (initialJob && !assignedIds.length));
+      const assignment = preserveAssignment ? job.assignedCrew : job.fullCrew ? "Full Crew" : selected.length ? selected.map((employee) => employee.name).join(", ") : "Unassigned";
       const payload = { ...job, assignedCrew: assignment, checklist: initialJob ? job.checklist : makeChecklistFromLabels(options.checklistOptions, job.checklist) };
       const response = await authFetch(initialJob ? `/api/jobs/${initialJob.jobId}` : "/api/jobs", { method: initialJob ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: initialJob ? jobUpdateBody(initialJob, payload) : JSON.stringify(payload) });
       const saved = await response.json();
@@ -144,19 +173,20 @@ export function JobForm({ initialJob }: { initialJob?: Job }) {
   return <form onSubmit={submit} className="space-y-5">
     {!initialJob && importPreview && <ImportPreview preview={importPreview} completeness={previewCompleteness} onHide={() => setImportPreview(null)} onApply={applyImportPreview} />}
     <FormSection title="Job basics" description="Source, schedule, and assignment">
-      <Select label="Source" value={job.source} options={[...sources]} onChange={(v) => set("source", v as Job["source"])} />
+      <Select choiceKey="source" label="Source" value={job.source} options={[...sources]} onChange={(v) => set("source", v as Job["source"])} />
       {job.source === "Dealer" && <Input label="Dealer name" value={job.dealerName} onChange={(v) => set("dealerName", v)} required />}
       {job.source === "Factory" && <>
         <Input label="Manufacturer / factory" value={job.manufacturer || ""} onChange={(v) => set("manufacturer", v)} />
         <Input label="Factory work order #" value={job.factoryWorkOrderNumber} onChange={(v) => set("factoryWorkOrderNumber", v)} required />
       </>}
-      <Select label="Job type" value={job.jobType} options={uniqueOptions(options.jobTypeOptions, job.jobType)} onChange={(v) => set("jobType", v)} />
+      <Select choiceKey="jobType" label="Job type" value={job.jobType} options={uniqueOptions(options.jobTypeOptions, job.jobType)} onChange={(v) => set("jobType", v)} />
       <Input label="Due date" type="date" value={job.dueDate} onChange={(v) => set("dueDate", v)} required />
       <Input label="Scheduled time" type="time" value={job.scheduledTime || ""} onChange={(v) => set("scheduledTime", v)} />
-      <Select label="Calendar plan" value={job.schedulePlan || "Confirmed"} options={["Confirmed", "Tentative"]} onChange={(v) => set("schedulePlan", v as Job["schedulePlan"])} />
-      <Select label="Priority" value={job.priority} options={uniqueOptions(options.priorityOptions, job.priority)} onChange={(v) => set("priority", v as Job["priority"])} />
-      <Select label="Status" value={job.status} options={uniqueOptions(options.statusOptions, job.status)} onChange={(v) => set("status", v as Job["status"])} />
-      <EmployeePicker employees={employees} selectedIds={job.assignedEmployeeIds || []} fullCrew={Boolean(job.fullCrew)} legacyAssignment={initialJob && !initialJob.assignedEmployeeIds?.length ? initialJob.assignedCrew : ""} onChange={(ids, fullCrew) => updateJob((old) => ({ ...old, assignedEmployeeIds: ids, fullCrew }))} />
+      <Select choiceKey="calendarPlan" label="Calendar plan" value={job.schedulePlan || "Confirmed"} options={["Confirmed", "Tentative"]} onChange={(v) => set("schedulePlan", v as Job["schedulePlan"])} />
+      <Select choiceKey="priority" label="Priority" value={job.priority} options={uniqueOptions(options.priorityOptions, job.priority)} onChange={(v) => set("priority", v as Job["priority"])} />
+      <Select choiceKey="jobStatus" label="Status" value={job.status} options={uniqueOptions(options.statusOptions, job.status)} onChange={(v) => set("status", v as Job["status"])} />
+      {employeeLoadStatus !== "loaded" && <p role={employeeLoadStatus === "failed" ? "alert" : undefined} className="sm:col-span-2 rounded-xl border border-orange-200 bg-orange-50 p-3 text-sm font-semibold text-orange-800">{employeeLoadStatus === "loading" ? "Loading employees. Current assignment: " : "Employees could not be loaded. Current assignment is preserved: "}{job.assignedCrew || "Unassigned"}</p>}
+      <EmployeePicker employees={employees} selectedIds={job.assignedEmployeeIds || []} fullCrew={Boolean(job.fullCrew)} legacyAssignment={initialJob && !initialJob.assignedEmployeeIds?.length ? initialJob.assignedCrew : ""} onChange={(ids, fullCrew) => { if (employeeLoadStatus !== "loaded") return; setAssignmentEdited(true); updateJob((old) => ({ ...old, assignedEmployeeIds: ids, fullCrew })); }} />
       <Input label="Home size" value={job.homeSize} onChange={(v) => set("homeSize", v)} />
     </FormSection>
     <FormSection title="Customer & location" description="Contact information for the assigned employees">
@@ -174,7 +204,7 @@ export function JobForm({ initialJob }: { initialJob?: Job }) {
       <Textarea label="Scope notes" value={job.scopeNotes} onChange={(v) => set("scopeNotes", v)} wide />
       <Textarea label="Parts needed" value={job.partsNeeded} onChange={(v) => set("partsNeeded", v)} wide />
       <Textarea label="Completion notes" value={job.completionNotes} onChange={(v) => set("completionNotes", v)} wide />
-      <Select label="Invoice status" value={job.invoiceStatus} options={["Not started", "Needs more info", "Draft", "Ready", "Sent to Billing", "Sent", "On hold", "Paid"]} onChange={(v) => set("invoiceStatus", v)} />
+      <Select choiceKey="invoiceStatus" label="Invoice status" value={job.invoiceStatus} options={["Not started", "Needs more info", "Draft", "Ready", "Sent to Billing", "Sent", "On hold", "Paid"]} onChange={(v) => set("invoiceStatus", v)} />
     </FormSection>
     {(savedDraft || draftStatus) && <section className="card border-forest/20 bg-forest/5 p-4 sm:p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -213,16 +243,18 @@ function ImportPreview({ preview, completeness, onHide, onApply }: { preview: AI
 
 function FormSection({ title, description, children }: { title: string; description: string; children: React.ReactNode }) { return <section className="card p-4 sm:p-6"><div className="mb-5"><h2 className="text-lg font-bold">{title}</h2><p className="text-sm text-content/65">{description}</p></div><div className="grid gap-4 sm:grid-cols-2">{children}</div></section>; }
 function Input({ label, value, onChange, type = "text", required, wide }: { label: string; value: string; onChange: (v: string) => void; type?: string; required?: boolean; wide?: boolean }) { return <label className={wide ? "sm:col-span-2" : ""}><span className="label">{label}</span><input className="field" type={type} value={value} onChange={(e) => onChange(e.target.value)} required={required} /></label>; }
-function Select({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (v: string) => void }) { return <label><span className="label">{label}</span><select className="field" value={value} onChange={(e) => onChange(e.target.value)}>{options.map((option) => <option key={option}>{option}</option>)}</select></label>; }
+function Select({ choiceKey, label, value, options, onChange }: { choiceKey: DropdownKey; label: string; value: string; options: string[]; onChange: (v: string) => void }) { return <label><span className="label">{label}</span><AddNewSelect choiceKey={choiceKey} className="field" value={value} onChange={(e) => onChange(e.target.value)}>{options.map((option) => <option key={option}>{option}</option>)}</AddNewSelect></label>; }
 function Textarea({ label, value, onChange, wide }: { label: string; value: string; onChange: (v: string) => void; wide?: boolean }) { return <label className={wide ? "sm:col-span-2" : ""}><span className="label">{label}</span><textarea className="field min-h-28 resize-y" value={value} onChange={(e) => onChange(e.target.value)} /></label>; }
 
 function EmployeePicker({ employees, selectedIds, fullCrew, legacyAssignment, onChange }: { employees: Employee[]; selectedIds: string[]; fullCrew: boolean; legacyAssignment?: string; onChange: (ids: string[], fullCrew: boolean) => void }) {
   const active = employees.filter((employee) => employee.active);
-  const toggle = (id: string) => onChange(selectedIds.includes(id) ? selectedIds.filter((item) => item !== id) : [...selectedIds, id], false);
+  const knownSelectedIds = selectedIds.filter((id) => employees.some((employee) => employee.id === id));
+  const unavailableIds = selectedIds.filter((id) => !employees.some((employee) => employee.id === id));
+  const toggle = (id: string) => onChange(knownSelectedIds.includes(id) ? knownSelectedIds.filter((item) => item !== id) : [...knownSelectedIds, id], false);
   return <div className="sm:col-span-2"><span className="label">Assigned employees</span><div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
     <button type="button" onClick={() => onChange(active.map((employee) => employee.id), true)} className={`min-h-12 rounded-xl border-2 px-3 py-2 text-sm font-bold ${fullCrew ? "border-forest bg-forest text-white" : "border-content/10 bg-surface text-content"}`}>Full Crew</button>
     {active.map((employee) => { const selected = fullCrew || selectedIds.includes(employee.id); return <button key={employee.id} type="button" onClick={() => toggle(employee.id)} className={`min-h-12 rounded-xl border-2 px-3 py-2 text-sm font-bold ${selected ? "border-forest bg-forest/10 text-accent" : "border-content/10 bg-surface text-content"}`}>{employee.name}</button>; })}
-  </div>{legacyAssignment && legacyAssignment !== "Unassigned" && !selectedIds.length && !fullCrew && <p className="mt-2 text-xs font-semibold text-orange-700">Current legacy assignment: {legacyAssignment}. Choose employees above to replace it.</p>}{!active.length && <p className="mt-2 text-sm text-content/65">No active employees yet. Add them from the Employees tab.</p>}</div>;
+  </div>{unavailableIds.length > 0 && <p className="mt-2 text-xs font-semibold text-orange-700">Some assigned employee records are unavailable. Current assignment will be preserved unless you choose a replacement.</p>}{legacyAssignment && legacyAssignment !== "Unassigned" && !selectedIds.length && !fullCrew && <p className="mt-2 text-xs font-semibold text-orange-700">Current legacy assignment: {legacyAssignment}. Choose employees above to replace it.</p>}{!active.length && <p className="mt-2 text-sm text-content/65">No active employees yet. Add them from the Employees tab.</p>}</div>;
 }
 
 function uniqueOptions(options: string[], current: string) {

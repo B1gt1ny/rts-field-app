@@ -1,6 +1,169 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss" source(none);
+@config "../tailwind.config.ts";
+@source "./";
+@source "../components";
+/* Preserve the shipped alert/status palette across the framework major update. */
+@theme {
+  --color-amber-100: #fef3c7;
+  --color-amber-200: #fde68a;
+  --color-amber-300: #fcd34d;
+  --color-amber-50: #fffbeb;
+  --color-amber-600: #d97706;
+  --color-amber-700: #b45309;
+  --color-amber-800: #92400e;
+  --color-amber-900: #78350f;
+  --color-amber-950: #451a03;
+  --color-blue-100: #dbeafe;
+  --color-blue-200: #bfdbfe;
+  --color-blue-300: #93c5fd;
+  --color-blue-50: #eff6ff;
+  --color-blue-500: #3b82f6;
+  --color-blue-600: #2563eb;
+  --color-blue-700: #1d4ed8;
+  --color-blue-800: #1e40af;
+  --color-blue-900: #1e3a8a;
+  --color-blue-950: #172554;
+  --color-cyan-100: #cffafe;
+  --color-cyan-200: #a5f3fc;
+  --color-cyan-300: #67e8f9;
+  --color-cyan-50: #ecfeff;
+  --color-cyan-600: #0891b2;
+  --color-cyan-700: #0e7490;
+  --color-cyan-800: #155e75;
+  --color-cyan-900: #164e63;
+  --color-cyan-950: #083344;
+  --color-emerald-100: #d1fae5;
+  --color-emerald-200: #a7f3d0;
+  --color-emerald-300: #6ee7b7;
+  --color-emerald-50: #ecfdf5;
+  --color-emerald-600: #059669;
+  --color-emerald-700: #047857;
+  --color-emerald-800: #065f46;
+  --color-emerald-900: #064e3b;
+  --color-emerald-950: #022c22;
+  --color-green-100: #dcfce7;
+  --color-green-200: #bbf7d0;
+  --color-green-300: #86efac;
+  --color-green-50: #f0fdf4;
+  --color-green-600: #16a34a;
+  --color-green-700: #15803d;
+  --color-green-800: #166534;
+  --color-green-900: #14532d;
+  --color-green-950: #052e16;
+  --color-orange-100: #ffedd5;
+  --color-orange-200: #fed7aa;
+  --color-orange-300: #fdba74;
+  --color-orange-50: #fff7ed;
+  --color-orange-600: #ea580c;
+  --color-orange-700: #c2410c;
+  --color-orange-800: #9a3412;
+  --color-orange-900: #7c2d12;
+  --color-orange-950: #431407;
+  --color-purple-100: #f3e8ff;
+  --color-purple-200: #e9d5ff;
+  --color-purple-300: #d8b4fe;
+  --color-purple-50: #faf5ff;
+  --color-purple-600: #9333ea;
+  --color-purple-700: #7e22ce;
+  --color-purple-800: #6b21a8;
+  --color-purple-900: #581c87;
+  --color-purple-950: #3b0764;
+  --color-red-100: #fee2e2;
+  --color-red-200: #fecaca;
+  --color-red-300: #fca5a5;
+  --color-red-50: #fef2f2;
+  --color-red-600: #dc2626;
+  --color-red-700: #b91c1c;
+  --color-red-800: #991b1b;
+  --color-red-900: #7f1d1d;
+  --color-red-950: #450a0a;
+  --color-slate-100: #f1f5f9;
+  --color-slate-200: #e2e8f0;
+  --color-slate-300: #cbd5e1;
+  --color-slate-50: #f8fafc;
+  --color-slate-600: #475569;
+  --color-slate-700: #334155;
+  --color-slate-800: #1e293b;
+  --color-slate-900: #0f172a;
+  --color-slate-950: #020617;
+  --color-violet-100: #ede9fe;
+  --color-violet-200: #ddd6fe;
+  --color-violet-300: #c4b5fd;
+  --color-violet-50: #f5f3ff;
+  --color-violet-600: #7c3aed;
+  --color-violet-700: #6d28d9;
+  --color-violet-800: #5b21b6;
+  --color-violet-900: #4c1d95;
+  --color-violet-950: #2e1065;
+  --color-yellow-100: #fef9c3;
+  --color-yellow-200: #fef08a;
+  --color-yellow-300: #fde047;
+  --color-yellow-50: #fefce8;
+  --color-yellow-600: #ca8a04;
+  --color-yellow-700: #a16207;
+  --color-yellow-800: #854d0e;
+  --color-yellow-900: #713f12;
+  --color-yellow-950: #422006;
+}
+
+
+
+/* Retain v3 sibling spacing and reverse semantics, including hidden children. */
+@utility space-y-0 {
+  & > :not([hidden]) ~ :not([hidden]) {
+    --tw-space-y-reverse: 0;
+    margin-top: calc(0rem * (1 - var(--tw-space-y-reverse)));
+    margin-bottom: calc(0rem * var(--tw-space-y-reverse));
+  }
+}
+@utility space-y-1 {
+  & > :not([hidden]) ~ :not([hidden]) {
+    --tw-space-y-reverse: 0;
+    margin-top: calc(0.25rem * (1 - var(--tw-space-y-reverse)));
+    margin-bottom: calc(0.25rem * var(--tw-space-y-reverse));
+  }
+}
+@utility space-y-2 {
+  & > :not([hidden]) ~ :not([hidden]) {
+    --tw-space-y-reverse: 0;
+    margin-top: calc(0.5rem * (1 - var(--tw-space-y-reverse)));
+    margin-bottom: calc(0.5rem * var(--tw-space-y-reverse));
+  }
+}
+@utility space-y-3 {
+  & > :not([hidden]) ~ :not([hidden]) {
+    --tw-space-y-reverse: 0;
+    margin-top: calc(0.75rem * (1 - var(--tw-space-y-reverse)));
+    margin-bottom: calc(0.75rem * var(--tw-space-y-reverse));
+  }
+}
+@utility space-y-4 {
+  & > :not([hidden]) ~ :not([hidden]) {
+    --tw-space-y-reverse: 0;
+    margin-top: calc(1rem * (1 - var(--tw-space-y-reverse)));
+    margin-bottom: calc(1rem * var(--tw-space-y-reverse));
+  }
+}
+@utility space-y-5 {
+  & > :not([hidden]) ~ :not([hidden]) {
+    --tw-space-y-reverse: 0;
+    margin-top: calc(1.25rem * (1 - var(--tw-space-y-reverse)));
+    margin-bottom: calc(1.25rem * var(--tw-space-y-reverse));
+  }
+}
+
+/* Neutralize the v4 logical margins; the sibling utilities above restore v3 spacing. */
+@layer utilities {
+  :where(.space-y-0 > :not(:last-child), .space-y-1 > :not(:last-child), .space-y-2 > :not(:last-child), .space-y-3 > :not(:last-child), .space-y-4 > :not(:last-child), .space-y-5 > :not(:last-child)) {
+    margin-block-start: 0;
+    margin-block-end: 0;
+  }
+}
+
+/* Keep the previous Preflight default for borders without an explicit color utility. */
+@layer base {
+  *, ::before, ::after, ::backdrop, ::file-selector-button { border-color: #e5e7eb; }
+}
 
 :root {
   color-scheme: light;
@@ -19,7 +182,7 @@ html.dark {
 * { box-sizing: border-box; }
 body { @apply bg-sand text-content antialiased; }
 button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
-button, input, select, textarea { font: inherit; }
+/* Tailwind Preflight supplies font inheritance in the base layer so utilities can override it. */
 input, select, textarea { min-width: 0; max-width: 100%; }
 button, a { touch-action: manipulation; }
 button:disabled { cursor: not-allowed; }
@@ -35,9 +198,9 @@ h1, h2, h3 { text-wrap: balance; }
 
 @layer components {
   .card { @apply rounded-2xl border border-content/10 bg-surface shadow-card; }
-  .btn-primary { @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-forest px-5 py-3 font-bold text-white shadow-sm transition duration-150 hover:bg-forest/90 active:scale-[.98] disabled:transform-none disabled:opacity-50; }
-  .btn-secondary { @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-content/15 bg-surface px-4 py-3 font-semibold text-content shadow-sm transition duration-150 hover:bg-content/5 active:scale-[.98] disabled:opacity-50; }
-  .field { @apply min-h-12 w-full rounded-xl border border-content/20 bg-surface px-3.5 py-3 text-base text-content shadow-sm outline-none transition placeholder:text-content/50 hover:border-content/30 focus:border-forest focus:ring-4 focus:ring-forest/10; }
+  .btn-primary { @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-forest px-5 py-3 font-bold text-white shadow-xs transition duration-150 hover:bg-forest/90 active:scale-[.98] disabled:transform-none disabled:opacity-50; }
+  .btn-secondary { @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-content/15 bg-surface px-4 py-3 font-semibold text-content shadow-xs transition duration-150 hover:bg-content/5 active:scale-[.98] disabled:opacity-50; }
+  .field { @apply min-h-12 w-full rounded-xl border border-content/20 bg-surface px-3.5 py-3 text-base text-content shadow-xs outline-2 outline-transparent outline-offset-2 transition placeholder:text-content/50 hover:border-content/30 focus:border-forest focus:ring-4 focus:ring-forest/10; }
   .label { @apply mb-1.5 block text-sm font-semibold text-content/75; }
   .eyebrow { @apply text-xs font-bold uppercase tracking-[.16em] text-accent; }
   .section-title { @apply text-lg font-bold tracking-tight; }

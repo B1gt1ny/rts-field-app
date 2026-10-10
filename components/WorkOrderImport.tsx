@@ -1,5 +1,9 @@
 "use client";
 
+import { AddNewSelect } from "./AddNewSelect";
+
+import type { DropdownKey } from "@/lib/dropdown-options";
+
 import { useEffect, useMemo, useState } from "react";
 import { useAuthUser } from "./AuthGate";
 import { accountDraftKey, removeLegacyDrafts } from "@/lib/client-drafts";
@@ -231,7 +235,7 @@ export function WorkOrderImport() {
       <h2 className="mb-1 text-lg font-bold">Detected customer profile</h2>
       <p className="mb-5 text-sm text-content/65">Review and edit before saving. This becomes the job/customer record.</p>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Select label="Source" value={draft.source} options={["Dealer", "Factory", "Individual"]} onChange={(value) => updateDraft((old) => ({ ...old, source: value as ImportDraft["source"] }))} />
+        <Select choiceKey="source" label="Source" value={draft.source} options={["Dealer", "Factory", "Individual"]} onChange={(value) => updateDraft((old) => ({ ...old, source: value as ImportDraft["source"] }))} />
         <div className="sm:col-span-2 grid grid-cols-3 gap-2">
           {(["Dealer", "Factory", "Individual"] as ImportDraft["source"][]).map((source) => <button key={source} type="button" onClick={() => setSourcePreset(source)} className={`min-h-11 rounded-xl px-3 py-2 text-sm font-bold ${draft.source === source ? "bg-forest text-white" : "bg-sand text-content"}`}>{source}</button>)}
         </div>
@@ -244,7 +248,7 @@ export function WorkOrderImport() {
         <Input label="Home size" value={draft.homeSize} onChange={(value) => updateDraft((old) => ({ ...old, homeSize: value }))} />
         <Input label="Job type" value={draft.jobType} onChange={(value) => updateDraft((old) => ({ ...old, jobType: value }))} />
         <Input label="Due date" type="date" value={draft.dueDate} onChange={(value) => updateDraft((old) => ({ ...old, dueDate: value }))} />
-        <Select label="Priority" value={draft.priority} options={["Low", "Normal", "High", "Urgent"]} onChange={(value) => updateDraft((old) => ({ ...old, priority: value as ImportDraft["priority"] }))} />
+        <Select choiceKey="priority" label="Priority" value={draft.priority} options={["Low", "Normal", "High", "Urgent"]} onChange={(value) => updateDraft((old) => ({ ...old, priority: value as ImportDraft["priority"] }))} />
         <Textarea label="Scope / work requested" value={draft.scopeNotes} onChange={(value) => updateDraft((old) => ({ ...old, scopeNotes: value }))} wide />
         <Textarea label="Parts needed" value={draft.partsNeeded} onChange={(value) => updateDraft((old) => ({ ...old, partsNeeded: value }))} wide />
       </div>
@@ -434,8 +438,8 @@ function Input({ label, value, onChange, type = "text", required, wide }: { labe
   return <label className={wide ? "sm:col-span-2" : ""}><span className="label">{label}</span><input className="field" type={type} value={value} required={required} onChange={(event) => onChange(event.target.value)} /></label>;
 }
 
-function Select({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (value: string) => void }) {
-  return <label><span className="label">{label}</span><select className="field" value={value} onChange={(event) => onChange(event.target.value)}>{options.map((option) => <option key={option}>{option}</option>)}</select></label>;
+function Select({ choiceKey, label, value, options, onChange }: { choiceKey: DropdownKey; label: string; value: string; options: string[]; onChange: (value: string) => void }) {
+  return <label><span className="label">{label}</span><AddNewSelect choiceKey={choiceKey} className="field" value={value} onChange={(event) => onChange(event.target.value)}>{options.map((option) => <option key={option}>{option}</option>)}</AddNewSelect></label>;
 }
 
 function Textarea({ label, value, onChange, wide }: { label: string; value: string; onChange: (value: string) => void; wide?: boolean }) {

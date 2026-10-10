@@ -157,6 +157,11 @@ export function billingBlockers(job: Job) {
   return [...closeoutBlockers, ...billingEvidenceChecks(job).filter((check) => !check.ok)];
 }
 
+// Approval creates completion; every other billing requirement still applies.
+export function managerApprovalBlockers(job: Job) {
+  return billingBlockers(job).filter((check) => check.label !== "Job complete");
+}
+
 export function isReadyForBilling(job: Job) {
   return billingBlockers(job).length === 0;
 }

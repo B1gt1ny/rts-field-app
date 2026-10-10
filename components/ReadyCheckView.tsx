@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowUturnLeftIcon, CheckCircleIcon, ClipboardDocumentCheckIcon, ExclamationTriangleIcon, WrenchScrewdriverIcon } from "@heroicons/react/24/outline";
-import { billingBlockers, closeoutChecks, dispatchBlockers, dispatchChecks, dispatchReadinessScore, isReadyForDispatch, readinessScore } from "@/lib/job-readiness";
+import { billingBlockers, managerApprovalBlockers, closeoutChecks, dispatchBlockers, dispatchChecks, dispatchReadinessScore, isReadyForDispatch, readinessScore } from "@/lib/job-readiness";
 import type { Job, JobActivity } from "@/lib/types";
 import { PriorityBadge, StatusBadge } from "./StatusBadge";
 import { authFetch, jobUpdateBody } from "@/lib/client-auth";
@@ -38,7 +38,8 @@ export function ReadyCheckView({ jobs: initialJobs }: { jobs: Job[] }) {
   }
 
   async function approveComplete(job: Job) {
-    const blockers = billingBlockers(job);
+    const blockers = managerApprovalBlockers(job);
+    if (blockers.length) return;
     const checklist = (job.checklist || []).map((item) => {
       const closeoutLabels = ["Work completed", "After photos taken", "Completion notes added", "Dealer/factory notified"];
       return closeoutLabels.includes(item.label) ? { ...item, complete: true } : item;
@@ -138,7 +139,7 @@ export function ReadyCheckView({ jobs: initialJobs }: { jobs: Job[] }) {
 function InspectionJobCard({ job, saving, returnNote, onReturnNote, onApprove, onSendBack }: { job: Job; saving: boolean; returnNote: string; onReturnNote: (value: string) => void; onApprove: () => void; onSendBack: () => void }) {
   const score = readinessScore(job);
   const checks = closeoutChecks(job);
-  const blockers = billingBlockers(job);
+  const blockers = managerApprovalBlockers(job);
   return <div className="rounded-2xl border border-content/10 bg-surface p-4">
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0">

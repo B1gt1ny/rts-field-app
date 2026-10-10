@@ -1,5 +1,7 @@
 "use client";
 
+import { AddNewSelect } from "./AddNewSelect";
+
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { BanknotesIcon, CheckCircleIcon, ClipboardDocumentListIcon, ClockIcon, ExclamationTriangleIcon, ReceiptPercentIcon } from "@heroicons/react/24/outline";
@@ -186,10 +188,10 @@ export function BillingView() {
     <section className="card p-3 sm:p-4">
       <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center">
         <p className="text-sm font-bold text-content/65">{loading ? "Loading billing jobs…" : `${filtered.length} jobs in ${filter === "All" ? "all billing states" : filter}`}</p>
-        <select value={filter} onChange={(event) => setFilter(event.target.value as "All" | BillingBoardState)} className="field !min-h-11 !py-2 text-sm font-bold">
+        <AddNewSelect choiceKey="billingState" value={filter} onChange={(event) => setFilter(event.target.value as "All" | BillingBoardState)} className="field !min-h-11 !py-2 text-sm font-bold">
           <option>All</option>
           {billingBoardStates.map((state) => <option key={state}>{state}</option>)}
-        </select>
+        </AddNewSelect>
       </div>
     </section>
 

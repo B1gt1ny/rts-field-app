@@ -1,5 +1,9 @@
 "use client";
 
+import { AddNewSelect } from "./AddNewSelect";
+
+import type { DropdownKey } from "@/lib/dropdown-options";
+
 import Link from "next/link";
 import { CalendarDaysIcon, ChevronLeftIcon, ChevronRightIcon, MapPinIcon, PhoneIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
@@ -173,9 +177,9 @@ function MonthlySchedule({ jobs, unscheduledJobs, today, onSchedule, canEditSche
         </div>
       </div>
       <div className="mt-3 grid gap-2 sm:grid-cols-3">
-        <CalendarFilter label="Crew" value={crewFilter} options={crews} onChange={setCrewFilter} />
-        <CalendarFilter label="Job type" value={jobTypeFilter} options={jobTypes} onChange={setJobTypeFilter} />
-        <CalendarFilter label="Status" value={statusFilter} options={statuses} onChange={setStatusFilter} />
+        <CalendarFilter choiceKey="crew" label="Crew" value={crewFilter} options={crews} onChange={setCrewFilter} />
+        <CalendarFilter choiceKey="jobType" label="Job type" value={jobTypeFilter} options={jobTypes} onChange={setJobTypeFilter} />
+        <CalendarFilter choiceKey="jobStatus" label="Status" value={statusFilter} options={statuses} onChange={setStatusFilter} />
       </div>
     </div>
     <div>
@@ -210,12 +214,12 @@ function MonthlySchedule({ jobs, unscheduledJobs, today, onSchedule, canEditSche
         </div>
         {schedulingChoices.length ? <>
           <label className="mt-4 block text-sm font-bold" htmlFor="schedule-job">Active job</label>
-          <select id="schedule-job" value={selectedJobId} onChange={(event) => { const job = schedulingChoices.find((item) => item.jobId === event.target.value); setSelectedJobId(event.target.value); setSelectedScheduledTime(job?.scheduledTime || ""); setSelectedSchedulePlan(job?.schedulePlan || "Confirmed"); }} className="mt-1 min-h-12 w-full rounded-xl border border-content/10 bg-surface px-3 font-bold text-content">
+          <AddNewSelect choiceKey="job" id="schedule-job" value={selectedJobId} onChange={(event) => { const job = schedulingChoices.find((item) => item.jobId === event.target.value); setSelectedJobId(event.target.value); setSelectedScheduledTime(job?.scheduledTime || ""); setSelectedSchedulePlan(job?.schedulePlan || "Confirmed"); }} className="mt-1 min-h-12 w-full rounded-xl border border-content/10 bg-surface px-3 font-bold text-content">
             {schedulingChoices.map((job) => <option key={job.jobId} value={job.jobId}>{job.dueDate ? "Move" : "Needs scheduling"} · {job.customerName} · {job.jobId}</option>)}
-          </select>
+          </AddNewSelect>
           <label className="mt-3 block text-sm font-bold" htmlFor="schedule-time">Time / All Day</label>
           <div className="mt-1 flex gap-2"><input id="schedule-time" type="time" value={selectedScheduledTime} onChange={(event) => setSelectedScheduledTime(event.target.value)} className="min-h-12 min-w-0 flex-1 rounded-xl border border-content/10 bg-surface px-3 font-bold text-content" /><button type="button" onClick={() => setSelectedScheduledTime("")} className="min-h-12 shrink-0 rounded-xl border border-content/10 bg-surface px-3 text-sm font-bold text-content">All Day</button></div>
-          <label className="mt-3 block text-sm font-bold" htmlFor="schedule-plan">Calendar plan<select id="schedule-plan" value={selectedSchedulePlan || "Confirmed"} onChange={(event) => setSelectedSchedulePlan(event.target.value as Job["schedulePlan"])} className="mt-1 min-h-12 w-full rounded-xl border border-content/10 bg-surface px-3 font-bold text-content"><option value="Confirmed">Confirmed — solid color</option><option value="Tentative">Tentative — striped color</option></select></label>
+          <label className="mt-3 block text-sm font-bold" htmlFor="schedule-plan">Calendar plan<AddNewSelect choiceKey="calendarPlan" id="schedule-plan" value={selectedSchedulePlan || "Confirmed"} onChange={(event) => setSelectedSchedulePlan(event.target.value as Job["schedulePlan"])} className="mt-1 min-h-12 w-full rounded-xl border border-content/10 bg-surface px-3 font-bold text-content"><option value="Confirmed">Confirmed — solid color</option><option value="Tentative">Tentative — striped color</option></AddNewSelect></label>
           <p className="mt-2 text-xs font-semibold text-content/65">Jobs needing scheduling are listed first. Crew and other job details stay unchanged.</p>
           {error && <p className="mt-3 rounded-xl bg-red-50 p-3 text-sm font-bold text-red-800">{error}</p>}
           <button type="button" onClick={saveSchedule} disabled={saving || !selectedJobId} className="mt-4 min-h-12 w-full rounded-xl bg-forest px-4 py-3 font-bold text-white disabled:opacity-50">{saving ? "Saving…" : "Schedule on this date"}</button>
@@ -225,8 +229,8 @@ function MonthlySchedule({ jobs, unscheduledJobs, today, onSchedule, canEditSche
   </section>;
 }
 
-function CalendarFilter({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (value: string) => void }) {
-  return <label className="text-xs font-bold text-content/65"><span className="sr-only">{label}</span><select aria-label={label} value={value} onChange={(event) => onChange(event.target.value)} className="min-h-11 w-full rounded-lg border border-content/10 bg-surface px-3 text-sm font-bold text-content"><option value="All">{label}: All</option>{options.map((option) => <option key={option} value={option}>{option}</option>)}</select></label>;
+function CalendarFilter({ choiceKey, label, value, options, onChange }: { choiceKey: DropdownKey; label: string; value: string; options: string[]; onChange: (value: string) => void }) {
+  return <label className="text-xs font-bold text-content/65"><span className="sr-only">{label}</span><AddNewSelect choiceKey={choiceKey} aria-label={label} value={value} onChange={(event) => onChange(event.target.value)} className="min-h-11 w-full rounded-lg border border-content/10 bg-surface px-3 text-sm font-bold text-content"><option value="All">{label}: All</option>{options.map((option) => <option key={option} value={option}>{option}</option>)}</AddNewSelect></label>;
 }
 
 function CalendarDay({ date, dateKey: key, jobs, isToday, isCurrentMonth, onSelectDate, onSelectEvent }: { date: Date; dateKey: string; jobs: Job[]; isToday: boolean; isCurrentMonth: boolean; onSelectDate?: (date: string) => void; onSelectEvent: (job: Job) => void }) {
@@ -266,7 +270,7 @@ function CalendarEventPanel({ job, saving, error, onClose, onScheduleChange, can
       {job.phone && <a href={`tel:${job.phone}`} className="inline-flex min-h-11 items-center gap-1 rounded-xl border border-content/10 bg-surface px-3 py-2 text-sm font-bold text-content"><PhoneIcon className="size-4" />Call Customer</a>}
     </div>
     {canEditSchedule && <div className="mt-4 border-t border-content/5 pt-4">
-      <div className="grid gap-2 sm:grid-cols-[1fr_1fr_1fr_auto] sm:items-end"><label className="block text-sm font-bold" htmlFor={`event-date-${job.jobId}`}>Date<input id={`event-date-${job.jobId}`} type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border border-content/10 bg-surface px-3 font-bold text-content" /></label><label className="block text-sm font-bold" htmlFor={`event-time-${job.jobId}`}>Time / All Day<div className="mt-1 flex gap-2"><input id={`event-time-${job.jobId}`} type="time" value={scheduledTime} onChange={(event) => setScheduledTime(event.target.value)} className="min-h-11 min-w-0 flex-1 rounded-xl border border-content/10 bg-surface px-3 font-bold text-content" /><button type="button" onClick={() => setScheduledTime("")} className="min-h-11 shrink-0 rounded-xl border border-content/10 bg-surface px-3 text-sm font-bold text-content">All Day</button></div></label><label className="block text-sm font-bold" htmlFor={`event-plan-${job.jobId}`}>Calendar plan<select id={`event-plan-${job.jobId}`} value={schedulePlan || "Confirmed"} onChange={(event) => setSchedulePlan(event.target.value as Job["schedulePlan"])} className="mt-1 min-h-11 w-full rounded-xl border border-content/10 bg-surface px-3 font-bold text-content"><option value="Confirmed">Confirmed</option><option value="Tentative">Tentative (striped)</option></select></label><button type="button" onClick={() => onScheduleChange(dueDate, scheduledTime, schedulePlan)} disabled={saving || !dueDate || !changed} className="min-h-11 rounded-xl bg-ink px-4 text-sm font-bold text-white disabled:opacity-50">{saving ? "Saving…" : "Save schedule"}</button></div>
+      <div className="grid gap-2 sm:grid-cols-[1fr_1fr_1fr_auto] sm:items-end"><label className="block text-sm font-bold" htmlFor={`event-date-${job.jobId}`}>Date<input id={`event-date-${job.jobId}`} type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border border-content/10 bg-surface px-3 font-bold text-content" /></label><label className="block text-sm font-bold" htmlFor={`event-time-${job.jobId}`}>Time / All Day<div className="mt-1 flex gap-2"><input id={`event-time-${job.jobId}`} type="time" value={scheduledTime} onChange={(event) => setScheduledTime(event.target.value)} className="min-h-11 min-w-0 flex-1 rounded-xl border border-content/10 bg-surface px-3 font-bold text-content" /><button type="button" onClick={() => setScheduledTime("")} className="min-h-11 shrink-0 rounded-xl border border-content/10 bg-surface px-3 text-sm font-bold text-content">All Day</button></div></label><label className="block text-sm font-bold" htmlFor={`event-plan-${job.jobId}`}>Calendar plan<AddNewSelect choiceKey="calendarPlan" id={`event-plan-${job.jobId}`} value={schedulePlan || "Confirmed"} onChange={(event) => setSchedulePlan(event.target.value as Job["schedulePlan"])} className="mt-1 min-h-11 w-full rounded-xl border border-content/10 bg-surface px-3 font-bold text-content"><option value="Confirmed">Confirmed</option><option value="Tentative">Tentative (striped)</option></AddNewSelect></label><button type="button" onClick={() => onScheduleChange(dueDate, scheduledTime, schedulePlan)} disabled={saving || !dueDate || !changed} className="min-h-11 rounded-xl bg-ink px-4 text-sm font-bold text-white disabled:opacity-50">{saving ? "Saving…" : "Save schedule"}</button></div>
       {error && <p className="mt-2 rounded-xl bg-red-50 p-3 text-sm font-bold text-red-800">{error}</p>}
     </div>}
   </section>;

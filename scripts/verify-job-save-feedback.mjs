@@ -1,63 +1,59 @@
-// Execute the real photo component with synthetic hooks/transport; no browser/provider writes.
+// Execute production photo component + recovery helper with durable synthetic storage.
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import vm from 'node:vm';
 const require = createRequire(import.meta.url);
 const ts = require('typescript');
-let states = [], cursor = 0, uploads = 0, attempts = 0, savedPatch;
+let states = [], cursor = 0, effects = new Map(), effectCursor = 0;
 const jsx = (type, props) => ({ type, props });
-const react = { useEffect() {}, useState(initial) {
-  const index = cursor++;
-  if (!(index in states)) states[index] = typeof initial === 'function' ? initial() : initial;
-  return [states[index], value => { states[index] = typeof value === 'function' ? value(states[index]) : value; }];
-} };
-const code = ts.transpileModule(readFileSync('components/JobDetail.tsx', 'utf8'), {
-  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX }
-}).outputText + '\nexports.PhotoUploadPanel = PhotoUploadPanel;';
+const react = { useEffect(fn, deps) { const id = effectCursor++; const key = JSON.stringify(deps); if (effects.get(id) !== key) { effects.set(id, key); fn(); } },
+useRef(initial) { const index = cursor++; if (!(index in states)) states[index] = { current: initial }; return states[index]; },
+useState(initial) { const index = cursor++; if (!(index in states)) states[index] = typeof initial === 'function' ? initial() : initial; return [states[index], value => { states[index] = typeof value === 'function' ? value(states[index]) : value; }]; } };
+const pending = new Map();
+let quota = false, uploads = 0, attempts = 0, failSave = true, lostSave = false, actor = 'fixture-worker';
+const store = { async list(owner, job) { return [...pending.values()].filter(r => r.ownerId === owner && r.jobId === job).map(r => ({ ...r })); }, async put(r) { pending.set(r.id, { ...r }); }, async putBatch(records) { if (quota) throw new Error('quota failure'); for (const r of records) pending.set(r.id, { ...r }); }, async remove(id) { pending.delete(id); } };
+const helper = {};
+vm.runInNewContext(ts.transpileModule(readFileSync('lib/client-uploads.ts', 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText, { exports: helper, Blob, Map, Set, localStorage: { getItem: () => null } });
+const locks = { request: async (_name, fn) => fn() };
+let job = { jobId: 'fixture-job', jobType: 'Setup', scopeNotes: '', revision: 'r1', workOrderFiles: [], activityLog: [] };
+const fetcher = async (url, init) => {
+ if (url === '/api/auth/me') return Response.json({ user: { id: actor } });
+ if (url === '/api/files/upload') { uploads++; assert.equal(init.body.get('expectedUserId'), actor); return Response.json({ id: 'fixture-photo', category: 'Before', fileName: 'fixture.jpg', fileType: 'image/jpeg', dataUrl: '/api/files/view?path=fixture', storagePath: 'fixture' }, { status: 201 }); }
+ if (!init) return Response.json(job);
+ attempts++; const patch = JSON.parse(init.body); assert.equal(patch.expectedUserId, actor); assert.equal(patch.expectedRevision, job.revision);
+ if (failSave) return Response.json({ error: 'conflict' }, { status: 409 });
+ job = { ...job, ...patch, revision: 'r2' };
+ if (lostSave) { lostSave = false; throw new Error('lost job response'); }
+ return Response.json(job);
+};
 const exports = {};
-vm.runInNewContext(code, { exports, console, FormData, File, Date, Math, Map, Set,
-  require(name) {
-    if (name === 'react') return react;
-    if (name === 'react/jsx-runtime') return { jsx, jsxs: jsx };
-    if (name === '@/lib/client-auth') return { authFetch: async () => {
-      uploads++;
-      return new Response(JSON.stringify({ id: 'fixture-photo', category: 'Before', fileName: 'fixture.jpg', dataUrl: '/api/files/view?path=fixture', storagePath: 'fixture' }), { status: 201 });
-    } };
-    return new Proxy({}, { get: () => () => ({}) });
-  }
+vm.runInNewContext(ts.transpileModule(readFileSync('components/JobDetail.tsx', 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX } }).outputText + '\nexports.PhotoUploadPanel = PhotoUploadPanel;', {
+ exports, console, FormData, File, Date, Math, Map, Set, crypto, navigator: { locks },
+ require(name) { if (name === 'react') return react; if (name === 'react/jsx-runtime') return { jsx, jsxs: jsx }; if (name === './AuthGate') return { useAuthUser: () => ({ id: actor }) }; if (name === '@/lib/client-uploads') return { ...helper, browserUploadStore: store }; if (name === '@/lib/client-auth') return { authFetch: fetcher }; return new Proxy({}, { get: () => () => ({}) }); }
 });
-const job = { jobId: 'fixture-job', jobType: 'Setup', scopeNotes: '', workOrderFiles: [], activityLog: [] };
-let failSave = true;
-function render() {
-  cursor = 0;
-  return exports.PhotoUploadPanel({ job, saving: false, onSave: async patch => {
-    attempts++; savedPatch = patch;
-    return failSave ? undefined : { ...job, ...patch };
-  } });
-}
-function nodes(root) {
-  if (!root || typeof root !== 'object') return [];
-  if (Array.isArray(root)) return root.flatMap(nodes);
-  return [root, ...nodes(root.props?.children)];
-}
-let tree = render();
-nodes(tree).find(node => node.type === 'input' && node.props.type === 'file').props.onChange({ target: { files: [new File(['synthetic'], 'fixture.jpg', { type: 'image/jpeg' })] } });
-tree = render();
-await nodes(tree).find(node => node.props?.onClick?.name === 'uploadSelectedPhotos').props.onClick();
-assert.equal(uploads, 1); assert.equal(attempts, 1);
-assert.equal(states[1].length, 1, 'Failed job save retains selected photo');
-assert.equal(states[2].length, 1, 'Failed job save retains uploaded reference');
-assert.match(states[6], /could not be attached/, 'Failure is not announced as success');
-assert.ok(nodes(render()).filter(node => node.type === 'input' && node.props.type === 'file').every(node => node.props.disabled), 'Pending attachment cannot be discarded through another file selection');
-failSave = false; tree = render();
-await nodes(tree).find(node => node.props?.onClick?.name === 'uploadSelectedPhotos').props.onClick();
-assert.equal(uploads, 1, 'Retry reuses uploaded object instead of duplicating it');
-assert.equal(attempts, 2); assert.equal(savedPatch.workOrderFiles.length, 1);
-assert.equal(states[1].length, 0); assert.equal(states[2].length, 0);
-assert.match(states[6], /1 photo uploaded/, 'Success follows a confirmed job save');
-console.log('Photo save feedback fixtures passed: failure retains inputs/upload, retry has no duplicate upload, success clears only after job save.');
-
+function nodes(root) { if (!root || typeof root !== 'object') return []; if (Array.isArray(root)) return root.flatMap(nodes); return [root, ...nodes(root.props?.children)]; }
+async function renderPhoto() { cursor = 0; effectCursor = 0; exports.PhotoUploadPanel({ job, saving: false, onSave: async () => undefined, onSynced: value => { job = value; } }); await Promise.resolve(); cursor = 0; effectCursor = 0; return exports.PhotoUploadPanel({ job, saving: false, onSave: async () => undefined, onSynced: value => { job = value; } }); }
+function remount() { states = []; effects = new Map(); }
+const photo = new File(['synthetic'], 'fixture.jpg', { type: 'image/jpeg' });
+let tree = await renderPhoto();
+nodes(tree).find(n => n.type === 'input' && n.props.type === 'file').props.onChange({ target: { files: [photo, photo] } });
+tree = await renderPhoto(); await nodes(tree).find(n => n.props?.onClick?.name === 'uploadSelectedPhotos').props.onClick();
+assert.equal(pending.size, 2); assert.equal(uploads, 2); assert.equal(attempts, 1);
+assert.ok([...pending.values()].every(r => r.acknowledged && r.file.size === photo.size));
+remount(); tree = await renderPhoto(); assert.match(JSON.stringify(tree), /Retry saved photos/);
+failSave = false; await nodes(tree).find(n => n.props?.onClick?.name === 'uploadSelectedPhotos').props.onClick();
+assert.equal(uploads, 2, 'Reload retry reuses confirmed objects'); assert.equal(job.workOrderFiles.length, 1); assert.equal(pending.size, 0);
+// Lost job response: fresh job read confirms attachment without a second write.
+job.workOrderFiles = []; remount(); tree = await renderPhoto(); nodes(tree).find(n => n.type === 'input' && n.props.type === 'file').props.onChange({ target: { files: [photo] } }); tree = await renderPhoto(); lostSave = true;
+await nodes(tree).find(n => n.props?.onClick?.name === 'uploadSelectedPhotos').props.onClick(); assert.equal(pending.size, 1); const before = attempts;
+remount(); tree = await renderPhoto(); await nodes(tree).find(n => n.props?.onClick?.name === 'uploadSelectedPhotos').props.onClick(); assert.equal(attempts, before); assert.equal(pending.size, 0);
+// Quota failure occurs before any upload and retains selected files.
+remount(); tree = await renderPhoto(); nodes(tree).find(n => n.type === 'input' && n.props.type === 'file').props.onChange({ target: { files: [photo] } }); tree = await renderPhoto(); quota = true; const priorUploads = uploads;
+await nodes(tree).find(n => n.props?.onClick?.name === 'uploadSelectedPhotos').props.onClick(); assert.equal(uploads, priorUploads); assert.equal(states[1].length, 1); quota = false;
+await assert.rejects(helper.attachPendingUploads(store, undefined, fetcher, actor, job.jobId, () => assert.fail()), /coordinate/);
+await assert.rejects(helper.attachPendingUploads(store, locks, fetcher, 'other-account', job.jobId, () => assert.fail()), /account/);
+console.log('Actual photo recovery fixtures PASS: durable synthetic remount, stable-ID dedupe, conflict retention, lost job response, quota-before-upload, account guard and unavailable locks.');
 // Execute real field handlers against unsuccessful responses and network interruption.
 const fieldSource = readFileSync('components/FieldAppView.tsx', 'utf8');
 const fieldAst = ts.createSourceFile('FieldAppView.tsx', fieldSource, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);

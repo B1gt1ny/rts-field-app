@@ -14,6 +14,7 @@ export type JobSource = typeof sources[number];
 export type ChecklistItem = { id: string; label: string; complete: boolean };
 export type Employee = { id: string; name: string; active: boolean };
 export type BusinessSettings = {
+  dropdownOptions?: import("./dropdown-options").DropdownOptions;
   businessId: string;
   appDisplayName: string;
   headerName: string;

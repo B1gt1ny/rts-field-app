@@ -1,5 +1,5 @@
 import { strict as assert } from "node:assert";
-import { billingBlockers, checklistProgress, dispatchBlockers, hasOpenParts, isReadyForBilling, openParts } from "../lib/job-readiness";
+import { billingBlockers, managerApprovalBlockers, checklistProgress, dispatchBlockers, hasOpenParts, isReadyForBilling, openParts } from "../lib/job-readiness";
 import { emptyJob, makeChecklist, type Job } from "../lib/types";
 
 function job(overrides: Partial<Job>): Job {
@@ -44,4 +44,12 @@ assert.deepEqual(checklist.items.slice(0, 3).map((item) => item.label), ["Work o
 assert.equal(checklist.items.find((item) => item.label === "Parts picked up")?.optional, true);
 assert.equal(checklist.total, makeChecklist().length - 1);
 
-console.log("parts closeout checks passed");
+const awaitingReview = { ...billingReadyWithOpenParts, status: "Needs Inspection" as const };
+assert.equal(billingBlockers(awaitingReview).some((item) => item.label === "Job complete"), true);
+assert.equal(managerApprovalBlockers(awaitingReview).length, 0);
+assert.equal(isReadyForBilling(awaitingReview), false);
+for (const missing of [{ completionNotes: "" }, { paperworkPickedUp: false }, { signoffs: [] }]) {
+  assert.ok(managerApprovalBlockers({ ...awaitingReview, ...missing }).length > 0);
+}
+assert.ok(managerApprovalBlockers({ ...awaitingReview, timeEntries: [{ id: "work", type: "Work started", createdAt: "2026-10-10T08:00:00Z", employeeName: "Fixture", notes: "" }] }).some((item) => item.label === "Work session"));
+console.log("parts closeout and manager approval checks passed");
