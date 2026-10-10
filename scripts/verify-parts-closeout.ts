@@ -1,5 +1,5 @@
 import { strict as assert } from "node:assert";
-import { billingBlockers, managerApprovalBlockers, checklistProgress, dispatchBlockers, hasOpenParts, isReadyForBilling, openParts } from "../lib/job-readiness";
+import { billingBlockers, managerApprovalBlockers, checklistProgress, closeoutChecks, dispatchBlockers, hasOpenParts, isReadyForBilling, openParts } from "../lib/job-readiness";
 import { emptyJob, makeChecklist, type Job } from "../lib/types";
 
 function job(overrides: Partial<Job>): Job {
@@ -52,4 +52,22 @@ for (const missing of [{ completionNotes: "" }, { paperworkPickedUp: false }, { 
   assert.ok(managerApprovalBlockers({ ...awaitingReview, ...missing }).length > 0);
 }
 assert.ok(managerApprovalBlockers({ ...awaitingReview, timeEntries: [{ id: "work", type: "Work started", createdAt: "2026-10-10T08:00:00Z", employeeName: "Fixture", notes: "" }] }).some((item) => item.label === "Work session"));
-console.log("parts closeout and manager approval checks passed");
+function notificationLogged(message: string, type: NonNullable<Job["activityLog"]>[number]["type"] = "Note") {
+  const candidate = job({ checklist: makeChecklist(), activityLog: [{ id: "contact-proof", type, message, createdAt: "2026-10-10T08:00:00Z", createdBy: "Fixture" }] });
+  const closeout = closeoutChecks(candidate).find((item) => item.label === "Customer/source notified")?.ok;
+  const checklist = checklistProgress(candidate).items.find((item) => item.label === "Customer/source notified")?.complete;
+  assert.equal(checklist, closeout);
+  return closeout;
+}
+for (const message of [
+  "No real customer contacted and no external message sent.",
+  "Customer has not been notified; call tomorrow.",
+  "Need to send text and leave voicemail.",
+  "Customer contacted", // Untyped scratch notes are not notification records.
+]) assert.equal(notificationLogged(message), false);
+assert.equal(notificationLogged("Customer contacted", "Customer"), true);
+assert.equal(notificationLogged("Dealer/factory notified", "Source"), true);
+assert.equal(notificationLogged("Job marked complete. Customer/source notified.", "Status"), true);
+assert.equal(notificationLogged("Job marked complete. Customer/source notified. Invoice marked ready.", "Status"), true);
+assert.equal(notificationLogged("Job marked complete. Invoice marked ready.", "Status"), false);
+console.log("parts closeout, manager approval and explicit notification checks passed");
