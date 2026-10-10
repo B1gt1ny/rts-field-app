@@ -30,7 +30,7 @@ export const dropdownDefinitions = {
   merchItem: { label: "Item" },
   communicationType: { label: "Communication type" },
   sort: { label: "Sort", values: ["dueDate", "priority", "customer", "status"] },
-  billingState: { label: "Billing state", values: ["Not Ready", "Ready to Invoice", "Invoiced", "Paid / Complete"] },
+  billingState: { label: "Billing state", values: ["Not Ready", "Ready to Invoice", "With billing", "Invoice sent", "Paid / Complete", "Invoiced"] },
 } satisfies Record<string, Definition>;
 
 export type DropdownKey = keyof typeof dropdownDefinitions;

@@ -5,12 +5,12 @@ import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Field Service",
+  title: "RTS Field App",
   description: "Mobile-first field service operations",
-  applicationName: "Field Service",
+  applicationName: "RTS Field App",
   manifest: "/manifest.webmanifest",
   icons: [{ rel: "icon", url: "/icon.svg" }, { rel: "apple-touch-icon", url: "/icon.svg" }],
-  appleWebApp: { capable: true, title: "Field Service", statusBarStyle: "black-translucent" },
+  appleWebApp: { capable: true, title: "RTS Field App", statusBarStyle: "black-translucent" },
   formatDetection: { telephone: false },
 };
 export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#0d1420" };

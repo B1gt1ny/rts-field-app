@@ -36,8 +36,10 @@ export async function POST(request: Request) {
   const access = await requireRole(request, ["Admin", "Manager"]);
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
   let file: WorkOrderFile | undefined;
-  try { ({ file } = await request.json() as { file?: WorkOrderFile }); }
+  let consentToOpenAI: unknown;
+  try { ({ file, consentToOpenAI } = await request.json() as { file?: WorkOrderFile; consentToOpenAI?: unknown }); }
   catch { return NextResponse.json({ error: "Select your uploaded PDF, JPG, PNG, or WEBP work-order file." }, { status: 400 }); }
+  if (consentToOpenAI !== true) return NextResponse.json({ error: "Allow this work order to be sent to OpenAI, or enter the job manually." }, { status: 400 });
   const owner = access.user?.id ? access.user.id.toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "") : "local-admin";
   if (!file?.storagePath || !file.fileName || !isWorkOrderExtractionFileType(file.fileType) || !file.storagePath.startsWith(`draft/${owner}/work-order/`)) {
     return NextResponse.json({ error: "Select your uploaded PDF, JPG, PNG, or WEBP work-order file." }, { status: 400 });

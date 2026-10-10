@@ -1,5 +1,5 @@
 import { strict as assert } from "node:assert";
-import { billingBlockers, managerApprovalBlockers, checklistProgress, closeoutChecks, dispatchBlockers, hasOpenParts, isReadyForBilling, openParts } from "../lib/job-readiness";
+import { billingBoardState, paymentFollowUpForBilling, billingBlockers, managerApprovalBlockers, checklistProgress, closeoutChecks, dispatchBlockers, hasOpenParts, isReadyForBilling, openParts } from "../lib/job-readiness";
 import { emptyJob, makeChecklist, type Job } from "../lib/types";
 
 function job(overrides: Partial<Job>): Job {
@@ -39,6 +39,20 @@ assert.equal(isReadyForBilling(billingReadyWithOpenParts), true);
 assert.equal(billingBlockers(billingReadyWithOpenParts).some((blocker) => /parts/i.test(blocker.label)), false);
 assert.equal(dispatchBlockers(openTrackedPart).some((blocker) => /parts|materials/i.test(blocker.label)), false);
 
+// A handoff to the office is not evidence of an invoice sent to the customer.
+const withBilling = { ...billingReadyWithOpenParts, invoiceStatus: "Sent to Billing", invoiceDate: "2026-10-01", paymentDueDate: "2026-10-02" };
+assert.equal(billingBoardState(withBilling), "With billing");
+assert.equal(paymentFollowUpForBilling(withBilling), null);
+const invoiceSent = { ...withBilling, invoiceStatus: "Sent" };
+assert.equal(billingBoardState(invoiceSent), "Invoice sent");
+assert.equal(paymentFollowUpForBilling(invoiceSent, new Date("2026-10-10T00:00:00").getTime())?.pastDue, true);
+assert.equal(billingBoardState({ ...withBilling, status: "Billed" }), "Invoice sent");
+assert.equal(billingBoardState({ ...withBilling, status: "Paid" }), "Paid / Complete");
+assert.equal(billingBoardState({ ...withBilling, invoiceStatus: "Paid" }), "Paid / Complete");
+assert.equal(billingBoardState({ ...billingReadyWithOpenParts, completionNotes: "" }), "Not Ready");
+assert.equal(isReadyForBilling({ ...billingReadyWithOpenParts, completionNotes: "" }), false);
+assert.equal(billingBoardState(billingReadyWithOpenParts), "Ready to Invoice");
+
 const checklist = checklistProgress(job({ checklist: makeChecklist() }));
 assert.deepEqual(checklist.items.slice(0, 3).map((item) => item.label), ["Work order", "Scope reviewed", "Parts picked up"]);
 assert.equal(checklist.items.find((item) => item.label === "Parts picked up")?.optional, true);
@@ -70,4 +84,4 @@ assert.equal(notificationLogged("Dealer/factory notified", "Source"), true);
 assert.equal(notificationLogged("Job marked complete. Customer/source notified.", "Status"), true);
 assert.equal(notificationLogged("Job marked complete. Customer/source notified. Invoice marked ready.", "Status"), true);
 assert.equal(notificationLogged("Job marked complete. Invoice marked ready.", "Status"), false);
-console.log("parts closeout, manager approval and explicit notification checks passed");
+console.log("parts closeout, billing handoff, manager approval and explicit notification checks passed");

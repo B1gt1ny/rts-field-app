@@ -107,6 +107,15 @@ try {
     return fetch(base + path, { ...init, redirect: 'manual', headers: { ...(user ? { Cookie: `cc-access-token=${user}` } : {}), ...init.headers } });
   };
   const json = value => ({ method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value) });
+  // Only static information pages are public; no app data is exposed by them.
+  for (const [path, title] of [['/privacy', 'Privacy policy'], ['/support', 'Support'], ['/account-request', 'Account and data deletion requests']]) {
+    const response = await request(path);
+    const html = await response.text();
+    assert.equal(response.status, 200);
+    assert.ok(html.includes(title) && html.includes('Josh.tiny.barnett@gmail.com'), `Public information renders: ${path}`);
+    assert.ok(!html.includes('NEXT_REDIRECT'), `Public information cannot require login: ${path}`);
+    assert.ok(!html.includes('Private fixture'), `Public information cannot include job history: ${path}`);
+  }
   // Cover selection is Admin-only and cannot bypass membership through generic job writes.
   const coverBefore = writes;
   for (const actor of ['employee', 'manager', 'admin']) {
@@ -138,6 +147,12 @@ try {
   const restrictedPage = await request('/settings', 'employee');
   const restrictedHtml = await restrictedPage.text();
   assert.ok(restrictedPage.headers.get('location') === '/field' || (restrictedHtml.includes('NEXT_REDIRECT') && restrictedHtml.includes('/field')), 'Server must redirect Employee away from Admin settings, including streamed Next redirects');
+  const managerSettings = await request('/settings', 'manager');
+  const managerSettingsHtml = await managerSettings.text();
+  assert.ok(managerSettings.headers.get('location') === '/' || /NEXT_REDIRECT;[^;]+;\/;/.test(managerSettingsHtml), 'Manager cannot enter Admin settings; preserve its existing server redirect to overview');
+  const managerOverview = await (await request('/', 'manager')).text();
+  assert.ok(managerOverview.includes('Business overview') && !managerOverview.includes('Calendar settings'), 'Manager overview must not advertise Admin-only calendar settings');
+  assert.ok((await (await request('/', 'admin')).text()).includes('Calendar settings'), 'Admin calendar settings remain available');
   assert.equal((await request('/api/jobs/other-job', 'employee')).status, 403);
   assert.equal((await request('/api/files/view?path=other-job/after/fixture.jpg', 'employee')).status, 403);
   assert.equal((await request('/api/jobs/own-job', 'employee', json({ status: 'Paid' }))).status, 403);

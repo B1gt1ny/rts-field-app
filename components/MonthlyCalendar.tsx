@@ -5,7 +5,7 @@ import { calendarJobStyle } from "@/lib/job-colors";
 
 const closedStatuses = ["Complete", "Billed", "Paid"];
 
-export function MonthlyCalendar({ jobs, today = new Date() }: { jobs: Job[]; today?: Date }) {
+export function MonthlyCalendar({ jobs, today = new Date(), canManageSettings = false }: { jobs: Job[]; today?: Date; canManageSettings?: boolean }) {
   const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
   const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
   const todayKey = today.toLocaleDateString("en-CA");
@@ -77,7 +77,7 @@ export function MonthlyCalendar({ jobs, today = new Date() }: { jobs: Job[]; tod
         <p className="mt-1 text-sm text-white/65">Due-dated RTS jobs appear in the subscription feed. RTS remains the source of truth.</p>
         <div className="mt-4 grid gap-2">
           <a href="https://calendar.google.com" target="_blank" rel="noreferrer" className="action-contrast inline-flex min-h-11 items-center justify-center rounded-xl border px-4 py-3 text-sm font-bold">Open Google Calendar</a>
-          <Link href="/settings" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-white/10 px-4 py-3 text-sm font-bold text-white">Calendar settings</Link>
+          {canManageSettings && <Link href="/settings" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-white/10 px-4 py-3 text-sm font-bold text-white">Calendar settings</Link>}
         </div>
       </div>
     </div>

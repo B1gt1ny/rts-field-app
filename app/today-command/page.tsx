@@ -1,9 +1,10 @@
+import { getUserRole } from "@/lib/auth";
 import { TodayCommandView } from "@/components/TodayCommandView";
 import { getJobs } from "@/lib/jobs";
-import { filterServerJobsForUser } from "@/lib/server-auth";
+import { filterServerJobsForUser, getServerUser } from "@/lib/server-auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function TodayCommandPage() {
-  return <TodayCommandView jobs={await filterServerJobsForUser(await getJobs())} />;
+  return <TodayCommandView jobs={await filterServerJobsForUser(await getJobs())} canManageJob={getUserRole(await getServerUser()) !== "Employee"} />;
 }

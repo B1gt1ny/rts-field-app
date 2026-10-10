@@ -8,6 +8,7 @@ export function InstallAssistant() {
   const [standalone, setStandalone] = useState(false);
   const [serviceWorkerReady, setServiceWorkerReady] = useState(false);
   const [message, setMessage] = useState("");
+  const [copyFallback, setCopyFallback] = useState("");
 
   useEffect(() => {
     setOnline(navigator.onLine);
@@ -27,29 +28,50 @@ export function InstallAssistant() {
   const appUrl = useMemo(() => typeof window === "undefined" ? "" : window.location.origin, []);
 
   async function copyLink() {
-    await navigator.clipboard.writeText(appUrl).then(() => setMessage("App link copied."), () => setMessage("Copy did not work. Long-press the link and copy it."));
+    await copyText(appUrl, "App link copied.");
   }
 
   async function copyCrewInstructions() {
     const text = [
-      "Field Service app",
+      "RTS Field App",
       "",
       `Open: ${appUrl}`,
       "",
       "iPhone: open this link in Safari, tap Share, then Add to Home Screen.",
       "Android: open this link in Chrome, tap the menu, then Install app or Add to Home screen.",
       "",
-      "After login, tap My Jobs or Field App. If you cannot see your jobs, ask admin to link your login to your employee name.",
+      "After login, tap My Work. If you cannot see your jobs, ask admin to link your login to your employee name.",
     ].join("\n");
-    await navigator.clipboard.writeText(text).then(() => setMessage("Crew install instructions copied."), () => setMessage("Copy did not work. Long-press the link and copy it."));
+    await copyText(text, "Crew install instructions copied.");
+  }
+
+  async function copyText(text: string, success: string) {
+    setMessage("");
+    setCopyFallback("");
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
+      await navigator.clipboard.writeText(text);
+      setMessage(success);
+    } catch {
+      setMessage("Copy did not work. Retry, or select and copy the text below.");
+      setCopyFallback(text);
+    }
   }
 
   async function shareApp() {
-    if (navigator.share) {
-      await navigator.share({ title: "Field Service", text: "Open the Field Service app:", url: appUrl }).then(() => setMessage("Share sheet opened."), () => undefined);
-      return;
+    setMessage("");
+    setCopyFallback("");
+    if (!navigator.share) { await copyLink(); return; }
+    try {
+      await navigator.share({ title: "RTS Field App", text: "Open the RTS Field App:", url: appUrl });
+      setMessage("App shared.");
+    } catch (caught) {
+      if (caught instanceof Error && caught.name === "AbortError") setMessage("Share cancelled.");
+      else {
+        setMessage("Share did not work. Retry, or select and copy the app link below.");
+        setCopyFallback(appUrl);
+      }
     }
-    await copyLink();
   }
 
   return <section className="card overflow-hidden">
@@ -68,7 +90,8 @@ export function InstallAssistant() {
       <button type="button" onClick={copyCrewInstructions} className="min-h-12 rounded-xl border-2 border-content/10 bg-surface px-4 py-3 font-bold text-content"><ClipboardDocumentIcon className="mr-2 inline size-5" />Copy instructions</button>
       <button type="button" onClick={shareApp} className="min-h-12 rounded-xl bg-forest px-4 py-3 font-bold text-white"><ShareIcon className="mr-2 inline size-5" />Share to crew</button>
     </div>
-    {message && <p className="mx-4 mb-4 rounded-xl border border-forest/20 bg-forest/5 p-3 text-sm font-bold text-accent">{message}</p>}
+    {copyFallback && <label className="mx-4 mb-4 block text-sm font-bold">Text to copy<textarea readOnly value={copyFallback} onFocus={event => event.target.select()} className="field mt-1 min-h-32" /></label>}
+    {message && <p role="status" className="mx-4 mb-4 rounded-xl border border-forest/20 bg-forest/5 p-3 text-sm font-bold text-accent">{message}</p>}
   </section>;
 }
 

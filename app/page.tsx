@@ -37,7 +37,7 @@ export default async function Dashboard() {
     <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div>
         <p className="text-sm font-extrabold uppercase tracking-widest text-accent">{now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</p>
-        <h1 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">{isEmployee ? "My Field Dashboard" : "Dashboard"}</h1>
+        <h1 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">{isEmployee ? "My Field Dashboard" : role === "Manager" ? "Business overview" : "Dashboard"}</h1>
         <p className="mt-1 text-sm font-semibold text-content/65">{isEmployee ? "What needs your attention in the field today." : "Owner snapshot for what is going on with the business right now."}</p>
       </div>
       {isEmployee
@@ -45,7 +45,7 @@ export default async function Dashboard() {
         : <Link href="/jobs/new" className="btn-primary sm:self-auto">New Job <PlusIcon className="size-5" /></Link>}
     </div>
 
-    <MonthlyCalendar jobs={jobs} today={now} />
+    <MonthlyCalendar jobs={jobs} today={now} canManageSettings={role === "Admin"} />
 
     <DashboardSnapshotTabs dueToday={todaysJobs.length} active={activeJobs.length} waitingParts={waitingJobs.length} needsReview={reviewJobs.length} readyBilling={billingJobs.length} />
 
@@ -150,7 +150,7 @@ function buildOfficeDailyPriorities(jobs: Job[]): OfficePriority[] {
     if (billingBoardState(job) === "Ready to Invoice") add({ job, action: "Ready to Invoice", reason: "Completion is ready for billing review.", href: `/jobs/${job.jobId}#billing-handoff`, linkLabel: "Open" });
   });
   jobs.forEach((job) => {
-    if (billingBoardState(job) !== "Invoiced" || job.status === "Paid" || job.invoiceStatus === "Paid" || job.paidDate) return;
+    if (billingBoardState(job) !== "Invoice sent" || job.status === "Paid" || job.invoiceStatus === "Paid" || job.paidDate) return;
     const followUp = paymentFollowUpFor(job);
     if (followUp) add({ job, action: "Billing Follow-Up", reason: followUp.label, href: `/jobs/${job.jobId}`, linkLabel: "Open" });
   });

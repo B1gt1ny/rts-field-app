@@ -10,7 +10,7 @@ import type { Job, JobActivity } from "@/lib/types";
 import { PriorityBadge, StatusBadge } from "./StatusBadge";
 import { authFetch, jobUpdateBody } from "@/lib/client-auth";
 
-const activeStatuses = ["New", "Scheduled", "In Progress", "Waiting on Parts", "Needs Inspection"];
+const activeStatuses = ["New", "Scheduled", "In Progress", "Waiting on Parts"];
 
 export function ReadyCheckView({ jobs: initialJobs }: { jobs: Job[] }) {
   const user = useAuthUser();
@@ -72,14 +72,14 @@ export function ReadyCheckView({ jobs: initialJobs }: { jobs: Job[] }) {
         <div>
           <p className="text-xs font-bold uppercase tracking-widest text-lime">Manager prep</p>
           <h1 className="text-3xl font-bold">Manager review</h1>
-          <p className="mt-1 text-sm text-white/65">See what can be sent to the field and what needs fixed before dispatch.</p>
+          <p className="mt-1 text-sm text-white/65">Check dispatch readiness and approve completed field work.</p>
         </div>
       </div>
       <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Metric label="Active jobs" value={activeJobs.length} />
-        <Metric label="Ready" value={ready.length} />
-        <Metric label="Inspection" value={inspectionJobs.length} />
-        <Metric label="Urgent blocked" value={urgentBlocked.length} />
+        <Metric label="Dispatch checks" value={activeJobs.length} />
+        <Metric label="Ready for dispatch" value={ready.length} />
+        <Metric label="Awaiting approval" value={inspectionJobs.length} />
+        <Metric label="Urgent dispatch blockers" value={urgentBlocked.length} />
       </div>
     </section>
 
@@ -88,10 +88,10 @@ export function ReadyCheckView({ jobs: initialJobs }: { jobs: Job[] }) {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-lime">Manager inspection queue</p>
-            <h2 className="mt-1 text-2xl font-bold">Jobs ready for approval</h2>
+            <h2 className="mt-1 text-2xl font-bold">Approve completed work</h2>
             <p className="mt-1 text-sm text-white/65">Crew sent these jobs for review. Approve the work or send it back with a clear reason.</p>
           </div>
-          <Link href="/jobs?status=Needs%20Inspection" className="min-h-11 rounded-xl bg-lime px-4 py-2 text-center text-sm font-bold text-ink">Open list</Link>
+          <Link href="/jobs?status=Needs%20Inspection" className="min-h-11 rounded-xl bg-lime px-4 py-2 text-center text-sm font-bold text-ink">Jobs awaiting approval</Link>
         </div>
       </div>
       <div className="grid gap-3 p-3 lg:grid-cols-2">
@@ -103,20 +103,21 @@ export function ReadyCheckView({ jobs: initialJobs }: { jobs: Job[] }) {
       <div className="card overflow-hidden">
         <div className="flex items-center justify-between gap-3 bg-sand p-4">
           <div>
-            <h2 className="text-lg font-bold">Fix before dispatch</h2>
-            <p className="text-sm font-semibold text-content/65">Lowest readiness jobs are shown first.</p>
+            <p className="text-xs font-bold uppercase tracking-wide text-accent">Dispatch checks</p>
+            <h2 className="text-lg font-bold">Resolve dispatch gaps</h2>
+            <p className="text-sm font-semibold text-content/65">New, scheduled, ongoing and waiting-on-parts jobs; lowest readiness first.</p>
           </div>
           <Link href="/dispatch" className="text-sm font-bold text-accent">Dispatch handoff</Link>
         </div>
         <div className="divide-y divide-content/5">
-          {blocked.length ? blocked.map((job) => <ReadyJobRow key={job.jobId} job={job} />) : <p className="p-8 text-center text-sm font-semibold text-content/65">All active jobs are field-ready.</p>}
+          {blocked.length ? blocked.map((job) => <ReadyJobRow key={job.jobId} job={job} />) : <p className="p-8 text-center text-sm font-semibold text-content/65">All jobs in the dispatch queue are field-ready.</p>}
         </div>
       </div>
 
       <div className="space-y-3">
         <section className="card overflow-hidden">
           <div className="bg-sand p-4">
-            <h2 className="font-bold">Ready to send</h2>
+            <h2 className="font-bold">Ready for dispatch</h2>
             <p className="text-sm font-semibold text-content/65">These have the basic dispatch pieces in place.</p>
           </div>
           <div className="divide-y divide-content/5">
@@ -153,7 +154,7 @@ function InspectionJobCard({ job, saving, returnNote, onReturnNote, onApprove, o
       <StatusBadge status={job.status} />
     </div>
     <div className="mt-3 grid grid-cols-3 gap-2">
-      <InspectionMetric label="Ready" value={`${score}%`} />
+      <InspectionMetric label="Closeout checks" value={`${score}%`} />
       <InspectionMetric label="Blockers" value={blockers.length} />
       <InspectionMetric label="Photos" value={(job.afterPhotos || []).length} />
     </div>
@@ -165,9 +166,9 @@ function InspectionJobCard({ job, saving, returnNote, onReturnNote, onApprove, o
       </div>)}
     </div>
     {blockers.length > 0 && <p className="mt-3 rounded-xl bg-orange-50 p-3 text-sm font-bold text-orange-800">Billing blockers: {blockers.map((blocker) => blocker.label).join(", ")}</p>}
-    <label className="mt-3 block"><span className="label">Send-back note</span><textarea className="field min-h-20 resize-y" value={returnNote} onChange={(event) => onReturnNote(event.target.value)} placeholder="Example: Need after photo of back side, customer signature missing, parts still open..." /></label>
+    <label className="mt-3 block"><span className="label">Send-back note</span><textarea className="field min-h-20 resize-y" value={returnNote} onChange={(event) => onReturnNote(event.target.value)} placeholder="Example: Need after photo of back side, customer signature missing, work session not closed..." /></label>
     <div className="mt-3 grid gap-2 sm:grid-cols-4">
-      <Link href={`/jobs/${job.jobId}`} className="min-h-11 rounded-xl bg-sand px-3 py-2 text-center text-sm font-bold text-content">Profile</Link>
+      <Link href={`/jobs/${job.jobId}`} className="min-h-11 rounded-xl bg-sand px-3 py-2 text-center text-sm font-bold text-content">Open job</Link>
       <Link href={`/jobs/${job.jobId}/packet`} className="min-h-11 rounded-xl border border-content/10 bg-surface px-3 py-2 text-center text-sm font-bold text-content">Packet</Link>
       <button type="button" disabled={saving} onClick={onSendBack} className="min-h-11 rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-sm font-bold text-orange-900 disabled:opacity-50"><ArrowUturnLeftIcon className="mr-1 inline size-4" />Send Back</button>
       <button type="button" disabled={saving || blockers.length > 0} onClick={onApprove} className="min-h-11 rounded-xl bg-forest px-3 py-2 text-sm font-bold text-white disabled:opacity-50"><CheckCircleIcon className="mr-1 inline size-4" />Approve</button>
@@ -223,7 +224,7 @@ function ReadyJobRow({ job }: { job: Job }) {
     </div>
     <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
       <Link href={`/jobs/${job.jobId}/edit`} className="min-h-11 rounded-xl bg-forest px-3 py-2 text-center text-sm font-bold text-white">Fix job</Link>
-      <Link href={`/jobs/${job.jobId}`} className="min-h-11 rounded-xl bg-sand px-3 py-2 text-center text-sm font-bold text-content">Profile</Link>
+      <Link href={`/jobs/${job.jobId}`} className="min-h-11 rounded-xl bg-sand px-3 py-2 text-center text-sm font-bold text-content">Open job</Link>
       <Link href="/dispatch" className="min-h-11 rounded-xl bg-ink px-3 py-2 text-center text-sm font-bold text-white">Handoff</Link>
     </div>
   </div>;
