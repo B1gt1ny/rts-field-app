@@ -26,11 +26,12 @@ export async function PUT(request: Request, { params }: Context) {
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
   const job = await getJob((await params).id);
   if (!job) return NextResponse.json({ error: "Job not found" }, { status: 404 });
-  let input: { coverPhoto?: Job["coverPhoto"]; expectedRevision?: string | null };
+  let input: { coverPhoto?: Job["coverPhoto"]; expectedRevision?: string | null; expectedUserId?: string };
   try {
     input = await request.json();
     if (!input || typeof input !== "object" || Array.isArray(input)) throw new Error("Invalid input");
   } catch { return NextResponse.json({ error: "Provide a cover-photo selection." }, { status: 400 }); }
+  if (input.expectedUserId !== undefined && input.expectedUserId !== access.user?.id) return NextResponse.json({ error: "Sign back into the account that opened this job before saving." }, { status: 403 });
   if (input.expectedRevision !== (job.revision || null)) return NextResponse.json({ error: new JobConflictError().message }, { status: 409 });
   if (!Object.hasOwn(input, "coverPhoto")) return NextResponse.json({ error: "Choose a job photo or automatic cover." }, { status: 400 });
   const { photos, providerFailed } = await photosFor(job);

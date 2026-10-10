@@ -1,5 +1,7 @@
 "use client";
 
+import { useAuthUser } from "./AuthGate";
+
 import { AddNewSelect } from "./AddNewSelect";
 
 import { useMemo, useState } from "react";
@@ -30,6 +32,7 @@ const quickTemplates: Array<{ label: string; type: JobActivity["type"]; message:
 ];
 
 export function CommunicationCenterView({ jobs }: { jobs: Job[] }) {
+  const user = useAuthUser();
   const searchParams = useSearchParams();
   const [jobList, setJobList] = useState(jobs);
   const [selectedJobId, setSelectedJobId] = useState(jobs.find((job) => job.status !== "Paid")?.jobId || jobs[0]?.jobId || "");
@@ -98,7 +101,7 @@ export function CommunicationCenterView({ jobs }: { jobs: Job[] }) {
       const response = await authFetch(`/api/jobs/${selectedJob.jobId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: jobUpdateBody(selectedJob, { activityLog: nextActivity } satisfies Partial<Job>),
+        body: jobUpdateBody(selectedJob, { activityLog: nextActivity } satisfies Partial<Job>, user?.id),
       });
       const saved = await response.json();
       if (!response.ok) throw new Error(saved.error || "Communication could not be saved.");
@@ -127,7 +130,7 @@ export function CommunicationCenterView({ jobs }: { jobs: Job[] }) {
       const response = await authFetch(`/api/jobs/${row.job.jobId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: jobUpdateBody(row.job, { activityLog: nextActivity } satisfies Partial<Job>),
+        body: jobUpdateBody(row.job, { activityLog: nextActivity } satisfies Partial<Job>, user?.id),
       });
       const saved = await response.json();
       if (!response.ok) throw new Error(saved.error || "Follow-up could not be updated.");
@@ -151,7 +154,7 @@ export function CommunicationCenterView({ jobs }: { jobs: Job[] }) {
       const response = await authFetch(`/api/jobs/${row.job.jobId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: jobUpdateBody(row.job, { activityLog: nextActivity } satisfies Partial<Job>),
+        body: jobUpdateBody(row.job, { activityLog: nextActivity } satisfies Partial<Job>, user?.id),
       });
       const saved = await response.json();
       if (!response.ok) throw new Error(saved.error || "Follow-up date could not be updated.");

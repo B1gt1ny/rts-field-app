@@ -1,5 +1,7 @@
 "use client";
 
+import { useAuthUser } from "./AuthGate";
+
 import { AddNewSelect } from "./AddNewSelect";
 
 import type { DropdownKey } from "@/lib/dropdown-options";
@@ -15,6 +17,7 @@ import { PriorityBadge, StatusBadge } from "./StatusBadge";
 import { calendarJobStyle } from "@/lib/job-colors";
 
 export function ScheduleBoard({ jobs, canEditSchedule }: { jobs: Job[]; canEditSchedule: boolean }) {
+  const user = useAuthUser();
   const [scheduleJobs, setScheduleJobs] = useState(jobs);
   const today = new Date();
   const todayKey = dateKey(today);
@@ -24,7 +27,7 @@ export function ScheduleBoard({ jobs, canEditSchedule }: { jobs: Job[]; canEditS
   const unscheduled = active.filter((job) => !job.dueDate);
 
   async function scheduleJob(jobId: string, dueDate: string, scheduledTime = "", schedulePlan: Job["schedulePlan"] = "Confirmed") {
-    const response = await authFetch(`/api/jobs/${jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: jobUpdateBody(scheduleJobs.find((job) => job.jobId === jobId) || {}, { dueDate, scheduledTime, schedulePlan }) });
+    const response = await authFetch(`/api/jobs/${jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: jobUpdateBody(scheduleJobs.find((job) => job.jobId === jobId) || {}, { dueDate, scheduledTime, schedulePlan }, user?.id) });
     const saved = await response.json();
     if (!response.ok) throw new Error(saved.error || "The job could not be scheduled.");
     setScheduleJobs((current) => current.map((job) => job.jobId === jobId ? { ...job, ...saved } : job));

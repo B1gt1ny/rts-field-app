@@ -1,5 +1,7 @@
 "use client";
 
+import { useAuthUser } from "./AuthGate";
+
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowUturnLeftIcon, CheckCircleIcon, ClipboardDocumentCheckIcon, ExclamationTriangleIcon, WrenchScrewdriverIcon } from "@heroicons/react/24/outline";
@@ -11,6 +13,7 @@ import { authFetch, jobUpdateBody } from "@/lib/client-auth";
 const activeStatuses = ["New", "Scheduled", "In Progress", "Waiting on Parts", "Needs Inspection"];
 
 export function ReadyCheckView({ jobs: initialJobs }: { jobs: Job[] }) {
+  const user = useAuthUser();
   const [jobs, setJobs] = useState(initialJobs);
   const [saveError, setSaveError] = useState("");
   const [savingJobId, setSavingJobId] = useState("");
@@ -28,7 +31,7 @@ export function ReadyCheckView({ jobs: initialJobs }: { jobs: Job[] }) {
     setSaveError("");
     setSavingJobId(job.jobId);
     try {
-      const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: jobUpdateBody(job, patch) });
+      const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: jobUpdateBody(job, patch, user?.id) });
       const saved = await response.json();
       if (!response.ok) throw new Error(saved.error || "Review could not be saved.");
       setJobs((old) => old.map((item) => item.jobId === job.jobId ? { ...item, ...saved } : item));

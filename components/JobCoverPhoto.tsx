@@ -1,11 +1,14 @@
 "use client";
 
+import { useAuthUser } from "./AuthGate";
+
 import { useEffect, useState } from "react";
 import type { Job } from "@/lib/types";
 import { authFetch, jobUpdateBody } from "@/lib/client-auth";
 import { coverPhotos, currentCover, sameCover, type CoverPhoto } from "@/lib/job-cover";
 
 export function JobCoverPhoto({ job, isAdmin, onSaved }: { job: Job; isAdmin: boolean; onSaved: (patch: Pick<Job, "coverPhoto" | "revision">) => void }) {
+  const user = useAuthUser();
   const native = currentCover(job, coverPhotos(job));
   const [photo, setPhoto] = useState<CoverPhoto | null>(native || null);
   const [photos, setPhotos] = useState<CoverPhoto[]>([]);
@@ -40,7 +43,7 @@ export function JobCoverPhoto({ job, isAdmin, onSaved }: { job: Job; isAdmin: bo
     setSaving(true);
     setMessage("");
     try {
-      const response = await authFetch(`/api/jobs/${encodeURIComponent(job.jobId)}/cover`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: jobUpdateBody(job, { coverPhoto: reference }) });
+      const response = await authFetch(`/api/jobs/${encodeURIComponent(job.jobId)}/cover`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: jobUpdateBody(job, { coverPhoto: reference }, user?.id) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Cover photo could not be saved.");
       onSaved({ coverPhoto: result.coverPhoto, revision: result.revision });

@@ -144,7 +144,7 @@ export function JobForm({ initialJob }: { initialJob?: Job }) {
       const preserveAssignment = !assignmentEdited && (!rosterComplete || (initialJob && !assignedIds.length));
       const assignment = preserveAssignment ? job.assignedCrew : job.fullCrew ? "Full Crew" : selected.length ? selected.map((employee) => employee.name).join(", ") : "Unassigned";
       const payload = { ...job, assignedCrew: assignment, checklist: initialJob ? job.checklist : makeChecklistFromLabels(options.checklistOptions, job.checklist) };
-      const response = await authFetch(initialJob ? `/api/jobs/${initialJob.jobId}` : "/api/jobs", { method: initialJob ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: initialJob ? jobUpdateBody(initialJob, payload) : JSON.stringify(payload) });
+      const response = await authFetch(initialJob ? `/api/jobs/${initialJob.jobId}` : "/api/jobs", { method: initialJob ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: initialJob ? jobUpdateBody(initialJob, payload, user?.id) : JSON.stringify(payload) });
       const saved = await response.json();
       if (!response.ok) throw new Error(saved.error || "The job could not be saved.");
       if (draftKey) window.localStorage.removeItem(draftKey);

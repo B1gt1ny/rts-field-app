@@ -1,5 +1,7 @@
 "use client";
 
+import { useAuthUser } from "./AuthGate";
+
 import { AddNewSelect } from "./AddNewSelect";
 
 import { useEffect, useMemo, useState } from "react";
@@ -24,6 +26,7 @@ type OfficeBillingAction = {
 type PaymentFollowUp = NonNullable<ReturnType<typeof paymentFollowUpForBilling>> & { job: Job };
 
 export function BillingView() {
+  const user = useAuthUser();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [saveError, setSaveError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -76,7 +79,7 @@ export function BillingView() {
     };
     setSaveError("");
     try {
-    const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: jobUpdateBody(job, patch) });
+    const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: jobUpdateBody(job, patch, user?.id) });
     const saved = await response.json();
     if (!response.ok) throw new Error(saved.error || "Billing update could not be saved.");
     setJobs((old) => old.map((item) => item.jobId === job.jobId ? { ...item, ...saved } : item));

@@ -69,7 +69,7 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
     const patchToSave = { ...patch, ...correctionPatch };
     if (optimistic) setJob(finalNext);
     try {
-      const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: jobUpdateBody(job, patchToSave) });
+      const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: jobUpdateBody(job, patchToSave, user?.id) });
       const saved = await response.json();
       if (!response.ok) {
         if (response.status === 409) {
@@ -2140,6 +2140,7 @@ function defaultPaperwork(job: Job): PaperworkItem[] {
 }
 
 function OperationsPanel({ job, setJob, mode }: { job: Job; setJob: React.Dispatch<React.SetStateAction<Job>>; mode: "documents" | "notes" | "history" }) {
+  const user = useAuthUser();
   const [note, setNote] = useState("");
   const [audience, setAudience] = useState<JobActivity["audience"]>("All");
   const [notify, setNotify] = useState(false);
@@ -2160,7 +2161,7 @@ function OperationsPanel({ job, setJob, mode }: { job: Job; setJob: React.Dispat
     const correctionPatch = correctionResolutionPatch(job, next);
     const patchToSave = { ...patch, ...correctionPatch };
     try {
-      const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: jobUpdateBody(job, patchToSave) });
+      const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: jobUpdateBody(job, patchToSave, user?.id) });
       const saved = await response.json();
       if (!response.ok) throw new Error(saved.error || "The job update could not be saved.");
       setJob((old) => ({ ...old, ...saved, checklist: saved.checklist?.length ? saved.checklist : old.checklist }));
@@ -2188,9 +2189,8 @@ function OperationsPanel({ job, setJob, mode }: { job: Job; setJob: React.Dispat
   async function submitNote(message = note, type: JobActivity["type"] = "Note") {
     const trimmed = message.trim();
     if (!trimmed) return;
-    setNote("");
-    setNotify(false);
-    await savePatch({ activityLog: addActivity(trimmed, type) });
+    const saved = await savePatch({ activityLog: addActivity(trimmed, type) });
+    if (saved) { setNote(""); setNotify(false); }
   }
 
   async function updatePaperwork(id: string, status: PaperworkItem["status"]) {
