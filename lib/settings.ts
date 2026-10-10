@@ -164,21 +164,6 @@ async function getSettingsFromJobsTable(db: Database, businessId: string, fallba
   return normalizeSettings({ ...fallback, ...(data?.data as Partial<BusinessSettings> | undefined), businessId });
 }
 
-async function saveSettingsToJobsTable(db: Database, settings: BusinessSettings): Promise<BusinessSettings> {
-  const { error } = await db.from("jobs").upsert({
-    job_id: settingsJobId(settings.businessId),
-    status: internalStatus,
-    source: internalSource,
-    assigned_crew: "Admin",
-    priority: "Low",
-    due_date: null,
-    data: settings,
-    updated_at: new Date().toISOString(),
-  }, { onConflict: "job_id" });
-  if (error) throw new Error(`Unable to save fallback business settings: ${error.message}`);
-  return settings;
-}
-
 async function getMerchRequestsFromJobsTable(db: Database, businessId: string): Promise<MerchRequest[]> {
   const { data, error } = await db.from("jobs").select("data").like("job_id", "\\_\\_merch\\_%").order("created_at", { ascending: false });
   if (error) {
@@ -216,32 +201,63 @@ export async function getBusinessSettings(businessId = defaultBusinessId, strict
   return normalizeSettings({ ...fallback, ...(data?.data as Partial<BusinessSettings> | undefined), businessId });
 }
 
-export async function saveBusinessSettings(input: Partial<BusinessSettings>): Promise<BusinessSettings> {
-  const patch = validateSettingsPatch(input);
-  const businessId = patch.businessId?.trim() || defaultBusinessId;
-  const existing = await getBusinessSettings(businessId, true);
+function mergeSettings(existing: BusinessSettings, patch: Partial<BusinessSettings>, businessId: string) {
   let dropdownOptions = existing.dropdownOptions || {};
   for (const [key, options] of Object.entries(patch.dropdownOptions || {})) {
     for (const option of options || []) dropdownOptions = appendDropdownOption(dropdownOptions, key as DropdownKey, option);
   }
   const costPatch = Object.fromEntries(Object.entries(patch.factoryCostDefaults || {}).filter(([, value]) => value !== undefined));
-  const settings = normalizeSettings({ ...existing, ...patch, businessId, dropdownOptions, factoryCostDefaults: { ...existing.factoryCostDefaults, ...costPatch } });
+  return normalizeSettings({ ...existing, ...patch, businessId, dropdownOptions, factoryCostDefaults: { ...existing.factoryCostDefaults, ...costPatch } });
+}
+
+export async function saveBusinessSettings(input: Partial<BusinessSettings>): Promise<BusinessSettings> {
+  const patch = validateSettingsPatch(input);
+  const businessId = patch.businessId?.trim() || defaultBusinessId;
+  const fallback = await getLocalSettings();
   const db = database();
   if (!db) {
+    const settings = mergeSettings(normalizeSettings(fallback), patch, businessId);
     await saveLocalSettings(settings);
     return settings;
   }
 
-  const { error } = await db.from("business_settings").upsert({
-    business_id: settings.businessId,
-    data: settings,
-    updated_at: new Date().toISOString(),
-  }, { onConflict: "business_id" });
-  if (error) {
-    console.warn(`Unable to save business settings to dedicated table; using jobs-table fallback: ${error.message}`);
-    return saveSettingsToJobsTable(db, settings);
+  // Compare the complete JSONB snapshot, including legacy rows without a revision.
+  // A conflict retries the original patch against fresh data, never a stale merge.
+  for (let attempt = 0; attempt < 8; attempt++) {
+    let table = "business_settings";
+    let key = "business_id";
+    let id = businessId;
+    let current = await db.from(table).select("data").eq(key, id).maybeSingle();
+    if (current.error) {
+      if (!["42P01", "PGRST205"].includes(current.error.code)) throw new Error("Existing business settings could not be loaded. No changes were saved.");
+      table = "jobs";
+      key = "job_id";
+      id = settingsJobId(businessId);
+      current = await db.from(table).select("data").eq(key, id).maybeSingle();
+      // Missing fallback cannot establish that unread dedicated settings are absent.
+      if (current.error || !current.data?.data) throw new Error("Existing business settings could not be loaded. No changes were saved.");
+    }
+    if (current.data && (!current.data.data || typeof current.data.data !== "object" || Array.isArray(current.data.data))) {
+      throw new Error("Existing business settings are invalid. No changes were saved.");
+    }
+    const existing = normalizeSettings({ ...fallback, ...(current.data?.data as Partial<BusinessSettings> | undefined), businessId });
+    const settings = mergeSettings(existing, patch, businessId);
+    const row: Record<string, unknown> = table === "jobs" ? {
+      job_id: id, status: internalStatus, source: internalSource, assigned_crew: "Admin",
+      priority: "Low", due_date: null, data: settings, updated_at: new Date().toISOString(),
+    } : { business_id: id, data: settings, updated_at: new Date().toISOString() };
+    if (!current.data) {
+      const { error } = await db.from(table).insert(row);
+      if (!error) return settings;
+      if (error.code === "23505") continue;
+      throw new Error(`Unable to create business settings: ${error.message}`);
+    }
+    const { data, error } = await db.from(table).update(row).eq(key, id)
+      .eq("data", JSON.stringify(current.data.data)).select("data").maybeSingle();
+    if (error) throw new Error(`Unable to save business settings: ${error.message}`);
+    if (data) return settings;
   }
-  return settings;
+  throw new Error("Business settings changed repeatedly. Please retry. No stale changes were saved.");
 }
 
 export async function getMerchRequests(businessId = defaultBusinessId): Promise<MerchRequest[]> {
