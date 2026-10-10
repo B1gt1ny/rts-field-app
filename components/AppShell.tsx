@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { BellAlertIcon, BriefcaseIcon, CalendarDaysIcon, ChartBarIcon, ChevronDownIcon, Cog6ToothIcon, HomeIcon, MoonIcon, SunIcon, UserCircleIcon, UsersIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { BellAlertIcon, BriefcaseIcon, CalendarDaysIcon, ChartBarIcon, BanknotesIcon, ClipboardDocumentCheckIcon, ChevronDownIcon, Cog6ToothIcon, HomeIcon, MoonIcon, SunIcon, UserCircleIcon, UsersIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { roleHomePath } from "@/lib/client-auth";
 import { LogoutButton, RoleBadge, useAuthUser } from "./AuthGate";
+import { isPublicInformationPath } from "@/lib/public-pages";
 
 const adminPrimaryNavigation = [
   { href: "/", label: "Dashboard", icon: HomeIcon },
@@ -15,9 +16,14 @@ const adminPrimaryNavigation = [
 ];
 const employeeNavigation = [
   { href: "/field", label: "My Work", icon: UserCircleIcon },
-  { href: "/today-command", label: "Today", icon: BellAlertIcon },
   { href: "/schedule", label: "Schedule", icon: CalendarDaysIcon },
   { href: "/account", label: "Account", icon: UserCircleIcon },
+];
+const managerPrimaryNavigation = [
+  { href: "/today-command", label: "Today", icon: BellAlertIcon },
+  { href: "/jobs", label: "Jobs", icon: BriefcaseIcon },
+  { href: "/schedule", label: "Schedule", icon: CalendarDaysIcon },
+  { href: "/ready-check", label: "Review", icon: ClipboardDocumentCheckIcon },
 ];
 const adminMobileNavigation = [
   ...adminPrimaryNavigation,
@@ -25,7 +31,7 @@ const adminMobileNavigation = [
 ];
 type NavigationSection = { label: string; icon: typeof HomeIcon; links: Array<[string, string, string?]>; aliases?: string[] };
 const managerSections: NavigationSection[] = [
-  { label: "Dashboard", icon: HomeIcon, links: [["/", "Overview"], ["/today-command", "Today"], ["/command", "Operations"]], aliases: ["/today"] },
+  { label: "Dashboard", icon: HomeIcon, links: [["/", "Business overview"], ["/today-command", "Today"], ["/command", "Operations exceptions"]], aliases: ["/today"] },
   { label: "Jobs", icon: BriefcaseIcon, links: [["/jobs", "All jobs"], ["/jobs/new", "New job"], ["/import", "Import work order"], ["/completed", "Completed jobs"]], aliases: ["/factory", "/dealer", "/individual", "/waiting-on-parts"] },
   { label: "Office", icon: UsersIcon, links: [["/customers", "Customers", "People"], ["/employees", "Employees", "People"], ["/crew", "Crew assignments", "People"], ["/dispatch", "Dispatch", "Work coordination"], ["/ready-check", "Manager review", "Work coordination"], ["/communication", "Communication", "Work coordination"], ["/tasks", "Tasks", "Work coordination"], ["/reminders", "Reminders", "Work coordination"], ["/documents", "Documents", "Paperwork & billing"], ["/billing", "Billing", "Paperwork & billing"]] },
   { label: "Admin", icon: Cog6ToothIcon, links: [["/settings", "Settings"], ["/account", "My account"], ["/install", "Install help"]] },
@@ -100,20 +106,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       return next;
     });
   }
-  if (pathname.startsWith("/login")) return <>{children}</>;
+  if (pathname.startsWith("/login") || isPublicInformationPath(pathname)) return <>{children}</>;
   const role = user?.role || "Employee";
   const isEmployee = role === "Employee";
   const homePath = roleHomePath(role);
   const visibleNavigation = isEmployee ? employeeNavigation : adminPrimaryNavigation;
-  const visibleMobileNavigation = isEmployee ? employeeNavigation : adminMobileNavigation.map((item, index) => index === 0 && role === "Manager" ? { ...item, href: homePath, label: "Today", icon: BellAlertIcon } : item);
-  const sections = managerSections.map((section, index) => index === 0 && role === "Manager" ? { ...section, label: "Today", icon: BellAlertIcon, links: [["/today-command", "Today"], ["/", "Business overview"], ["/command", "Operations"]] as NavigationSection["links"] } : section);
+  const visibleMobileNavigation = isEmployee ? employeeNavigation : role === "Manager" ? managerPrimaryNavigation : adminMobileNavigation;
+  const sections = managerSections.map((section, index) => {
+    if (role === "Manager" && index === 0) return { ...section, label: "Today", icon: BellAlertIcon, links: [["/today-command", "Today"], ["/", "Business overview"], ["/command", "Operations exceptions"]] as NavigationSection["links"] };
+    if (role === "Manager" && index === 3) return { ...section, label: "Account & setup", links: section.links.filter(([href]) => href !== "/settings") };
+    return section;
+  });
   const sectionActive = (section: NavigationSection) => [...section.links.map(([href]) => href), ...(section.aliases || [])].some(href => isActiveRoute(pathname, href));
   return <div className="min-h-screen lg:grid lg:grid-cols-[264px_1fr]">
     <a href="#main-content" className="skip-link">Skip to page content</a>
     <aside className="app-sidebar sticky top-0 hidden h-screen overflow-y-auto border-r border-white/10 px-5 py-6 text-white lg:block">
       <Link href={homePath} className="mb-7 flex items-center gap-3">
         <span className="grid size-11 place-items-center rounded-xl bg-lime text-lg font-bold text-ink">RTS</span>
-        <span><span className="block text-lg font-extrabold">RTS Land Solutions</span><span className="text-xs text-white/65">Field App</span></span>
+        <span><span className="block text-lg font-extrabold">RTS Land Solutions</span><span className="text-xs text-white/65">RTS Field App</span></span>
       </Link>
       <nav aria-label="Main navigation" className="space-y-1">
         {isEmployee ? <>
@@ -122,8 +132,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {employeeMore.map(([href, label]) => <NavLink key={href} href={href} active={pathname === href}>{label}</NavLink>)}
         </> : <>
           {sections.slice(0, 2).map(section => <NavigationGroup key={`${section.label}:${pathname}`} section={section} active={sectionActive(section)} pathname={pathname} />)}
+          {role === "Manager" && <NavLink href="/ready-check" active={isActiveRoute(pathname, "/ready-check")}><ClipboardDocumentCheckIcon className="size-5" />Review</NavLink>}
           {adminPrimaryNavigation.slice(2).map(({ href, label, icon: Icon }) => <NavLink key={href} href={href} active={isActiveRoute(pathname, href)}><Icon className="size-5" />{label}</NavLink>)}
-          <NavigationGroup key={`Office:${pathname}`} section={sections[2]} active={sectionActive(sections[2])} pathname={pathname} />
+          <NavigationGroup key={`Office:${pathname}`} section={{ ...sections[2], links: sections[2].links.filter(([href]) => role !== "Manager" || href !== "/ready-check") }} active={sectionActive(sections[2])} pathname={pathname} />
           <NavLink href="/reports" active={isActiveRoute(pathname, "/reports")}><ChartBarIcon className="size-5" />Reports</NavLink>
           <NavigationGroup key={`Admin:${pathname}`} section={sections[3]} active={sectionActive(sections[3])} pathname={pathname} />
         </>}
@@ -131,13 +142,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     </aside>
     <div className="min-w-0">
       <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-content/[.06] bg-surface/90 px-4 backdrop-blur-md lg:px-8">
-        <Link href={homePath} className="flex items-center gap-2 font-extrabold lg:hidden"><span className="grid size-9 place-items-center rounded-lg bg-ink text-xs text-lime">RTS</span>Field App</Link>
-        <div className="hidden lg:block"><p className="text-sm font-semibold text-content/65">RTS Land Solutions</p><p className="font-extrabold">Field App</p></div>
+        <Link href={homePath} className="flex items-center gap-2 font-extrabold lg:hidden"><span className="grid size-9 place-items-center rounded-lg bg-ink text-xs text-lime">RTS</span>RTS Field App</Link>
+        <div className="hidden lg:block"><p className="text-sm font-semibold text-content/65">RTS Land Solutions</p><p className="font-extrabold">RTS Field App</p></div>
         <div className="flex items-center gap-2"><button type="button" onClick={toggleTheme} aria-label={`Use ${dark ? "light" : "dark"} appearance`} aria-pressed={dark} title={`Use ${dark ? "light" : "dark"} appearance`} className="grid size-11 place-items-center rounded-xl border border-content/10 bg-surface text-content"><>{dark ? <SunIcon className="size-5" /> : <MoonIcon className="size-5" />}</></button><span role="status" className={`hidden items-center rounded-full px-3 py-2 text-xs font-bold sm:inline-flex ${online ? "bg-forest text-white" : "bg-orange-100 text-orange-800"}`}>{online ? "Online" : "Offline"}</span><RoleBadge /><LogoutButton /></div>
       </header>
       <main id="main-content" className="mx-auto max-w-7xl px-4 pb-28 pt-5 lg:px-8 lg:pb-10 lg:pt-8">{children}</main>
     </div>
-    <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-content/10 bg-surface/95 px-1 pb-[max(.35rem,env(safe-area-inset-bottom))] pt-1.5 backdrop-blur lg:hidden">
+    <nav aria-label="Primary mobile navigation" className={`fixed inset-x-0 bottom-0 z-30 grid ${isEmployee ? "grid-cols-4" : "grid-cols-5"} border-t border-content/10 bg-surface/95 px-1 pb-[max(.35rem,env(safe-area-inset-bottom))] pt-1.5 backdrop-blur lg:hidden`}>
       {visibleMobileNavigation.slice(0, 4).map(({ href, label, icon: Icon }) => { const active = isActiveRoute(pathname, href); return <Link key={href} href={href} aria-current={active ? "page" : undefined} className={`flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-bold ${active ? "bg-forest/15 text-accent" : "text-content/65"}`}><Icon className="size-5" />{label}</Link>; })}
       <button ref={menuTrigger} type="button" onClick={() => setMobileMenuOpen(true)} aria-controls="app-pages-dialog" aria-label="Open all app pages" aria-expanded={mobileMenuOpen} className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-bold text-content/65"><Cog6ToothIcon className="size-5" />More</button>
     </nav>
@@ -146,7 +157,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="flex items-center justify-between border-b border-content/10 p-4"><div><p className="eyebrow">RTS Field App</p><h2 id="app-pages-title" className="text-xl font-bold">All pages</h2></div><button type="button" onClick={() => setMobileMenuOpen(false)} className="grid size-11 place-items-center rounded-xl border border-content/10" aria-label="Close all pages"><XMarkIcon className="size-5" /></button></div>
         <nav aria-label="More navigation" className="grid gap-1 overflow-y-auto p-3">
           {isEmployee ? employeeMore.map(([href, label]) => <Link key={href} href={href} onClick={() => setMobileMenuOpen(false)} aria-current={pathname === href ? "page" : undefined} className="flex min-h-12 items-center rounded-xl px-4 text-sm font-bold hover:bg-sand">{label}</Link>) : <>
-            {sections.slice(0, 3).map(section => <NavigationGroup key={`${section.label}:${pathname}`} section={{ ...section, links: section.links.filter(([href]) => href !== homePath && href !== "/jobs") }} active={sectionActive(section)} pathname={pathname} mobile onNavigate={() => setMobileMenuOpen(false)} />)}
+            <Link href="/billing" onClick={() => setMobileMenuOpen(false)} aria-current={pathname === "/billing" ? "page" : undefined} className="flex min-h-12 items-center gap-3 rounded-xl bg-forest/10 px-4 text-sm font-bold text-accent"><BanknotesIcon className="size-5" />Billing</Link>
+            {role === "Manager" && <Link href="/field" onClick={() => setMobileMenuOpen(false)} aria-current={pathname === "/field" ? "page" : undefined} className="flex min-h-12 items-center gap-3 rounded-xl px-4 text-sm font-bold hover:bg-sand"><UserCircleIcon className="size-5" />Field</Link>}
+            {sections.slice(0, 3).map(section => <NavigationGroup key={`${section.label}:${pathname}`} section={{ ...section, links: section.links.filter(([href]) => href !== homePath && href !== "/jobs" && href !== "/billing" && (role !== "Manager" || href !== "/ready-check")) }} active={sectionActive(section)} pathname={pathname} mobile onNavigate={() => setMobileMenuOpen(false)} />)}
             <Link href="/reports" onClick={() => setMobileMenuOpen(false)} aria-current={pathname === "/reports" ? "page" : undefined} className="flex min-h-12 items-center gap-3 rounded-xl px-4 text-sm font-bold hover:bg-sand"><ChartBarIcon className="size-5" />Reports</Link>
             <NavigationGroup key={`Admin:${pathname}`} section={sections[3]} active={sectionActive(sections[3])} pathname={pathname} mobile onNavigate={() => setMobileMenuOpen(false)} />
           </>}

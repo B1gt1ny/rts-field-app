@@ -8,6 +8,7 @@ import { roleHomePath, type AuthUser } from "@/lib/client-auth";
 
 import { clearOwnerUploads, invalidateOwnerUploads } from "@/lib/client-uploads";
 import { clearBrowserDrafts } from "@/lib/client-drafts";
+import { isPublicInformationPath } from "@/lib/public-pages";
 
 const publicPaths = ["/login"];
 
@@ -16,9 +17,11 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<AuthUser | null>(null);
-  const authRequired = useMemo(() => !publicPaths.some((path) => pathname.startsWith(path)), [pathname]);
+  const publicInformation = isPublicInformationPath(pathname);
+  const authRequired = useMemo(() => !isPublicInformationPath(pathname) && !publicPaths.some((path) => pathname.startsWith(path)), [pathname]);
 
   useEffect(() => {
+    if (publicInformation) { setLoading(false); return; }
     fetch("/api/auth/me", { credentials: "include" }).then(async (response) => {
       if (!response.ok) {
         setUser(null);
@@ -45,9 +48,9 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       if (authRequired) router.replace("/login");
       setLoading(false);
     });
-  }, [authRequired, pathname, router]);
+  }, [authRequired, pathname, publicInformation, router]);
 
-  if (pathname === "/login") return <>{children}</>;
+  if (pathname === "/login" || publicInformation) return <>{children}</>;
   if (loading) return <div className="grid min-h-screen place-items-center bg-sand p-6"><div role="status" className="card flex items-center gap-3 p-5"><ShieldCheckIcon className="size-6 text-accent" /><p className="font-semibold text-content/75">Checking access…</p></div></div>;
   if (authRequired && !user) return null;
 
@@ -73,7 +76,7 @@ export function LogoutButton() {
     if (user?.id) { try { await clearOwnerUploads(user.id); } catch { window.alert("Signed out, but local photo cleanup is incomplete. Keep this device private until cleanup succeeds."); } }
     window.location.replace("/login");
   }
-  return <button type="button" onClick={logout} className="btn-secondary !min-h-11 !px-3 !py-2"><ArrowRightOnRectangleIcon className="size-5" /><span className="hidden sm:inline">Logout</span></button>;
+  return <button type="button" onClick={logout} aria-label="Log out" title="Log out" className="btn-secondary !min-h-11 !px-3 !py-2"><ArrowRightOnRectangleIcon className="size-5" /><span className="hidden sm:inline">Logout</span></button>;
 }
 
 export function RoleBadge() {

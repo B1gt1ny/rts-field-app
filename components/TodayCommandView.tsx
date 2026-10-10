@@ -17,10 +17,10 @@ type TodayAction = {
 
 const closedStatuses = ["Complete", "Billed", "Paid"];
 
-export function TodayCommandView({ jobs }: { jobs: Job[] }) {
+export function TodayCommandView({ jobs, canManageJob = false }: { jobs: Job[]; canManageJob?: boolean }) {
   const today = new Date().toLocaleDateString("en-CA");
   const todaysJobs = jobs.filter((job) => job.dueDate === today && !closedStatuses.includes(job.status));
-  const immediateActions = buildTodayActions(todaysJobs).slice(0, 8);
+  const immediateActions = buildTodayActions(todaysJobs, canManageJob).slice(0, 8);
   const reminders = buildJobReminders(jobs, today)
     .filter((reminder) => reminder.bucket === "Today" || (reminder.bucket === "Overdue" && reminder.job.dueDate === today))
     .slice(0, 4);
@@ -44,24 +44,25 @@ export function TodayCommandView({ jobs }: { jobs: Job[] }) {
         <HeroMetric label="Jobs today" value={todaysJobs.length} />
         <HeroMetric label="Immediate actions" value={immediateActions.length} />
       </div>
+      {canManageJob && <Link href="/billing" className="mt-4 inline-flex min-h-12 items-center rounded-xl bg-lime px-4 py-3 font-bold text-ink">Open billing</Link>}
     </section>
 
     <section className="card overflow-hidden">
-      <SectionHeader title="Today’s Jobs" subtitle={`${todaysJobs.length} active job${todaysJobs.length === 1 ? "" : "s"} due or scheduled today`} href="/jobs" />
+      <SectionHeader title="Today’s Jobs" subtitle={`${todaysJobs.length} active job${todaysJobs.length === 1 ? "" : "s"} due or scheduled today`} href={canManageJob ? "/jobs" : "/field"} linkLabel={canManageJob ? "All jobs" : "My Work"} />
       <div className="divide-y divide-content/5">
         {todaysJobs.length ? todaysJobs.map((job) => <TodayJobRow key={job.jobId} job={job} />) : <Empty text="No active jobs are scheduled for today." />}
       </div>
     </section>
 
     <section className="card overflow-hidden">
-      <SectionHeader title="Immediate Actions" subtitle={`${immediateActions.length} item${immediateActions.length === 1 ? "" : "s"} blocking today’s work`} href="/tasks" />
+      <SectionHeader title="Immediate Actions" subtitle={`${immediateActions.length} item${immediateActions.length === 1 ? "" : "s"} needing attention today`} href={canManageJob ? "/tasks" : undefined} linkLabel="Tasks" />
       <div className="divide-y divide-content/5">
-        {immediateActions.length ? immediateActions.map((item) => <ActionRow key={item.id} item={item} />) : <Empty text="No immediate blockers for today’s jobs." />}
+        {immediateActions.length ? immediateActions.map((item) => <ActionRow key={item.id} item={item} />) : <Empty text="No immediate actions for today’s jobs." />}
       </div>
     </section>
 
     <section className="card overflow-hidden">
-      <SectionHeader title="Today’s Reminders" subtitle="Due-today reminders plus overdue follow-ups tied to today’s work" href="/reminders" />
+      <SectionHeader title="Today’s Reminders" subtitle="Due-today reminders plus overdue follow-ups tied to today’s work" href={canManageJob ? "/reminders" : undefined} linkLabel="Reminders" />
       <div className="divide-y divide-content/5">
         {reminders.length ? reminders.map((reminder) => <Link key={reminder.id} href={`/jobs/${reminder.job.jobId}#operations`} className="block p-4 hover:bg-content/[.02]">
           <div className="flex items-start justify-between gap-3">
@@ -77,7 +78,7 @@ export function TodayCommandView({ jobs }: { jobs: Job[] }) {
     </section>
 
     <section className="card overflow-hidden">
-      <SectionHeader title="Today’s Field Updates" subtitle={`${fieldActivityRows.length} update${fieldActivityRows.length === 1 ? "" : "s"} logged today`} href="/communication" />
+      <SectionHeader title="Today’s Field Updates" subtitle={`${fieldActivityRows.length} update${fieldActivityRows.length === 1 ? "" : "s"} logged today`} href={canManageJob ? "/communication" : undefined} linkLabel="Field updates" />
       <div className="divide-y divide-content/5">
         {fieldActivityRows.length ? fieldActivityRows.map(({ job, entry }) => <FieldUpdateRow key={`${job.jobId}-${entry.id}`} job={job} entry={entry} />) : <Empty text="No field updates logged today yet." />}
       </div>
@@ -99,7 +100,7 @@ function TodayJobRow({ job }: { job: Job }) {
     <div className="mt-3 grid grid-cols-3 gap-2">
       <a href={`tel:${job.phone}`} className={`min-h-11 rounded-xl px-3 py-2 text-center text-sm font-bold ${job.phone ? "bg-forest text-white" : "pointer-events-none bg-content/5 text-content/65"}`}><PhoneIcon className="mx-auto mb-0.5 size-5" />Call</a>
       <a href={`https://maps.google.com/?q=${encodeURIComponent(`${job.address}, ${job.city}`)}`} target="_blank" className="min-h-11 rounded-xl bg-ink px-3 py-2 text-center text-sm font-bold text-white"><MapPinIcon className="mx-auto mb-0.5 size-5" />Map</a>
-      <Link href={`/jobs/${job.jobId}`} className="min-h-11 rounded-xl bg-lime px-3 py-2 text-center text-sm font-bold text-ink"><CheckCircleIcon className="mx-auto mb-0.5 size-5" />Open</Link>
+      <Link href={`/jobs/${job.jobId}`} className="min-h-11 rounded-xl bg-lime px-3 py-2 text-center text-sm font-bold text-ink"><CheckCircleIcon className="mx-auto mb-0.5 size-5" />Open job</Link>
     </div>
   </div>;
 }
@@ -116,7 +117,7 @@ function ActionRow({ item }: { item: TodayAction }) {
     </div>
     <div className="mt-3 grid grid-cols-2 gap-2">
       <Link href={item.href} className="min-h-11 rounded-xl bg-forest px-3 py-2 text-center text-sm font-bold text-white">{item.actionLabel}</Link>
-      <Link href={`/jobs/${item.job.jobId}`} className="min-h-11 rounded-xl border border-content/10 bg-surface px-3 py-2 text-center text-sm font-bold text-content">Open Job</Link>
+      {item.href !== `/jobs/${item.job.jobId}` && <Link href={`/jobs/${item.job.jobId}`} className="min-h-11 rounded-xl border border-content/10 bg-surface px-3 py-2 text-center text-sm font-bold text-content">Open job</Link>}
     </div>
   </div>;
 }
@@ -129,22 +130,22 @@ function FieldUpdateRow({ job, entry }: { job: Job; entry: JobActivity }) {
   </Link>;
 }
 
-function buildTodayActions(jobs: Job[]): TodayAction[] {
-  return jobs.flatMap((job) => todayIssues(job).map((issue, index) => ({
+function buildTodayActions(jobs: Job[], canManageJob: boolean): TodayAction[] {
+  return jobs.flatMap((job) => todayIssues(job, canManageJob).map((issue, index) => ({
     id: `${job.jobId}-${issue.title}-${index}`,
     job,
     ...issue,
   }))).sort((a, b) => a.rank - b.rank || priorityRank(a.job.priority) - priorityRank(b.job.priority));
 }
 
-function todayIssues(job: Job): Omit<TodayAction, "id" | "job">[] {
+function todayIssues(job: Job, canManageJob: boolean): Omit<TodayAction, "id" | "job">[] {
   const issues: Omit<TodayAction, "id" | "job">[] = [];
   const assigned = Boolean(job.fullCrew || job.assignedEmployeeIds?.length || (job.assignedCrew && job.assignedCrew !== "Unassigned"));
   const parts = openParts(job);
-  if (!assigned) issues.push({ title: "Assign today’s work", detail: "This job is due today but has no assigned crew.", href: `/jobs/${job.jobId}/edit`, actionLabel: "Assign", rank: 0 });
-  if (job.status === "New" || job.status === "Scheduled") issues.push({ title: "Start or update status", detail: `${job.status} job is on today’s schedule.`, href: `/jobs/${job.jobId}`, actionLabel: "Open Job", rank: 1 });
+  if (!assigned && canManageJob) issues.push({ title: "Assign today’s work", detail: "This job is due today but has no assigned crew.", href: `/jobs/${job.jobId}/edit`, actionLabel: "Assign", rank: 0 });
+  if (job.status === "New" || job.status === "Scheduled") issues.push({ title: "Start or update status", detail: `${job.status} job is on today’s schedule.`, href: `/jobs/${job.jobId}`, actionLabel: "Open job", rank: 1 });
   if (job.status === "Waiting on Parts" || parts.length > 0) issues.push({ title: "Parts update", detail: parts.length ? `${parts.length} open optional part request${parts.length === 1 ? "" : "s"}.` : "Job status is waiting on parts.", href: `/jobs/${job.jobId}#parts-needed`, actionLabel: "Review Parts", rank: 2 });
-  if (job.status === "Needs Inspection") issues.push({ title: "Review required today", detail: "Job is waiting for manager review.", href: `/jobs/${job.jobId}`, actionLabel: "Review", rank: 3 });
+  if (canManageJob && job.status === "Needs Inspection") issues.push({ title: "Review required today", detail: "Job is waiting for manager review.", href: `/jobs/${job.jobId}`, actionLabel: "Review", rank: 3 });
   if (job.status === "Complete" && (!(job.afterPhotos || []).length || !job.completionNotes?.trim())) issues.push({ title: "Finish job needs proof", detail: "Completion notes or after photos are missing.", href: `/jobs/${job.jobId}#complete-job`, actionLabel: "Finish job", rank: 4 });
   const etaNeeded = (job.activityLog || []).some((entry) => entry.notify && !entry.resolvedAt && entry.followUpDueDate === new Date().toLocaleDateString("en-CA") && /eta|arrival|on the way|customer/i.test(entry.message));
   if (etaNeeded) issues.push({ title: "Customer ETA needed", detail: "A customer-facing follow-up is due today.", href: `/jobs/${job.jobId}#operations`, actionLabel: "Open Note", rank: 5 });
@@ -160,10 +161,10 @@ function nextAction(job: Job) {
   return "Next: open job";
 }
 
-function SectionHeader({ title, subtitle, href }: { title: string; subtitle: string; href: string }) {
+function SectionHeader({ title, subtitle, href, linkLabel }: { title: string; subtitle: string; href?: string; linkLabel: string }) {
   return <div className="flex items-center justify-between gap-3 bg-sand p-4">
     <div><h2 className="text-lg font-bold">{title}</h2><p className="text-sm font-semibold text-content/65">{subtitle}</p></div>
-    <Link href={href} className="text-sm font-bold text-accent">View</Link>
+    {href && <Link href={href} className="text-sm font-bold text-accent">{linkLabel}</Link>}
   </div>;
 }
 

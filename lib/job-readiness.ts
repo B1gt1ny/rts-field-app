@@ -16,7 +16,7 @@ export type IntakeCompleteness = {
 };
 
 export type CorrectionCategory = "Photos" | "Paperwork" | "Checklist" | "Notes";
-export const billingBoardStates = ["Not Ready", "Ready to Invoice", "Invoiced", "Paid / Complete"] as const;
+export const billingBoardStates = ["Not Ready", "Ready to Invoice", "With billing", "Invoice sent", "Paid / Complete"] as const;
 export type BillingBoardState = typeof billingBoardStates[number];
 
 export const correctionCategories: CorrectionCategory[] = ["Photos", "Paperwork", "Checklist", "Notes"];
@@ -171,7 +171,8 @@ export function isReadyForBilling(job: Job) {
 
 export function billingBoardState(job: Job): BillingBoardState {
   if (job.status === "Paid" || job.invoiceStatus === "Paid") return "Paid / Complete";
-  if (job.status === "Billed" || ["Sent to Billing", "Sent"].includes(job.invoiceStatus)) return "Invoiced";
+  if (job.status === "Billed" || job.invoiceStatus === "Sent") return "Invoice sent";
+  if (job.invoiceStatus === "Sent to Billing") return "With billing";
   if (isReadyForBilling(job)) return "Ready to Invoice";
   return "Not Ready";
 }
@@ -199,7 +200,7 @@ export function paymentFollowUpFor(job: Job, today = startOfToday()): PaymentFol
 }
 
 export function paymentFollowUpForBilling(job: Job, today = startOfToday()): PaymentFollowUp | null {
-  if (billingBoardState(job) !== "Invoiced" || job.status === "Paid" || job.invoiceStatus === "Paid" || job.paidDate) return null;
+  if (billingBoardState(job) !== "Invoice sent" || job.status === "Paid" || job.invoiceStatus === "Paid" || job.paidDate) return null;
   return paymentFollowUpFor(job, today);
 }
 

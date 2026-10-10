@@ -46,6 +46,7 @@ export function WorkOrderImport() {
   const [draftStatus, setDraftStatus] = useState("");
   const [copied, setCopied] = useState(false);
   const [extractionReady, setExtractionReady] = useState(false);
+  const [extractionConsent, setExtractionConsent] = useState(false);
   const [lastExtractionFailed, setLastExtractionFailed] = useState(false);
   const importDraftKey = accountDraftKey(user?.id, "import");
   const supportedFileTypes = new Set(["application/pdf", "image/jpeg", "image/png", "image/webp"]);
@@ -101,6 +102,7 @@ export function WorkOrderImport() {
 
   function restoreDraft() {
     if (!savedDraft) return;
+    setExtractionConsent(false);
     setDraft(savedDraft.draft);
     setFile(savedDraft.file || null);
     setSavedDraft(null);
@@ -117,6 +119,7 @@ export function WorkOrderImport() {
 
   async function onFileSelected(selected: File | undefined) {
     if (!selected) return;
+    setExtractionConsent(false);
     setError("");
     if (!supportedFileTypes.has(selected.type)) { setError("Upload a PDF, JPG, PNG, or WEBP work-order file."); return; }
     let uploaded: WorkOrderFile;
@@ -143,9 +146,12 @@ export function WorkOrderImport() {
   }
 
   async function copyImportSummary() {
-    await navigator.clipboard?.writeText(buildImportSummary(draft, review.score, file, workOrderText, lastExtractionFailed));
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 2200);
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
+      await navigator.clipboard.writeText(buildImportSummary(draft, review.score, file, workOrderText, lastExtractionFailed));
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2200);
+    } catch { setCopied(false); setError("Could not copy the summary. Use the reviewed fields below or try again."); }
   }
 
   function continueToJobForm(proposal: AIWorkOrderImport) {
@@ -157,9 +163,10 @@ export function WorkOrderImport() {
 
   async function extractWorkOrder() {
     if (!file) { setError("Upload a work-order PDF or image before extracting."); return; }
+    if (!extractionConsent) { setError("Allow this work order to be sent to OpenAI, or enter the job manually."); return; }
     setExtracting(true); setError(""); setLastExtractionFailed(false);
     try {
-      const response = await authFetch("/api/work-order-extract", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ file }) });
+      const response = await authFetch("/api/work-order-extract", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ file, consentToOpenAI: true }) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "The work order could not be extracted.");
       continueToJobForm(result.proposal as AIWorkOrderImport);
@@ -189,11 +196,15 @@ export function WorkOrderImport() {
       <label className="flex min-h-32 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-content/15 bg-sand p-4 text-center">
         <DocumentTextIcon className="mb-2 size-8 text-accent" />
         <span className="font-bold">{file ? file.fileName : "Tap to upload work order"}</span>
-        <span className="mt-1 text-xs font-semibold text-content/65">PDF, JPG, PNG, or WEBP. Files stay private until you choose Extract.</span>
-        <input type="file" className="hidden" accept="application/pdf,image/jpeg,image/png,image/webp" onChange={(event) => onFileSelected(event.target.files?.[0])} />
+        <span className="mt-1 text-xs font-semibold text-content/65">PDF, JPG, PNG, or WEBP. Uploads are saved in RTS private storage. AI extraction is optional.</span>
+        <input type="file" className="hidden" disabled={extracting} accept="application/pdf,image/jpeg,image/png,image/webp" onChange={(event) => onFileSelected(event.target.files?.[0])} />
       </label>
       {file && <div className="mt-3 rounded-xl bg-surface p-3 text-sm font-semibold text-content/65">Saved with profile: {file.fileName} · {(file.fileSize / 1024).toFixed(1)} KB</div>}
-      <button type="button" onClick={extractWorkOrder} disabled={!file || extracting || !extractionReady} className="btn-primary mt-3 w-full disabled:opacity-50">{extracting ? "Extracting…" : "Extract to preview"}</button>
+      {file && <label className="mt-3 flex items-start gap-3 rounded-xl bg-sand p-3 text-sm">
+        <input type="checkbox" className="mt-1 size-5 shrink-0 accent-forest" checked={extractionConsent} disabled={extracting} onChange={(event) => setExtractionConsent(event.target.checked)} />
+        <span>I allow RTS to send this work-order file, including any customer contact, address and job details it contains, to OpenAI to suggest job fields. I can enter the job manually instead.</span>
+      </label>}
+      <button type="button" onClick={extractWorkOrder} disabled={!file || extracting || !extractionReady || !extractionConsent} className="btn-primary mt-3 w-full disabled:opacity-50">{extracting ? "Extracting…" : "Extract with OpenAI"}</button>
       <div className="mt-4">
         <div className="flex items-center justify-between gap-3">
           <label className="label">Work order text</label>
@@ -210,9 +221,9 @@ export function WorkOrderImport() {
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="font-bold">AI extraction status</h2>
-            <p className="mt-1 text-sm text-content/65">True photo/PDF extraction is ready to plug in after an OpenAI API key is connected. For now, pasted text parsing and file storage are working.</p>
+            <p className="mt-1 text-sm text-content/65">{extractionReady ? "OpenAI extraction is available with your permission. Review suggested fields before saving the job." : "AI extraction is unavailable. Enter the job manually or paste work-order text below."}</p>
           </div>
-          <span className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wide ${extractionReady ? "bg-forest text-white" : "bg-orange-100 text-orange-800"}`}>{extractionReady ? "Key connected" : "Key needed"}</span>
+          <span className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wide ${extractionReady ? "bg-forest text-white" : "bg-orange-100 text-orange-800"}`}>{extractionReady ? "Available" : "Manual entry"}</span>
         </div>
       </div>
     </section>

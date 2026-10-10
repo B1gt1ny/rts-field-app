@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { KeyIcon, UserCircleIcon } from "@heroicons/react/24/outline";
 import { useAuthUser } from "./AuthGate";
 import { authFetch } from "@/lib/client-auth";
@@ -45,6 +46,11 @@ export function AccountPanel() {
 
     {message && <p className="rounded-xl border border-forest/20 bg-forest/5 p-3 text-sm font-bold text-accent">{message}</p>}
 
+    <nav aria-label="Account help" className="card flex flex-wrap gap-4 p-4 text-sm font-bold text-accent">
+      <Link href="/support" className="inline-flex min-h-11 items-center">Support</Link>
+      <Link href="/privacy" className="inline-flex min-h-11 items-center">Privacy</Link>
+      <Link href="/account-request" className="inline-flex min-h-11 items-center">Request account or data deletion</Link>
+    </nav>
     <section className="card p-4 sm:p-6">
       <h2 className="mb-3 text-lg font-bold">Profile</h2>
       <div className="grid gap-3 sm:grid-cols-2">

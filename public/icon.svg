@@ -1,4 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="icon-title">
+  <title id="icon-title">RTS Field App</title>
   <rect width="512" height="512" rx="112" fill="#17211c"/>
   <rect x="68" y="72" width="376" height="368" rx="44" fill="#d8ff3e"/>
   <path d="M132 184h248v40H132zm0 74h182v40H132zm0 74h248v40H132z" fill="#17211c"/>

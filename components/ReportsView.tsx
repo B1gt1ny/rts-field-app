@@ -68,7 +68,8 @@ export function ReportsView({ jobs }: { jobs: Job[] }) {
     { label: "Ready to schedule", value: readyToSchedule.length, detail: "Complete intake; no scheduled date", icon: <CalendarDaysIcon />, tone: readyToSchedule.length ? "bg-lime text-ink" : "bg-forest/5 text-accent" },
     { label: "Scheduled", value: scheduled.length, detail: "Active jobs with a scheduled date", icon: <CalendarDaysIcon />, tone: scheduled.length ? "bg-blue-50 text-blue-900" : "bg-forest/5 text-accent" },
     { label: "Ready to invoice", value: billingStates.filter((state) => state === "Ready to Invoice").length, detail: "Current billing readiness", icon: <CheckCircleIcon />, tone: "bg-emerald-100 text-emerald-900" },
-    { label: "Invoiced", value: billingStates.filter((state) => state === "Invoiced").length, detail: "Current billing lifecycle", icon: <BanknotesIcon />, tone: "bg-blue-100 text-blue-900" },
+    { label: "With billing", value: billingStates.filter((state) => state === "With billing").length, detail: "Awaiting invoice creation", icon: <BanknotesIcon />, tone: "bg-blue-50 text-blue-900" },
+    { label: "Invoice sent", value: billingStates.filter((state) => state === "Invoice sent").length, detail: "Current billing lifecycle", icon: <BanknotesIcon />, tone: "bg-blue-100 text-blue-900" },
     { label: "Paid / complete", value: billingStates.filter((state) => state === "Paid / Complete").length, detail: "Payment or completed status recorded", icon: <CheckCircleIcon />, tone: "bg-lime/60 text-ink" },
   ];
 
@@ -149,7 +150,8 @@ export function ReportsView({ jobs }: { jobs: Job[] }) {
       </div>
       <div className="grid gap-3 border-t border-content/5 p-4 sm:grid-cols-3">
         <SnapshotMetric label="Ready to invoice" value={billingStates.filter((state) => state === "Ready to Invoice").length} detail="Current billing readiness" icon={<CheckCircleIcon />} tone="bg-emerald-100 text-emerald-900" />
-        <SnapshotMetric label="Invoiced" value={billingStates.filter((state) => state === "Invoiced").length} detail="Current billing lifecycle" icon={<BanknotesIcon />} tone="bg-blue-100 text-blue-900" />
+        <SnapshotMetric label="With billing" value={billingStates.filter((state) => state === "With billing").length} detail="Awaiting invoice creation" icon={<BanknotesIcon />} tone="bg-blue-50 text-blue-900" />
+        <SnapshotMetric label="Invoice sent" value={billingStates.filter((state) => state === "Invoice sent").length} detail="Current billing lifecycle" icon={<BanknotesIcon />} tone="bg-blue-100 text-blue-900" />
         <SnapshotMetric label="Paid / complete" value={billingStates.filter((state) => state === "Paid / Complete").length} detail="Current payment or completion status" icon={<CheckCircleIcon />} tone="bg-lime/60 text-ink" />
       </div>
     </section>

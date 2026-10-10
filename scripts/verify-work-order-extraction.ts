@@ -141,7 +141,13 @@ async function verifyRoute() {
     console: { warn: () => {} },
     fetch: async (url: string) => { assert.equal(url, "https://api.openai.com/v1/responses"); providerCalls++; return Response.json(providerResponse); },
   });
-  const request = () => new Request("https://fixture.invalid/api/work-order-extract", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ file: { storagePath: "draft/fixture-admin/work-order/fixture.pdf", fileName: "fixture.pdf", fileType: "application/pdf" } }) });
+  const request = (consentToOpenAI: unknown = true) => new Request("https://fixture.invalid/api/work-order-extract", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ consentToOpenAI, file: { storagePath: "draft/fixture-admin/work-order/fixture.pdf", fileName: "fixture.pdf", fileType: "application/pdf" } }) });
+  for (const consent of [null, false, "true", 1, {}]) {
+    assert.equal((await module.exports.POST(request(consent))).status, 400);
+  }
+  assert.equal((await module.exports.POST(new Request("https://fixture.invalid/api/work-order-extract", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ file: {} }) }))).status, 400);
+  assert.equal(storageReads, 0, "Missing or non-boolean consent must not download a file");
+  assert.equal(providerCalls, 0, "Missing or non-boolean consent must never call OpenAI");
   for (let repeat = 0; repeat < 2; repeat++) {
     const result = await module.exports.POST(request());
     assert.equal(result.status, 200);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { roleHomePath } from "@/lib/client-auth";
 import { ShieldCheckIcon } from "@heroicons/react/24/outline";
@@ -50,6 +51,11 @@ export function LoginForm() {
       <label className="mt-4 block"><span className="label">Password</span><input className="field" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
       {message && <p role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-700">{message}</p>}
       <button disabled={loading} className="btn-primary mt-5 w-full">{loading ? "Signing in…" : "Sign In"}</button>
+      <nav aria-label="App information" className="mt-4 flex flex-wrap justify-center gap-x-4 text-sm font-bold text-accent">
+        <Link href="/privacy" className="inline-flex min-h-11 items-center">Privacy</Link>
+        <Link href="/support" className="inline-flex min-h-11 items-center">Support</Link>
+        <Link href="/account-request" className="inline-flex min-h-11 items-center">Account and data requests</Link>
+      </nav>
     </form>
   </div>;
 }

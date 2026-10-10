@@ -12,7 +12,7 @@ import { PriorityBadge, StatusBadge } from "./StatusBadge";
 import { authFetch, jobUpdateBody } from "@/lib/client-auth";
 import { getFactoryCostTotals, hasFactoryCostWork } from "@/lib/factory-costs";
 import { isReceiptBackupMissing } from "@/lib/receipt-backup";
-import { activeCorrectionCategories, billingBlockers, buildCorrectionActivity, checklistProgress, closeoutChecks, correctionCategories, correctionCategoryComplete, correctionResolutionPatch, dispatchBlockers, dispatchReadinessScore, hasOpenParts as trackedPartsOpen, hasActiveCorrections, intakeCompleteness, readinessScore, type CorrectionCategory } from "@/lib/job-readiness";
+import { activeCorrectionCategories, billingBlockers, buildCorrectionActivity, checklistProgress, closeoutChecks, correctionCategories, correctionCategoryComplete, correctionResolutionPatch, dispatchBlockers, dispatchReadinessScore, hasOpenParts as trackedPartsOpen, hasActiveCorrections, intakeCompleteness, isReadyForBilling, readinessScore, type CorrectionCategory } from "@/lib/job-readiness";
 import { useAuthUser } from "./AuthGate";
 import { getTravelState, getWorkSession, hasStructuredTravelArrival, structuredTravelLegs, structuredTravelTotals } from "@/lib/field-activity";
 import { JobContactDetails } from "./JobContactDetails";
@@ -188,9 +188,9 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
         <JobCoverPhoto job={job} isAdmin={user?.role === "Admin"} onSaved={patch => setJob(old => ({ ...old, ...patch }))} />
       </div>
       {canManageJob && <div className="order-2 flex gap-2 lg:order-3 print:hidden">
-        <Link href={`/jobs/${job.jobId}/packet`} className="btn-secondary !px-3 sm:!px-4"><ClipboardDocumentListIcon className="size-5" /><span className="hidden sm:inline">Packet</span></Link>
-        <button type="button" onClick={() => window.print()} className="btn-secondary !px-3 sm:!px-4"><PrinterIcon className="size-5" /><span className="hidden sm:inline">Print</span></button>
-        <Link href={`/jobs/${job.jobId}/edit`} className="btn-secondary !px-3 sm:!px-4"><PencilSquareIcon className="size-5" /><span className="hidden sm:inline">Edit</span></Link>
+        <Link href={`/jobs/${job.jobId}/packet`} aria-label="Open job packet" title="Open job packet" className="btn-secondary !px-3 sm:!px-4"><ClipboardDocumentListIcon className="size-5" /><span className="hidden sm:inline">Packet</span></Link>
+        <button type="button" onClick={() => window.print()} aria-label="Print job" title="Print job" className="btn-secondary !px-3 sm:!px-4"><PrinterIcon className="size-5" /><span className="hidden sm:inline">Print</span></button>
+        <Link href={`/jobs/${job.jobId}/edit`} aria-label="Edit job" title="Edit job" className="btn-secondary !px-3 sm:!px-4"><PencilSquareIcon className="size-5" /><span className="hidden sm:inline">Edit</span></Link>
       </div>}
     </div>
     <JobWorkflowGuide job={job} canManageJob={canManageJob} />
@@ -235,7 +235,7 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
         <TimeLogPanel job={job} saving={saving} onSave={saveJobPatch} />
         {canManageJob && <FactoryCostTrackerPanel job={job} saving={saving} onSave={saveJobPatch} />}
       </WorkspaceSection>
-      <WorkspaceSection id="closeout" title="Finish job" summary={`${readinessScore(job)}% ready for billing`} openSection={openSection} setOpenSection={setOpenSection}>
+      <WorkspaceSection id="closeout" title="Finish job" summary={canManageJob ? (isReadyForBilling(job) ? "Billing ready" : "Closeout needs review") : (job.status === "Needs Inspection" ? "Sent for manager review" : ["Complete", "Billed", "Paid"].includes(job.status) ? "Manager reviewed" : "Document and send for review")} openSection={openSection} setOpenSection={setOpenSection}>
         <GuidedCloseoutPanel job={job} canManageJob={canManageJob} />
         {canManageJob && <CloseoutQualityPanel job={job} />}
         {canManageJob && <ManagerCorrectionPanel job={job} saving={saving} onSave={saveJobPatch} />}
@@ -594,7 +594,7 @@ type ProgressState = "complete" | "current" | "upcoming" | "neutral";
 function JobWorkflowGuide({ job, canManageJob }: { job: Job; canManageJob: boolean }) {
   const primaryAction = getPrimaryJobAction(job, canManageJob);
   const moreActions = getMoreJobActions(job, canManageJob);
-  const progressSteps = getJobProgressSteps(job);
+  const progressSteps = getJobProgressSteps(job, canManageJob);
 
   return <section className="card mb-5 overflow-hidden print:hidden">
     <div className="p-4">
@@ -629,12 +629,11 @@ function JobWorkflowGuide({ job, canManageJob }: { job: Job; canManageJob: boole
 }
 
 function getPrimaryJobAction(job: Job, canManageJob: boolean): JobAction {
-  const openParts = hasOpenParts(job);
   const status = job.status;
-  if (openParts || status === "Waiting on Parts") return { label: "Review Parts", detail: "Parts are blocking or need a status update.", href: "#parts-needed", icon: <WrenchScrewdriverIcon /> };
-  if (status === "Needs Inspection") return { label: "Review Closeout", detail: "Field work is ready for manager review.", href: "#closeout", icon: <CheckCircleIcon /> };
+  if (status === "Waiting on Parts") return { label: "Review Parts", detail: "This job is marked as waiting on parts.", href: "#parts-needed", icon: <WrenchScrewdriverIcon /> };
+  if (status === "Needs Inspection") return { label: canManageJob ? "Review Closeout" : "Sent for manager review", detail: "Field work is with the office for review.", href: "#closeout", icon: <CheckCircleIcon /> };
   if (["Complete", "Billed", "Paid"].includes(status)) {
-    if (canManageJob && billingBlockers(job).length === 0) return { label: "Open Billing", detail: "Closeout looks ready for invoice handoff.", href: "#billing-handoff", icon: <BanknotesIcon /> };
+    if (canManageJob && status === "Complete" && isReadyForBilling(job)) return { label: "Open Billing", detail: "Closeout looks ready for invoice handoff.", href: "#billing-handoff", icon: <BanknotesIcon /> };
     return { label: "Open Packet", detail: "Review job proof, paperwork, and closeout.", href: `/jobs/${job.jobId}/packet`, icon: <ClipboardDocumentListIcon /> };
   }
   if (status === "In Progress") {
@@ -662,15 +661,15 @@ function getMoreJobActions(job: Job, canManageJob: boolean): JobAction[] {
     { href: "#receipts", label: "Receipts", icon: <ReceiptPercentIcon /> },
     { href: "#parts-needed", label: "Parts", icon: <WrenchScrewdriverIcon /> },
     { href: "#time-log", label: "Time Log", icon: <ClockIcon /> },
-    { href: "#complete-job", label: "Mark Complete", icon: <CheckCircleIcon /> },
+    { href: "#complete-job", label: canManageJob ? "Mark Complete" : "Finish & send for review", icon: <CheckCircleIcon /> },
     { href: "#signoffs", label: "Sign-off", icon: <CheckCircleIcon /> },
     { href: "#scheduling", label: "Calendar", icon: <CalendarDaysIcon /> },
-    { href: "#companycam", label: "CompanyCam", icon: <CameraIcon /> },
+    canManageJob ? { href: "#companycam", label: "CompanyCam", icon: <CameraIcon /> } : undefined,
     canManageJob ? { href: "#billing-handoff", label: "Billing", icon: <BanknotesIcon /> } : undefined,
   ].filter(Boolean) as JobAction[];
 }
 
-function getJobProgressSteps(job: Job): Array<{ label: string; href: string; state: ProgressState }> {
+function getJobProgressSteps(job: Job, canManageJob: boolean): Array<{ label: string; href: string; state: ProgressState }> {
   const checklist = checklistProgress(job).items;
   const checklistDone = (label: string) => checklist.some((item) => item.label === label && item.complete);
   const started = ["In Progress", "Waiting on Parts", "Needs Inspection", "Complete", "Billed", "Paid"].includes(job.status) || (job.timeEntries || []).some((entry) => ["Arrived", "Work started"].includes(entry.type));
@@ -680,18 +679,21 @@ function getJobProgressSteps(job: Job): Array<{ label: string; href: string; sta
   const afterDone = (job.afterPhotos || []).length > 0 || checklistDone("After photos taken");
   const paperworkDone = (job.paperworkItems || defaultPaperwork(job)).some((item) => item.status === "Collected" || item.status === "Submitted");
   const signoffDone = (job.signoffs || []).length > 0;
-  const billingDone = ["Complete", "Billed", "Paid"].includes(job.status) || ["Ready", "Sent to Billing", "Sent", "Paid"].includes(job.invoiceStatus);
+  const managerApproved = ["Complete", "Billed", "Paid"].includes(job.status);
   const contactDone = job.activityLog?.some((entry) => entry.type === "Customer" || entry.type === "Source") || checklistDone("Customer/source notified");
   const facts = [
     { label: "Contact", href: "#communication-handoff", done: Boolean(contactDone), known: Boolean(job.phone || contactDone) },
     { label: "Arrive / Start", href: "#time-log", done: started, known: true },
     { label: "Before Photos", href: "#photos", done: beforeDone, known: true },
     { label: "Work / Checklist", href: "#checklist", done: workDone, known: true },
-    { label: "Progress / Parts", href: "#parts-needed", done: partsDone, known: (job.partsItems || []).length > 0 || Boolean(job.partsNeeded) || hasOpenParts(job) },
+    { label: job.status === "Waiting on Parts" ? "Parts needed for work" : "Parts follow-up (optional)", href: "#parts-needed", done: partsDone, known: job.status === "Waiting on Parts" },
     { label: "After Photos", href: "#photos", done: afterDone, known: true },
     { label: "Paperwork", href: "#paperwork", done: paperworkDone, known: true },
     { label: "Sign-off", href: "#signoffs", done: signoffDone, known: true },
-    { label: "Review / Billing", href: "#billing-handoff", done: billingDone, known: true },
+    ...(canManageJob ? [
+      { label: "Manager approved", href: "#closeout", done: managerApproved, known: true },
+      { label: job.status === "Paid" || job.invoiceStatus === "Paid" ? "Paid" : job.status === "Billed" || job.invoiceStatus === "Sent" ? "Invoice sent" : "Billing ready", href: "#billing-handoff", done: job.status === "Paid" || job.invoiceStatus === "Paid" || job.status === "Billed" || job.invoiceStatus === "Sent" || isReadyForBilling(job), known: true },
+    ] : [{ label: managerApproved ? "Manager reviewed" : "Sent for manager review", href: "#complete-job", done: job.status === "Needs Inspection" || managerApproved, known: true }]),
   ];
   const firstOpen = facts.findIndex((step) => step.known && !step.done);
   return facts.map((step, index) => ({
@@ -715,15 +717,35 @@ function WorkflowAction({ action }: { action: JobAction }) {
 }
 
 function QuickShareAction({ job, compact = false }: { job: Job; compact?: boolean }) {
+  const [message, setMessage] = useState("");
+  const [fallback, setFallback] = useState("");
   async function share() {
     const text = buildFieldHandoff(job);
-    if (navigator.share) {
-      await navigator.share({ title: `${job.jobId} — ${job.customerName}`, text }).catch(() => undefined);
-      return;
+    setMessage("");
+    setFallback("");
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: `${job.jobId} — ${job.customerName}`, text });
+        setMessage("Job shared.");
+      } else {
+        if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
+        await navigator.clipboard.writeText(text);
+        setMessage("Job summary copied.");
+      }
+    } catch (caught) {
+      if (caught instanceof Error && caught.name === "AbortError") {
+        setMessage("Share cancelled.");
+      } else {
+        setMessage("Could not share or copy. Retry, or select and copy the summary below.");
+        setFallback(text);
+      }
     }
-    await navigator.clipboard.writeText(text).catch(() => undefined);
   }
-  return <button type="button" onClick={share} className={`flex items-center justify-center gap-2 rounded-xl border border-content/10 bg-surface px-3 py-2 text-center font-bold text-content active:scale-[.98] ${compact ? "min-h-14 text-sm" : "min-h-20 flex-col text-xs"}`}><span className="text-accent [&>svg]:size-5"><ShareIcon /></span>Share Job</button>;
+  return <div>
+    <button type="button" onClick={share} className={`flex w-full items-center justify-center gap-2 rounded-xl border border-content/10 bg-surface px-3 py-2 text-center font-bold text-content active:scale-[.98] ${compact ? "min-h-14 text-sm" : "min-h-20 flex-col text-xs"}`}><span className="text-accent [&>svg]:size-5"><ShareIcon /></span>Share Job</button>
+    {message && <p role="status" className="mt-2 text-sm font-semibold text-content/75">{message}</p>}
+    {fallback && <label className="mt-2 block text-sm font-bold">Job summary<textarea readOnly value={fallback} onFocus={event => event.target.select()} className="field mt-1 min-h-40" /></label>}
+  </div>;
 }
 
 function FieldWorkspace({ job, companyCam }: { job: Job; companyCam: CompanyCamState }) {
@@ -871,6 +893,17 @@ function CommunicationHandoffPanel({ job, saving, onSave }: { job: Job; saving: 
     }
   }
 
+  async function shareTemplate(template: typeof templates[number]) {
+    setMessage("");
+    if (!navigator.share) { await copyTemplate(template.key, template.text); return; }
+    try {
+      await navigator.share({ title: `${job.jobId} — ${job.customerName}`, text: template.text });
+      setMessage("Message shared.");
+    } catch (caught) {
+      setMessage(caught instanceof Error && caught.name === "AbortError" ? "Share cancelled." : "Share did not work. Retry, or select and copy the message above.");
+    }
+  }
+
   async function logNotified(template: typeof templates[number]) {
     setMessage("");
     const entry: JobActivity = {
@@ -911,7 +944,7 @@ function CommunicationHandoffPanel({ job, saving, onSave }: { job: Job; saving: 
           <button type="button" onClick={() => copyTemplate(template.key, template.text)} className="min-h-11 rounded-xl bg-forest px-3 py-2 text-sm font-bold text-white">{copiedKey === template.key ? "Copied" : "Copy"}</button>
           {template.href
             ? <a href={template.href} className="min-h-11 rounded-xl border border-content/10 bg-surface px-3 py-2 text-center text-sm font-bold text-content">{template.hrefLabel || "Open"}</a>
-            : <button type="button" onClick={() => shareProfile(job, template.text)} className="min-h-11 rounded-xl border border-content/10 bg-surface px-3 py-2 text-sm font-bold text-content">Share</button>}
+            : <button type="button" onClick={() => shareTemplate(template)} className="min-h-11 rounded-xl border border-content/10 bg-surface px-3 py-2 text-sm font-bold text-content">Share</button>}
           <button type="button" disabled={saving} onClick={() => logNotified(template)} className="col-span-2 min-h-11 rounded-xl bg-lime px-3 py-2 text-sm font-bold text-ink disabled:opacity-50">{saving ? "Saving…" : "Log Notified"}</button>
         </div>
       </div>)}
@@ -1736,6 +1769,8 @@ function BillingHandoffPanel({ job, saving, onSave }: { job: Job; saving: boolea
   const factoryTotal = job.source === "Factory" ? factoryCosts.grandTotal : 0;
   const receiptBackupMissing = isReceiptBackupMissing(job);
   const [copied, setCopied] = useState(false);
+  const [copyMessage, setCopyMessage] = useState("");
+  const [copyFallback, setCopyFallback] = useState("");
 
   async function handoff(invoiceStatus: string, message: string) {
     await onSave({
@@ -1788,9 +1823,19 @@ function BillingHandoffPanel({ job, saving, onSave }: { job: Job; saving: boolea
       `Completion notes: ${job.completionNotes || "Missing"}`,
       blockers.length ? `Blockers: ${blockers.map((blocker) => blocker.name).join(", ")}` : "Blockers: None",
     ].join("\n");
-    await navigator.clipboard?.writeText(summary);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 2200);
+    setCopied(false);
+    setCopyMessage("");
+    setCopyFallback("");
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
+      await navigator.clipboard.writeText(summary);
+      setCopied(true);
+      setCopyMessage("Billing summary copied.");
+      window.setTimeout(() => setCopied(false), 2200);
+    } catch {
+      setCopyMessage("Copy did not work. Retry, or select and copy the summary below.");
+      setCopyFallback(summary);
+    }
   }
 
   return <section id="billing-handoff" className="card p-4 sm:p-6">
@@ -1801,6 +1846,8 @@ function BillingHandoffPanel({ job, saving, onSave }: { job: Job; saving: boolea
         <p className="text-sm text-content/65">One-tap office status for invoice work. This does not create an Invoice Simple invoice yet.</p>
       </div>
     </div>
+    {copyMessage && <p role="status" className="mb-3 text-sm font-semibold">{copyMessage}</p>}
+    {copyFallback && <label className="mb-3 block text-sm font-bold">Billing summary<textarea readOnly value={copyFallback} onFocus={event => event.target.select()} className="field mt-1 min-h-56" /></label>}
     <ContractorInvoiceDataSummary job={job} />
     <div className="mb-3 grid gap-3 sm:grid-cols-4">
       <MiniMetric label="Closeout score" value={`${score}%`} icon={<CheckCircleIcon />} />
@@ -1831,8 +1878,8 @@ function BillingHandoffPanel({ job, saving, onSave }: { job: Job; saving: boolea
     <div className="grid gap-2 sm:grid-cols-3">
       <button type="button" disabled={saving || blockers.length > 0} onClick={() => handoff("Ready", "Billing handoff: marked Ready for Invoice.")} className="min-h-12 rounded-xl bg-forest px-4 py-3 font-bold text-white disabled:opacity-50">Ready for Invoice</button>
       <button type="button" disabled={saving} onClick={() => handoff("Needs more info", "Billing handoff: needs more information before invoice.")} className="min-h-12 rounded-xl border-2 border-orange-200 bg-orange-50 px-4 py-3 font-bold text-orange-900 disabled:opacity-50">Needs More Info</button>
-      <button type="button" disabled={saving || blockers.length > 0 || job.invoiceStatus !== "Ready"} onClick={() => handoff("Sent to Billing", "Billing handoff: sent to billing queue.")} className="min-h-12 rounded-xl border-2 border-content/10 bg-surface px-4 py-3 font-bold disabled:opacity-50">Sent to Billing</button>
-      <button type="button" disabled={saving || blockers.length > 0 || !["Sent to Billing", "Ready", "Draft"].includes(job.invoiceStatus)} onClick={() => handoffWithJobPatch("Sent", "Billing handoff: invoice sent to customer.", { status: job.status === "Complete" ? "Billed" : job.status })} className="min-h-12 rounded-xl border-2 border-blue-200 bg-blue-50 px-4 py-3 font-bold text-blue-900 disabled:opacity-50">Invoice Sent</button>
+      <button type="button" disabled={saving || blockers.length > 0 || job.invoiceStatus !== "Ready"} onClick={() => handoff("Sent to Billing", "Billing handoff: sent to billing queue.")} className="min-h-12 rounded-xl border-2 border-content/10 bg-surface px-4 py-3 font-bold disabled:opacity-50">Send to billing</button>
+      <button type="button" disabled={saving || blockers.length > 0 || !["Sent to Billing", "Ready", "Draft"].includes(job.invoiceStatus)} onClick={() => handoffWithJobPatch("Sent", "Billing handoff: invoice sent to customer.", { status: job.status === "Complete" ? "Billed" : job.status })} className="min-h-12 rounded-xl border-2 border-blue-200 bg-blue-50 px-4 py-3 font-bold text-blue-900 disabled:opacity-50">Invoice sent</button>
       <button type="button" disabled={saving} onClick={() => handoff("On hold", "Billing handoff: invoice placed on hold for follow-up.")} className="min-h-12 rounded-xl border-2 border-amber-200 bg-amber-50 px-4 py-3 font-bold text-amber-900 disabled:opacity-50">On Hold</button>
       <button type="button" disabled={saving || blockers.length > 0 || (!["Sent", "Paid"].includes(job.invoiceStatus) && job.status !== "Billed")} onClick={() => handoffWithJobPatch("Paid", "Billing handoff: invoice marked paid.", { status: "Paid" })} className="min-h-12 rounded-xl bg-lime px-4 py-3 font-bold text-ink disabled:opacity-50">Paid</button>
     </div>
@@ -2581,14 +2628,29 @@ function TimeLogPanel({ job, saving, onSave }: { job: Job; saving: boolean; onSa
 
 function ProfileSheetPanel({ job }: { job: Job }) {
   const [copied, setCopied] = useState(false);
+  const [message, setMessage] = useState("");
   const text = buildProfileSheet(job);
   async function copyProfile() {
+    setCopied(false);
+    setMessage("");
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
+      setMessage("Profile sheet copied.");
       window.setTimeout(() => setCopied(false), 2500);
     } catch {
-      setCopied(false);
+      setMessage("Copy did not work. Retry, or select and copy the profile sheet above.");
+    }
+  }
+
+  async function shareProfile() {
+    setMessage("");
+    if (!navigator.share) { await copyProfile(); return; }
+    try {
+      await navigator.share({ title: `${job.jobId} — ${job.customerName}`, text });
+      setMessage("Profile sheet shared.");
+    } catch (caught) {
+      setMessage(caught instanceof Error && caught.name === "AbortError" ? "Share cancelled." : "Share did not work. Retry, or select and copy the profile sheet above.");
     }
   }
 
@@ -2601,21 +2663,15 @@ function ProfileSheetPanel({ job }: { job: Job }) {
       </div>
     </div>
     <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-2xl bg-sand p-4 text-sm font-semibold leading-relaxed text-content/70">{text}</pre>
+    {message && <p role="status" className="mt-2 text-sm font-semibold">{message}</p>}
     <div className="mt-3 grid gap-2 sm:grid-cols-2 print:hidden">
       <button type="button" onClick={copyProfile} className="min-h-12 rounded-xl bg-forest px-4 py-3 font-bold text-white">{copied ? "Copied" : "Copy Profile Sheet"}</button>
-      <button type="button" onClick={() => shareProfile(job, text)} className="min-h-12 rounded-xl border-2 border-content/10 bg-surface px-4 py-3 font-bold">Share Profile</button>
+      <button type="button" onClick={shareProfile} className="min-h-12 rounded-xl border-2 border-content/10 bg-surface px-4 py-3 font-bold">Share Profile</button>
       <button type="button" onClick={() => window.print()} className="min-h-12 rounded-xl border-2 border-content/10 bg-surface px-4 py-3 font-bold sm:col-span-2">Print Profile</button>
     </div>
   </section>;
 }
 
-async function shareProfile(job: Job, text: string) {
-  if (navigator.share) {
-    await navigator.share({ title: `${job.jobId} — ${job.customerName}`, text }).catch(() => undefined);
-    return;
-  }
-  await navigator.clipboard.writeText(text).catch(() => undefined);
-}
 
 function buildCustomerText(job: Job) {
   return `Company update for ${job.customerName}: your ${job.jobType || "service"} job is scheduled for ${job.dueDate || "TBD"}. Address: ${job.address}, ${job.city}. Reply here if anything changes.`;

@@ -32,6 +32,8 @@ export function BillingView() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"All" | BillingBoardState>("Ready to Invoice");
   const [copiedJobId, setCopiedJobId] = useState("");
+  const [copyMessage, setCopyMessage] = useState("");
+  const [copyFallback, setCopyFallback] = useState<{ jobId: string; text: string } | null>(null);
 
   useEffect(() => {
     authFetch("/api/jobs").then((response) => response.json()).then((data) => setJobs(Array.isArray(data) ? data : [])).finally(() => setLoading(false));
@@ -39,10 +41,11 @@ export function BillingView() {
 
   const billable = useMemo(() => jobs.filter((job) => ["Complete", "Billed", "Paid"].includes(job.status) || ["Ready", "Needs more info", "Draft", "Sent to Billing", "Sent", "On hold"].includes(job.invoiceStatus)), [jobs]);
   const boardGroups = useMemo(() => Object.fromEntries(billingBoardStates.map((state) => [state, jobs.filter((job) => billingBoardState(job) === state)])) as Record<BillingBoardState, Job[]>, [jobs]);
-  const filtered = filter === "All" ? jobs : boardGroups[filter];
+  const filtered = filter === "All" ? jobs : boardGroups[filter] || [];
   const notReady = boardGroups["Not Ready"].length;
   const readyToInvoice = boardGroups["Ready to Invoice"].length;
-  const invoiced = boardGroups.Invoiced.length;
+  const withBilling = boardGroups["With billing"].length;
+  const invoiced = boardGroups["Invoice sent"].length;
   const paid = boardGroups["Paid / Complete"].length;
   const officeActions = useMemo(() => jobs.flatMap((job) => {
     const action = officeBillingActionFor(job);
@@ -58,7 +61,8 @@ export function BillingView() {
   const lanes = [
     { label: "Not Ready", value: notReady, detail: "Billing blockers open", icon: <ExclamationTriangleIcon />, tone: notReady ? "bg-orange-100 text-orange-900" : "bg-content/5 text-content/65" },
     { label: "Ready to Invoice", value: readyToInvoice, detail: "Cleared by billing readiness", icon: <CheckCircleIcon />, tone: readyToInvoice ? "bg-emerald-100 text-emerald-900" : "bg-content/5 text-content/65" },
-    { label: "Invoiced", value: invoiced, detail: "Sent or in billing", icon: <BanknotesIcon />, tone: invoiced ? "bg-blue-100 text-blue-900" : "bg-content/5 text-content/65" },
+    { label: "With billing", value: withBilling, detail: "Awaiting invoice creation", icon: <ClipboardDocumentListIcon />, tone: withBilling ? "bg-blue-50 text-blue-900" : "bg-content/5 text-content/65" },
+    { label: "Invoice sent", value: invoiced, detail: "Customer invoice recorded as sent", icon: <BanknotesIcon />, tone: invoiced ? "bg-blue-100 text-blue-900" : "bg-content/5 text-content/65" },
     { label: "Paid / Complete", value: paid, detail: "Payment recorded", icon: <ClockIcon />, tone: paid ? "bg-lime/60 text-ink" : "bg-content/5 text-content/65" },
   ];
 
@@ -113,12 +117,23 @@ export function BillingView() {
       `Completion notes: ${job.completionNotes || "Missing"}`,
       blockers.length ? `Blockers: ${blockers.map((blocker) => blocker.label).join(", ")}` : "Blockers: None",
     ].filter(Boolean).join("\n");
-    await navigator.clipboard?.writeText(summary);
-    setCopiedJobId(job.jobId);
-    window.setTimeout(() => setCopiedJobId((current) => current === job.jobId ? "" : current), 2200);
+    setCopiedJobId("");
+    setCopyFallback(null);
+    setCopyMessage("");
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
+      await navigator.clipboard.writeText(summary);
+      setCopiedJobId(job.jobId);
+      setCopyMessage(`Billing summary for ${job.jobId} copied.`);
+      window.setTimeout(() => setCopiedJobId((current) => current === job.jobId ? "" : current), 2200);
+    } catch {
+      setCopyMessage(`Could not copy ${job.jobId}. Retry, or select and copy its summary below.`);
+      setCopyFallback({ jobId: job.jobId, text: summary });
+    }
   }
 
   return <div className="mx-auto max-w-7xl space-y-5">
+    {copyMessage && <p role="status" className="card p-4 text-sm font-semibold">{copyMessage}</p>}
     {saveError && <p role="alert" className="card p-4 text-orange-800">{saveError}</p>}
     <section className="rounded-2xl bg-ink p-5 text-white sm:p-7">
       <div className="flex items-start gap-3">
@@ -140,13 +155,13 @@ export function BillingView() {
         <Link href="/documents" className="min-h-12 rounded-xl bg-lime px-4 py-3 text-center font-bold text-ink">Documents</Link>
         <Link href="/reports" className="min-h-12 rounded-xl bg-white/10 px-4 py-3 text-center font-bold text-white">Reports</Link>
         <a href="/api/reports/export?type=billing-review" className="min-h-12 rounded-xl bg-white/10 px-4 py-3 text-center font-bold text-white">Billing CSV</a>
-        <Link href="/settings" className="min-h-12 rounded-xl bg-white/10 px-4 py-3 text-center font-bold text-white">Invoice settings</Link>
+        {user?.role === "Admin" && <Link href="/settings" className="min-h-12 rounded-xl bg-white/10 px-4 py-3 text-center font-bold text-white">Invoice settings</Link>}
       </div>
     </section>
 
     <section className="space-y-3">
       <div><p className="text-xs font-bold uppercase tracking-widest text-accent">Billing status board</p><h2 className="mt-1 text-xl font-bold">Billing dashboard summary</h2><p className="mt-1 text-sm font-semibold text-content/65">Each count is a current lifecycle group using the shared billing readiness check and existing invoice records.</p></div>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {lanes.map((lane) => <BillingLane key={lane.label} {...lane} onClick={() => setFilter(lane.label as BillingBoardState)} />)}
       </div>
     </section>
@@ -191,7 +206,7 @@ export function BillingView() {
     <section className="card p-3 sm:p-4">
       <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center">
         <p className="text-sm font-bold text-content/65">{loading ? "Loading billing jobs…" : `${filtered.length} jobs in ${filter === "All" ? "all billing states" : filter}`}</p>
-        <AddNewSelect choiceKey="billingState" value={filter} onChange={(event) => setFilter(event.target.value as "All" | BillingBoardState)} className="field !min-h-11 !py-2 text-sm font-bold">
+        <AddNewSelect choiceKey="billingState" value={filter} onChange={(event) => setFilter(event.target.value === "Invoiced" ? "Invoice sent" : event.target.value as "All" | BillingBoardState)} className="field !min-h-11 !py-2 text-sm font-bold">
           <option>All</option>
           {billingBoardStates.map((state) => <option key={state}>{state}</option>)}
         </AddNewSelect>
@@ -237,17 +252,18 @@ export function BillingView() {
         </div>}
         {blockers.length > 0 && <p className="mt-3 rounded-xl bg-orange-50 p-3 text-sm font-bold text-orange-800">Needs review: {blockers.map((blocker) => blocker.label).join(", ")}</p>}
         <div className="mt-3 grid gap-2 sm:grid-cols-4 lg:grid-cols-8">
-          <Link href={`/jobs/${job.jobId}`} className="min-h-11 rounded-xl border border-content/10 bg-surface px-3 py-2 text-center text-sm font-bold text-content">Open Job</Link>
+          <Link href={`/jobs/${job.jobId}`} className="min-h-11 rounded-xl border border-content/10 bg-surface px-3 py-2 text-center text-sm font-bold text-content">Open job</Link>
           <Link href={`/jobs/${job.jobId}/packet`} className="min-h-11 rounded-xl border border-content/10 bg-surface px-3 py-2 text-center text-sm font-bold text-content">Packet</Link>
           <Link href={`/jobs/${job.jobId}#billing-handoff`} className="min-h-11 rounded-xl border border-content/10 bg-surface px-3 py-2 text-center text-sm font-bold text-content">Handoff</Link>
           <button type="button" onClick={() => copyBillingSummary(job)} className="min-h-11 rounded-xl border border-content/10 bg-surface px-3 py-2 text-sm font-bold text-content">{copiedJobId === job.jobId ? "Copied" : "Copy Summary"}</button>
           <button type="button" disabled={blockers.length > 0} onClick={() => updateBilling(job, "Ready", "Billing queue: marked Ready for Invoice.")} className="min-h-11 rounded-xl bg-forest px-3 py-2 text-sm font-bold text-white disabled:opacity-50">Ready</button>
           <button type="button" onClick={() => updateBilling(job, "Needs more info", "Billing queue: marked Needs more info.")} className="min-h-11 rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-sm font-bold text-orange-900">Need Info</button>
-          <button type="button" disabled={blockers.length > 0 || job.invoiceStatus !== "Ready"} onClick={() => updateBilling(job, "Sent to Billing", "Billing queue: sent to billing.")} className="min-h-11 rounded-xl bg-ink px-3 py-2 text-sm font-bold text-white disabled:opacity-50">Sent to Billing</button>
-          <button type="button" disabled={blockers.length > 0 || !["Sent to Billing", "Ready", "Draft"].includes(job.invoiceStatus)} onClick={() => updateBilling(job, "Sent", "Billing queue: invoice sent to customer.", { status: job.status === "Complete" ? "Billed" : job.status })} className="min-h-11 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-bold text-blue-900 disabled:opacity-50">Invoice Sent</button>
+          <button type="button" disabled={blockers.length > 0 || job.invoiceStatus !== "Ready"} onClick={() => updateBilling(job, "Sent to Billing", "Billing queue: sent to billing.")} className="min-h-11 rounded-xl bg-ink px-3 py-2 text-sm font-bold text-white disabled:opacity-50">Send to billing</button>
+          <button type="button" disabled={blockers.length > 0 || !["Sent to Billing", "Ready", "Draft"].includes(job.invoiceStatus)} onClick={() => updateBilling(job, "Sent", "Billing queue: invoice sent to customer.", { status: job.status === "Complete" ? "Billed" : job.status })} className="min-h-11 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-bold text-blue-900 disabled:opacity-50">Invoice sent</button>
           <button type="button" onClick={() => updateBilling(job, "On hold", "Billing queue: invoice placed on hold for follow-up.")} className="min-h-11 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-bold text-amber-900">On Hold</button>
           <button type="button" disabled={blockers.length > 0 || (!["Sent", "Billed", "Paid"].includes(job.invoiceStatus) && job.status !== "Billed")} onClick={() => updateBilling(job, "Paid", "Billing queue: invoice marked paid.", { status: "Paid" })} className="min-h-11 rounded-xl bg-lime px-3 py-2 text-sm font-bold text-ink disabled:opacity-50">Paid</button>
         </div>
+        {copyFallback?.jobId === job.jobId && <label className="mt-3 block text-sm font-bold">Billing summary<textarea readOnly value={copyFallback.text} onFocus={event => event.target.select()} className="field mt-1 min-h-56" /></label>}
         </>;
         })()}
       </div>)}
@@ -276,7 +292,7 @@ function officeBillingActionFor(job: Job): Omit<OfficeBillingAction, "id" | "job
   if (lifecycle === "Ready to Invoice") {
     return { title: "Ready to invoice", reason: "Completion is ready for billing review.", href: `/jobs/${job.jobId}#billing-handoff`, priority: "Normal" };
   }
-  if (lifecycle === "Invoiced" && job.invoiceStatus === "Sent to Billing") {
+  if (lifecycle === "With billing") {
     return { title: "Create invoice", reason: "The closeout packet is in the billing queue for invoice creation.", href: `/jobs/${job.jobId}#billing-handoff`, priority: "Normal" };
   }
   return null;
@@ -291,7 +307,7 @@ function OfficeBillingActionRow({ action }: { action: OfficeBillingAction }) {
     <div className="flex items-center gap-2"><span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${action.priority === "High" ? "bg-orange-100 text-orange-800" : "bg-lime/60 text-ink"}`}>{action.priority}</span><p className="font-bold">{action.title}</p></div>
     <p className="text-sm font-bold text-content/65"><span className="mr-1 text-xs font-bold uppercase tracking-wide text-content/65 md:hidden">Job</span>{action.job.customerName} <span className="text-content/65">· {action.job.jobId}</span></p>
     <p className="text-sm font-semibold text-content/65"><span className="mr-1 text-xs font-bold uppercase tracking-wide text-content/65 md:hidden">Reason</span>{action.reason}</p>
-    <Link href={action.href} className="mt-1 min-h-11 rounded-xl bg-forest px-4 py-2 text-center text-sm font-bold text-white md:mt-0">Open</Link>
+    <Link href={action.href} className="mt-1 min-h-11 rounded-xl bg-forest px-4 py-2 text-center text-sm font-bold text-white md:mt-0">Open job</Link>
   </div>;
 }
 
@@ -308,7 +324,7 @@ function PaymentFollowUpRow({ followUp }: { followUp: PaymentFollowUp }) {
     </div>
     <div className="flex flex-wrap items-center gap-2 sm:justify-end">
       <span className={`rounded-full px-3 py-1 text-xs font-bold ${followUp.pastDue ? "bg-orange-100 text-orange-800" : "bg-sand text-content/65"}`}>{followUp.label}</span>
-      <Link href={`/jobs/${job.jobId}`} className="min-h-11 rounded-xl bg-forest px-4 py-2 text-center text-sm font-bold text-white">Open Job</Link>
+      <Link href={`/jobs/${job.jobId}`} className="min-h-11 rounded-xl bg-forest px-4 py-2 text-center text-sm font-bold text-white">Open job</Link>
     </div>
   </div>;
 }
