@@ -1,5 +1,9 @@
 "use client";
 
+import { useAuthUser } from "./AuthGate";
+
+import { AddNewSelect } from "./AddNewSelect";
+
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { BanknotesIcon, CheckCircleIcon, ClipboardDocumentListIcon, ClockIcon, ExclamationTriangleIcon, ReceiptPercentIcon } from "@heroicons/react/24/outline";
@@ -22,6 +26,7 @@ type OfficeBillingAction = {
 type PaymentFollowUp = NonNullable<ReturnType<typeof paymentFollowUpForBilling>> & { job: Job };
 
 export function BillingView() {
+  const user = useAuthUser();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [saveError, setSaveError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -74,7 +79,7 @@ export function BillingView() {
     };
     setSaveError("");
     try {
-    const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: jobUpdateBody(job, patch) });
+    const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: jobUpdateBody(job, patch, user?.id) });
     const saved = await response.json();
     if (!response.ok) throw new Error(saved.error || "Billing update could not be saved.");
     setJobs((old) => old.map((item) => item.jobId === job.jobId ? { ...item, ...saved } : item));
@@ -186,10 +191,10 @@ export function BillingView() {
     <section className="card p-3 sm:p-4">
       <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center">
         <p className="text-sm font-bold text-content/65">{loading ? "Loading billing jobs…" : `${filtered.length} jobs in ${filter === "All" ? "all billing states" : filter}`}</p>
-        <select value={filter} onChange={(event) => setFilter(event.target.value as "All" | BillingBoardState)} className="field !min-h-11 !py-2 text-sm font-bold">
+        <AddNewSelect choiceKey="billingState" value={filter} onChange={(event) => setFilter(event.target.value as "All" | BillingBoardState)} className="field !min-h-11 !py-2 text-sm font-bold">
           <option>All</option>
           {billingBoardStates.map((state) => <option key={state}>{state}</option>)}
-        </select>
+        </AddNewSelect>
       </div>
     </section>
 

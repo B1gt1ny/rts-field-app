@@ -1,15 +1,18 @@
 "use client";
 
-import { accountDraftKey, removeLegacyDrafts } from "@/lib/client-drafts";
+import { AddNewSelect } from "./AddNewSelect";
+
+import { accountDraftKey, removeLegacyDrafts, sendStoredFieldNote } from "@/lib/client-drafts";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { browserUploadStore, attachPendingUploads, uploadEpoch } from "@/lib/client-uploads";
+import { useEffect, useRef, useState } from "react";
 import { ArrowPathIcon, ArrowTopRightOnSquareIcon, BanknotesIcon, CalendarDaysIcon, CameraIcon, ChatBubbleLeftRightIcon, CheckCircleIcon, CheckIcon, ClipboardDocumentListIcon, ClockIcon, MapPinIcon, PencilSquareIcon, PhoneIcon, PrinterIcon, ReceiptPercentIcon, ShareIcon, UserGroupIcon, WrenchScrewdriverIcon } from "@heroicons/react/24/outline";
 import { defaultFactoryCost, makeChecklist, type BusinessSettings, type CustomerSurvey, type FactoryCostTracker, type FileCategory, type Job, type JobActivity, type PaperworkItem, type PartItem, type ReceiptItem, type SignoffItem, type TimeEntry, type WorkOrderFile } from "@/lib/types";
 import { PriorityBadge, StatusBadge } from "./StatusBadge";
 import { authFetch, jobUpdateBody } from "@/lib/client-auth";
 import { getFactoryCostTotals, hasFactoryCostWork } from "@/lib/factory-costs";
 import { isReceiptBackupMissing } from "@/lib/receipt-backup";
-import { activeCorrectionCategories, billingBlockers, buildCorrectionActivity, checklistProgress, closeoutChecks, correctionCategories, correctionCategoryComplete, correctionResolutionPatch, dispatchBlockers, dispatchReadinessScore, hasActiveCorrections, intakeCompleteness, readinessScore, type CorrectionCategory } from "@/lib/job-readiness";
+import { activeCorrectionCategories, billingBlockers, buildCorrectionActivity, checklistProgress, closeoutChecks, correctionCategories, correctionCategoryComplete, correctionResolutionPatch, dispatchBlockers, dispatchReadinessScore, hasOpenParts as trackedPartsOpen, hasActiveCorrections, intakeCompleteness, readinessScore, type CorrectionCategory } from "@/lib/job-readiness";
 import { useAuthUser } from "./AuthGate";
 import { getTravelState, getWorkSession, hasStructuredTravelArrival, structuredTravelLegs, structuredTravelTotals } from "@/lib/field-activity";
 import { JobContactDetails } from "./JobContactDetails";
@@ -57,16 +60,16 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
   const checklistPercent = checklist.percent;
   const isEmployee = user?.role === "Employee";
   const canManageJob = Boolean(user && user.role !== "Employee");
-  async function saveJobPatch(patch: Partial<Job>) {
+  async function saveJobPatch(patch: Partial<Job>, optimistic = true) {
     setSaving(true);
     setDetailMessage("");
     const next = { ...job, ...patch };
     const correctionPatch = correctionResolutionPatch(job, next);
     const finalNext = { ...next, ...correctionPatch };
     const patchToSave = { ...patch, ...correctionPatch };
-    setJob(finalNext);
+    if (optimistic) setJob(finalNext);
     try {
-      const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: jobUpdateBody(job, patchToSave) });
+      const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: jobUpdateBody(job, patchToSave, user?.id) });
       const saved = await response.json();
       if (!response.ok) {
         if (response.status === 409) {
@@ -143,7 +146,7 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
       activityLog: [activity, ...(job.activityLog || [])].slice(0, 50),
     });
   }
-  async function finishWorkSession() {
+  async function finishWorkSession(completionNotes: string) {
     const session = getWorkSession(job);
     if (!session.active) return;
     const employeeName = user?.employeeName || user?.email || "Field";
@@ -164,9 +167,10 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
       audience: "All",
     };
     await saveJobPatch({
+      ...(completionNotes.trim() ? { completionNotes: completionNotes.trim() } : {}),
       timeEntries: [entry, ...(job.timeEntries || [])].slice(0, 100),
       activityLog: [activity, ...(job.activityLog || [])].slice(0, 50),
-    });
+    }, false);
   }
   return <>
     <div className="mb-5 grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)_auto]">
@@ -206,7 +210,7 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
         <ChecklistPanel job={job} saving={saving} complete={complete} percent={checklistPercent} onToggle={toggle} />
       </WorkspaceSection>
       <WorkspaceSection id="photos" title="Photos" summary={`${photoTotal(job)} saved`} openSection={openSection} setOpenSection={setOpenSection}>
-        <PhotoUploadPanel job={job} saving={saving} onSave={saveJobPatch} />
+        <PhotoUploadPanel job={job} saving={saving} onSave={saveJobPatch} onSynced={setJob} />
         {canManageJob && <details id="companycam" className="scroll-mt-24">
           <summary className="cursor-pointer rounded-xl border border-content/10 bg-surface px-4 py-3 text-lg font-bold">More actions / CompanyCam fallback</summary>
           <div className="mt-4">
@@ -224,7 +228,7 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
         <AdditionalIssuePanel job={job} saving={saving} onSave={saveJobPatch} />
         <CommunicationHandoffPanel job={job} saving={saving} onSave={saveJobPatch} />
         <OperationsPanel job={job} setJob={setJob} mode="notes" />
-        <OfflineDraftPanel job={job} saving={saving} onSave={saveJobPatch} />
+        <OfflineDraftPanel job={job} saving={saving} onSynced={setJob} />
         {job.completionNotes && <section className="card p-4 sm:p-6"><h2 className="mb-2 text-lg font-bold">Completion notes</h2><p className="text-content/65">{job.completionNotes}</p></section>}
       </WorkspaceSection>
       <WorkspaceSection id="time" title="Time" summary={`${job.timeEntries?.length || 0} entries`} openSection={openSection} setOpenSection={setOpenSection}>
@@ -698,7 +702,7 @@ function getJobProgressSteps(job: Job): Array<{ label: string; href: string; sta
 }
 
 function hasOpenParts(job: Job) {
-  return (job.partsItems || []).some((part) => ["Needed", "Ordered", "Picked up"].includes(part.status)) || Boolean(job.partsNeeded?.trim());
+  return trackedPartsOpen(job);
 }
 
 function mapsHref(job: Job) {
@@ -997,7 +1001,7 @@ const photoCategories: { category: NativePhotoCategory; label: string; help: str
   { category: "Receipt", label: "Receipts", help: "Receipt backup photos" },
 ];
 
-function PhotoUploadPanel({ job, saving, onSave }: { job: Job; saving: boolean; onSave: (patch: Partial<Job>) => Promise<Job | undefined> }) {
+function PhotoUploadPanel({ job, saving, onSave, onSynced }: { job: Job; saving: boolean; onSave: (patch: Partial<Job>) => Promise<Job | undefined>; onSynced: (job: Job) => void }) {
   const [selectedCategory, setSelectedCategory] = useState<NativePhotoCategory>("Before");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [pendingUploads, setPendingUploads] = useState<WorkOrderFile[]>([]);
@@ -1005,6 +1009,23 @@ function PhotoUploadPanel({ job, saving, onSave }: { job: Job; saving: boolean; 
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState("");
   const [message, setMessage] = useState("");
+  const user = useAuthUser();
+  const [recovered, setRecovered] = useState(0);
+  const [recoveryReady, setRecoveryReady] = useState(false);
+  const uploadGuard = useRef(false);
+  const photoContext = useRef("");
+  photoContext.current = `${user?.id}:${job.jobId}`;
+  useEffect(() => {
+    let active = true;
+    setRecoveryReady(false);
+    setRecovered(0);
+    setUploading(false);
+    uploadGuard.current = false;
+    if (user?.id) browserUploadStore.list(user.id, job.jobId).then(records => {
+      if (active) { setRecovered(records.length); setRecoveryReady(true); if (records.length) setMessage("Saved photos are ready to retry attaching to this job."); }
+    }).catch(error => { if (active) setMessage(error.message); });
+    return () => { active = false; };
+  }, [user?.id, job.jobId]);
   const gallery = groupJobPhotos(job);
   const proofChecks = [
     { label: "Before photos", complete: (job.beforePhotos || []).length > 0, detail: `${(job.beforePhotos || []).length} uploaded` },
@@ -1016,49 +1037,47 @@ function PhotoUploadPanel({ job, saving, onSave }: { job: Job; saving: boolean; 
   const totalPhotos = photoTotal(job);
 
   function chooseFiles(files: FileList | null) {
-    if (pendingUploads.length) return;
+    if (pendingUploads.length || recovered) return;
     setSelectedFiles(Array.from(files || []).filter((file) => file.type.startsWith("image/")));
     setMessage("");
   }
 
   async function uploadSelectedPhotos() {
-    if (!selectedFiles.length) {
-      setMessage("Choose at least one photo first.");
-      return;
-    }
+    if (uploadGuard.current || !user?.id || !recoveryReady) return;
+    const context = photoContext.current;
+    const epoch = uploadEpoch(user.id);
+    uploadGuard.current = true;
     setUploading(true);
     setMessage("");
-    const uploaded: WorkOrderFile[] = [...pendingUploads];
     try {
-      for (let index = uploaded.length; index < selectedFiles.length; index += 1) {
-        setUploadProgress(`Uploading ${index + 1} of ${selectedFiles.length}`);
-        const prepared = await preparePhotoForUpload(selectedFiles[index]);
-        uploaded.push(await uploadStoredFile(prepared, job.jobId, selectedCategory, caption.trim()));
-        setPendingUploads([...uploaded]);
+      const existing = await browserUploadStore.list(user.id, job.jobId);
+      if (!existing.length) {
+        const preparedRecords = [];
+        for (const original of selectedFiles) {
+          const file = await preparePhotoForUpload(original);
+          preparedRecords.push({ version: 1 as const, epoch, id: crypto.randomUUID(), ownerId: user.id, jobId: job.jobId, category: selectedCategory, caption: caption.trim(), file, fileName: file.name, fileType: file.type });
+        }
+        await browserUploadStore.putBatch(preparedRecords);
       }
-      const patch: Partial<Job> = {
-        workOrderFiles: [...uploaded.filter((file) => !(job.workOrderFiles || []).some((saved) => saved.id === file.id)), ...(job.workOrderFiles || [])],
-        activityLog: addJobActivity(job, `${uploaded.length} ${uploaded.length === 1 ? "photo" : "photos"} uploaded to ${selectedCategory}.`, "Note"),
-      };
-      const legacyBucket = photoCategories.find((item) => item.category === selectedCategory)?.legacyBucket;
-      if (legacyBucket) {
-        const urls = uploaded.map((file) => file.storageUrl || file.dataUrl).filter(Boolean);
-        patch[legacyBucket] = Array.from(new Set([...(job[legacyBucket] || []), ...urls]));
-      }
-      const saved = await onSave(patch);
-      if (!saved) {
-        setMessage("Photos uploaded, but could not be attached to the job. Keep your selection, review the current job and try attaching again.");
-        return;
-      }
+      const pendingCount = (await browserUploadStore.list(user.id, job.jobId)).length;
+      if (photoContext.current !== context || uploadEpoch(user.id) !== epoch) return;
+      setRecovered(pendingCount);
+      const saved = await attachPendingUploads(browserUploadStore, navigator.locks, authFetch, user.id, job.jobId, record => uploadStoredFile(new File([record.file], record.fileName, { type: record.fileType }), record.jobId, record.category, record.caption, record.ownerId));
+      if (photoContext.current !== context || uploadEpoch(user.id) !== epoch) return;
+      onSynced(saved);
+      setRecovered(0);
       setPendingUploads([]);
       setSelectedFiles([]);
       setCaption("");
-      setMessage(`${uploaded.length} ${uploaded.length === 1 ? "photo" : "photos"} uploaded to ${selectedCategory}.`);
+      setMessage("Photos attached to the job.");
     } catch (caught) {
-      setMessage(caught instanceof Error ? caught.message : "Photos could not be uploaded.");
+      if (photoContext.current === context) setMessage(caught instanceof Error ? caught.message : "Photos could not be confirmed. Keep your files and retry.");
     } finally {
-      setUploading(false);
-      setUploadProgress("");
+      if (photoContext.current === context) {
+        uploadGuard.current = false;
+        setUploading(false);
+        setUploadProgress("");
+      }
     }
   }
 
@@ -1105,33 +1124,33 @@ function PhotoUploadPanel({ job, saving, onSave }: { job: Job; saving: boolean; 
     </div>
     <div className="rounded-2xl border border-content/10 bg-sand p-3 sm:p-4">
       <div className="mb-3 grid gap-2 sm:grid-cols-3">
-        <button type="button" disabled={saving || uploading || pendingUploads.length > 0} onClick={() => setSelectedCategory("Before")} className={`min-h-16 rounded-xl p-3 text-left disabled:opacity-50 ${selectedCategory === "Before" ? "bg-forest text-white" : "bg-surface text-content"}`}>
+        <button type="button" disabled={saving || uploading || (pendingUploads.length > 0 || recovered > 0)} onClick={() => setSelectedCategory("Before")} className={`min-h-16 rounded-xl p-3 text-left disabled:opacity-50 ${selectedCategory === "Before" ? "bg-forest text-white" : "bg-surface text-content"}`}>
           <p className="text-xs font-bold uppercase tracking-wide opacity-70">1. Before</p>
           <p className="mt-1 text-sm font-bold">Start photos + serial/VIN</p>
         </button>
-        <button type="button" disabled={saving || uploading || pendingUploads.length > 0} onClick={() => setSelectedCategory("Progress")} className={`min-h-16 rounded-xl p-3 text-left disabled:opacity-50 ${selectedCategory === "Progress" ? "bg-forest text-white" : "bg-surface text-content"}`}>
+        <button type="button" disabled={saving || uploading || (pendingUploads.length > 0 || recovered > 0)} onClick={() => setSelectedCategory("Progress")} className={`min-h-16 rounded-xl p-3 text-left disabled:opacity-50 ${selectedCategory === "Progress" ? "bg-forest text-white" : "bg-surface text-content"}`}>
           <p className="text-xs font-bold uppercase tracking-wide opacity-70">2. During</p>
           <p className="mt-1 text-sm font-bold">Progress; use Damage if needed</p>
         </button>
-        <button type="button" disabled={saving || uploading || pendingUploads.length > 0} onClick={() => setSelectedCategory("After")} className={`min-h-16 rounded-xl p-3 text-left disabled:opacity-50 ${selectedCategory === "After" ? "bg-forest text-white" : "bg-surface text-content"}`}>
+        <button type="button" disabled={saving || uploading || (pendingUploads.length > 0 || recovered > 0)} onClick={() => setSelectedCategory("After")} className={`min-h-16 rounded-xl p-3 text-left disabled:opacity-50 ${selectedCategory === "After" ? "bg-forest text-white" : "bg-surface text-content"}`}>
           <p className="text-xs font-bold uppercase tracking-wide opacity-70">3. Completed</p>
           <p className="mt-1 text-sm font-bold">Finished work, clean area, no debris</p>
         </button>
       </div>
       <div className="grid gap-3 lg:grid-cols-[1fr_1fr]">
-        <label className="block"><span className="label">Category</span><select className="field" value={selectedCategory} disabled={saving || uploading || pendingUploads.length > 0} onChange={(event) => setSelectedCategory(event.target.value as NativePhotoCategory)}>{photoCategories.map((item) => <option key={item.category} value={item.category}>{item.label}</option>)}</select></label>
-        <label className="block"><span className="label">Optional caption</span><input className="field" value={caption} disabled={saving || uploading || pendingUploads.length > 0} onChange={(event) => setCaption(event.target.value)} placeholder="Short note for this upload batch" /></label>
+        <label className="block"><span className="label">Category</span><AddNewSelect choiceKey="photoCategory" className="field" value={selectedCategory} disabled={saving || uploading || (pendingUploads.length > 0 || recovered > 0)} onChange={(event) => setSelectedCategory(event.target.value as NativePhotoCategory)}>{photoCategories.map((item) => <option key={item.category} value={item.category}>{item.label}</option>)}</AddNewSelect></label>
+        <label className="block"><span className="label">Optional caption</span><input className="field" value={caption} disabled={saving || uploading || (pendingUploads.length > 0 || recovered > 0)} onChange={(event) => setCaption(event.target.value)} placeholder="Short note for this upload batch" /></label>
       </div>
       <div className="mt-3 grid gap-2 sm:grid-cols-3">
         <label className={`flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-xl bg-forest px-4 py-3 text-center font-bold text-white ${(saving || uploading) ? "opacity-50" : ""}`}>
           <CameraIcon className="size-5" /> Take Photo
-          <input type="file" accept="image/*" capture="environment" className="hidden" disabled={saving || uploading || pendingUploads.length > 0} onChange={(event) => chooseFiles(event.target.files)} />
+          <input type="file" accept="image/*" capture="environment" className="hidden" disabled={saving || uploading || (pendingUploads.length > 0 || recovered > 0)} onChange={(event) => chooseFiles(event.target.files)} />
         </label>
         <label className={`flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-content/10 bg-surface px-4 py-3 text-center font-bold text-content ${(saving || uploading) ? "opacity-50" : ""}`}>
           <CameraIcon className="size-5" /> Upload Photos
-          <input type="file" accept="image/*" multiple className="hidden" disabled={saving || uploading || pendingUploads.length > 0} onChange={(event) => chooseFiles(event.target.files)} />
+          <input type="file" accept="image/*" multiple className="hidden" disabled={saving || uploading || (pendingUploads.length > 0 || recovered > 0)} onChange={(event) => chooseFiles(event.target.files)} />
         </label>
-        <button type="button" disabled={saving || uploading || selectedFiles.length === 0} onClick={uploadSelectedPhotos} className="min-h-14 rounded-xl bg-lime px-4 py-3 font-bold text-ink disabled:opacity-50">{uploading ? uploadProgress || "Uploading…" : pendingUploads.length ? "Attach uploaded photos" : `Upload ${selectedFiles.length || ""}`.trim()}</button>
+        <button type="button" disabled={saving || uploading || (!selectedFiles.length && !recovered) || !recoveryReady} onClick={uploadSelectedPhotos} className="min-h-14 rounded-xl bg-lime px-4 py-3 font-bold text-ink disabled:opacity-50">{uploading ? uploadProgress || "Uploading…" : recovered ? "Retry saved photos" : `Upload ${selectedFiles.length || ""}`.trim()}</button>
       </div>
       <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold text-content/65">
         <span className="rounded-full bg-surface px-3 py-1">{selectedFiles.length ? `${selectedFiles.length} selected` : "No photos selected"}</span>
@@ -1269,7 +1288,7 @@ function closeoutRequirements(job: Job, stage: CloseoutStage = "current", option
   const billingDue = stage === "billing";
   const started = hasStarted(job) || closeoutDue;
   const checklistItems = checklistProgress(job).items;
-  const requiredChecklist = checklistItems.filter((item) => !/invoice created/i.test(item.label));
+  const requiredChecklist = checklistItems.filter((item) => !item.optional && !/invoice created/i.test(item.label));
   const checklistComplete = requiredChecklist.every((item) => item.complete);
   const beforeRequired = requiredChecklist.some((item) => /before photos/i.test(item.label));
   const afterRequired = options.requireAfterPhotos ?? requiredChecklist.some((item) => /after photos/i.test(item.label));
@@ -1280,7 +1299,7 @@ function closeoutRequirements(job: Job, stage: CloseoutStage = "current", option
   const signatureReady = hasCompletionSignoff(job) || ["Collected", "Submitted", "Not needed"].includes(completionSignoffItem?.status || "");
   const laborTimeEntries = (job.timeEntries || []).filter((entry) => entry.type !== "Note");
   const partsOpen = (job.partsItems || []).filter((part) => ["Needed", "Ordered", "Picked up"].includes(part.status));
-  const partsBlocking = job.status === "Waiting on Parts" || partsOpen.length > 0;
+  const partsBlocking = job.status === "Waiting on Parts";
   const receiptApplicable = receiptBackupApplies(job);
   const receiptReady = !receiptApplicable || !isReceiptBackupMissing(job);
   const managerReviewed = ["Complete", "Billed", "Paid"].includes(job.status);
@@ -1292,10 +1311,10 @@ function closeoutRequirements(job: Job, stage: CloseoutStage = "current", option
     requirement("Paperwork", !closeoutDue ? "not-due" : paperworkReady ? "complete" : "missing", !closeoutDue ? "Not due yet" : paperworkReady ? "Paperwork collected or attached" : "Paperwork or work order missing", "#paperwork", closeoutDue),
     requirement("Customer signature", !signatureRequired ? "not-required" : signatureReady ? "complete" : "missing", !signatureRequired ? "No required sign-off identified" : signatureReady ? "Completion sign-off saved" : "Completion sign-off missing", "#signoffs", signatureRequired),
     requirement("Time entered", !started ? "not-due" : laborTimeEntries.length > 0 ? "complete" : "missing", !started ? "Not due yet" : laborTimeEntries.length > 0 ? `${laborTimeEntries.length} labor/time entr${laborTimeEntries.length === 1 ? "y" : "ies"}` : "No labor/time entry", "#time-log", started || stage !== "current"),
-    requirement("Parts resolved", partsBlocking ? "missing" : (job.partsItems || []).length ? "complete" : "not-required", partsBlocking ? `${partsOpen.length || 1} open part issue${(partsOpen.length || 1) === 1 ? "" : "s"}` : (job.partsItems || []).length ? "No blocking parts open" : "No parts required", "#parts-needed", partsBlocking),
+    requirement("Parts resolved", partsBlocking ? "missing" : partsOpen.length ? "not-required" : (job.partsItems || []).length ? "complete" : "not-required", partsBlocking ? `${partsOpen.length || 1} required part issue${(partsOpen.length || 1) === 1 ? "" : "s"}` : partsOpen.length ? `${partsOpen.length} optional part issue${partsOpen.length === 1 ? "" : "s"} still open` : (job.partsItems || []).length ? "No blocking parts open" : "No parts required", "#parts-needed", partsBlocking),
     requirement("Receipt backup", !receiptApplicable ? "not-required" : receiptReady ? "complete" : "missing", !receiptApplicable ? "No receipt backup needed" : receiptReady ? "Receipt backup attached" : "Receipt dollars need backup", "#receipts", receiptApplicable),
     requirement("Completion notes", !closeoutDue ? "not-due" : job.completionNotes?.trim() ? "complete" : "missing", !closeoutDue ? "Not due yet" : job.completionNotes?.trim() ? "Completion note saved" : "Completion note missing", "#complete-job", closeoutDue),
-    requirement("Manager review", !billingDue ? ["Complete", "Billed", "Paid"].includes(job.status) ? "complete" : job.status === "Needs Inspection" ? "missing" : "not-due" : managerReviewed ? "complete" : "missing", managerReviewed ? "Manager approved complete" : job.status === "Needs Inspection" ? "Manager review required" : "Not due yet", "#complete-job", billingDue || job.status === "Needs Inspection"),
+    requirement("Manager review", !billingDue ? ["Complete", "Billed", "Paid"].includes(job.status) ? "complete" : job.status === "Needs Inspection" ? "missing" : "not-due" : managerReviewed ? "complete" : "missing", managerReviewed ? "Manager approved complete" : job.status === "Needs Inspection" ? "Manager review required" : "Not due yet", "#complete-job", billingDue || (stage === "current" && job.status === "Needs Inspection")),
   ];
 }
 
@@ -1352,13 +1371,17 @@ function receiptBackupApplies(job: Job) {
   return isReceiptBackupMissing(job) || (job.receipts || []).some((receipt) => Boolean(receipt.amount || receipt.file)) || hasFactoryCostWork(job.factoryCost);
 }
 
-function CompleteJobFlow({ job, saving, canManageJob, onFinishWork, onSave }: { job: Job; saving: boolean; canManageJob: boolean; onFinishWork: () => void; onSave: (patch: Partial<Job>) => Promise<Job | undefined> }) {
+function CompleteJobFlow({ job, saving, canManageJob, onFinishWork, onSave }: { job: Job; saving: boolean; canManageJob: boolean; onFinishWork: (completionNotes: string) => Promise<void>; onSave: (patch: Partial<Job>) => Promise<Job | undefined> }) {
   const [notes, setNotes] = useState(job.completionNotes || "");
   const [notified, setNotified] = useState(false);
   const [invoiceReady, setInvoiceReady] = useState(job.invoiceStatus === "Ready");
   const [requireAfterPhotos, setRequireAfterPhotos] = useState(true);
   const session = getWorkSession(job);
-  const draftJob = { ...job, completionNotes: notes.trim() || job.completionNotes };
+  const draftJob = {
+    ...job,
+    completionNotes: notes.trim() || job.completionNotes,
+    activityLog: notified ? addJobActivity(job, "Customer/source notification confirmed.", "Source") : job.activityLog,
+  };
   const reviewRequirements = closeoutRequirements(draftJob, "review", { requireAfterPhotos });
   const reviewBlockers = blockingRequirements(reviewRequirements);
   const afterPhotosReady = hasAfterPhotos(job);
@@ -1383,7 +1406,7 @@ function CompleteJobFlow({ job, saving, canManageJob, onFinishWork, onSave }: { 
       completionNotes: notes.trim(),
       invoiceStatus: invoiceReady ? "Ready" : job.invoiceStatus,
       checklist,
-      activityLog: addJobActivity(job, `Job marked complete.${notified ? " Customer/source notified." : ""}${invoiceReady ? " Invoice marked ready." : ""}`, "Status"),
+      activityLog: addJobActivity(draftJob, `Job marked complete.${notified ? " Customer/source notified." : ""}${invoiceReady ? " Invoice marked ready." : ""}`, "Status"),
     });
   }
 
@@ -1397,7 +1420,7 @@ function CompleteJobFlow({ job, saving, canManageJob, onFinishWork, onSave }: { 
       status: "Needs Inspection",
       completionNotes: notes.trim(),
       checklist,
-      activityLog: addJobActivity(job, "Field work marked ready for manager review.", "Status"),
+      activityLog: addJobActivity(draftJob, "Field work marked ready for manager review.", "Status"),
     });
   }
 
@@ -1427,7 +1450,7 @@ function CompleteJobFlow({ job, saving, canManageJob, onFinishWork, onSave }: { 
           <p className="text-sm font-bold">Finish Work</p>
           <p className="text-xs font-semibold text-content/65">{session.active ? "Closes the current work session without submitting for review." : session.started ? "Current work session is already closed." : "Start the job before finishing work."}</p>
         </div>
-        <button type="button" disabled={saving || !session.active} onClick={onFinishWork} className="min-h-11 rounded-xl bg-ink px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{saving ? "Saving..." : "Finish Work"}</button>
+        <button type="button" disabled={saving || !session.active} onClick={() => onFinishWork(notes)} className="min-h-11 rounded-xl bg-ink px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{saving ? "Saving..." : "Finish Work"}</button>
       </div>
     </div>
     <div className={`mt-4 grid gap-2 ${canManageJob ? "sm:grid-cols-2" : ""}`}>
@@ -1472,6 +1495,7 @@ function PartsPanel({ job, saving, onSave }: { job: Job; saving: boolean; onSave
     const nextParts = parts.map((part) => part.id === id ? { ...part, status } : part);
     await onSave({
       partsItems: nextParts,
+      ...(job.status === "Waiting on Parts" && !trackedPartsOpen({ ...job, partsItems: nextParts }) ? { status: "In Progress" as const } : {}),
       activityLog: addJobActivity(job, `Part updated: ${current?.name || "part"} marked ${status}.`, "Parts"),
     });
   }
@@ -1503,9 +1527,9 @@ function PartsPanel({ job, saving, onSave }: { job: Job; saving: boolean; onSave
             <p className="text-xs font-semibold text-content/65">Requested {new Date(part.requestedAt).toLocaleDateString()} by {part.requestedBy}</p>
             {part.notes && <p className="mt-1 text-xs font-semibold text-content/65">{part.notes}</p>}
           </div>
-          <select className="field !min-h-11 !w-auto !py-2 text-sm font-bold" value={part.status} onChange={(event) => updatePart(part.id, event.target.value as PartItem["status"])}>
+          <AddNewSelect choiceKey="partStatus" className="field !min-h-11 !w-auto !py-2 text-sm font-bold" value={part.status} onChange={(event) => updatePart(part.id, event.target.value as PartItem["status"])}>
             {["Needed", "Ordered", "Picked up", "Installed", "Not needed"].map((status) => <option key={status}>{status}</option>)}
-          </select>
+          </AddNewSelect>
         </div>
       </div>) : <p className="rounded-xl bg-sand p-3 text-sm font-semibold text-content/65">No structured parts requested yet.</p>}
     </div>
@@ -1930,12 +1954,12 @@ function SignoffPanel({ job, saving, onSave }: { job: Job; saving: boolean; onSa
       </div>
     </div>
     <form onSubmit={saveSignoff} className="grid gap-3 rounded-2xl border border-content/10 bg-surface p-3 sm:grid-cols-2">
-      <label><span className="label">Sign-off type</span><select className="field" value={type} onChange={(event) => setType(event.target.value as SignoffItem["type"])}>
+      <label><span className="label">Sign-off type</span><AddNewSelect choiceKey="signoffType" className="field" value={type} onChange={(event) => setType(event.target.value as SignoffItem["type"])}>
         {["Completion Sign-off", "Work Authorization", "Customer Approval", "Inspection"].map((option) => <option key={option}>{option}</option>)}
-      </select></label>
-      <label><span className="label">Signer role</span><select className="field" value={signerRole} onChange={(event) => setSignerRole(event.target.value as SignoffItem["signerRole"])}>
+      </AddNewSelect></label>
+      <label><span className="label">Signer role</span><AddNewSelect choiceKey="signerRole" className="field" value={signerRole} onChange={(event) => setSignerRole(event.target.value as SignoffItem["signerRole"])}>
         {["Customer", "Dealer", "Factory", "Manager", "Other"].map((option) => <option key={option}>{option}</option>)}
-      </select></label>
+      </AddNewSelect></label>
       <label><span className="label">Signer name</span><input className="field" value={signerName} onChange={(event) => setSignerName(event.target.value)} placeholder="Customer / dealer / factory contact" /></label>
       <label><span className="label">Typed signature</span><input className="field" value={typedSignature} onChange={(event) => setTypedSignature(event.target.value)} placeholder="Type full name to sign" /></label>
       <label className="flex min-h-12 items-center gap-3 rounded-xl border border-content/10 bg-sand p-3 text-sm font-bold sm:col-span-2"><input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} className="size-5 accent-forest" /> Signer confirms this record is accurate.</label>
@@ -1982,9 +2006,9 @@ function CustomerSurveyPanel({ job, saving, onSave }: { job: Job; saving: boolea
     </div>
     <form onSubmit={saveSurvey} className="grid gap-3 rounded-2xl border border-content/10 bg-surface p-3 sm:grid-cols-2">
       <label className="flex min-h-12 items-center gap-3 rounded-xl border border-content/10 bg-sand p-3 text-sm font-bold sm:col-span-2"><input type="checkbox" checked={survey.completed} onChange={(event) => set("completed", event.target.checked)} className="size-5 accent-forest" /> Survey completed</label>
-      <label><span className="label">Service rating</span><select className="field" value={survey.serviceRating || ""} onChange={(event) => set("serviceRating", event.target.value as CustomerSurvey["serviceRating"] || undefined)}><option value="">Not recorded</option>{["1", "2", "3", "4", "5"].map((rating) => <option key={rating} value={rating}>{rating} / 5</option>)}</select></label>
-      <label><span className="label">Customer satisfied</span><select className="field" value={survey.customerSatisfied === undefined ? "" : survey.customerSatisfied ? "yes" : "no"} onChange={(event) => set("customerSatisfied", event.target.value === "" ? undefined : event.target.value === "yes")}><option value="">Not recorded</option><option value="yes">Yes</option><option value="no">No</option></select></label>
-      <label><span className="label">Would recommend</span><select className="field" value={survey.wouldRecommend === undefined ? "" : survey.wouldRecommend ? "yes" : "no"} onChange={(event) => set("wouldRecommend", event.target.value === "" ? undefined : event.target.value === "yes")}><option value="">Not recorded</option><option value="yes">Yes</option><option value="no">No</option></select></label>
+      <label><span className="label">Service rating</span><AddNewSelect choiceKey="serviceRating" className="field" value={survey.serviceRating || ""} onChange={(event) => set("serviceRating", event.target.value as CustomerSurvey["serviceRating"] || undefined)}><option value="">Not recorded</option>{["1", "2", "3", "4", "5"].map((rating) => <option key={rating} value={rating}>{rating} / 5</option>)}</AddNewSelect></label>
+      <label><span className="label">Customer satisfied</span><AddNewSelect choiceKey="customerSatisfied" className="field" value={survey.customerSatisfied === undefined ? "" : survey.customerSatisfied ? "yes" : "no"} onChange={(event) => set("customerSatisfied", event.target.value === "" ? undefined : event.target.value === "yes")}><option value="">Not recorded</option><option value="yes">Yes</option><option value="no">No</option></AddNewSelect></label>
+      <label><span className="label">Would recommend</span><AddNewSelect choiceKey="wouldRecommend" className="field" value={survey.wouldRecommend === undefined ? "" : survey.wouldRecommend ? "yes" : "no"} onChange={(event) => set("wouldRecommend", event.target.value === "" ? undefined : event.target.value === "yes")}><option value="">Not recorded</option><option value="yes">Yes</option><option value="no">No</option></AddNewSelect></label>
       <label className="sm:col-span-2"><span className="label">Comments</span><textarea className="field min-h-24 resize-y" value={survey.comments || ""} onChange={(event) => set("comments", event.target.value)} placeholder="Customer feedback or follow-up notes" /></label>
       <button disabled={saving} className="min-h-12 rounded-xl bg-forest px-4 py-3 font-bold text-white disabled:opacity-50 sm:col-span-2">{saving ? "Saving…" : "Save Customer Survey"}</button>
     </form>
@@ -2116,6 +2140,7 @@ function defaultPaperwork(job: Job): PaperworkItem[] {
 }
 
 function OperationsPanel({ job, setJob, mode }: { job: Job; setJob: React.Dispatch<React.SetStateAction<Job>>; mode: "documents" | "notes" | "history" }) {
+  const user = useAuthUser();
   const [note, setNote] = useState("");
   const [audience, setAudience] = useState<JobActivity["audience"]>("All");
   const [notify, setNotify] = useState(false);
@@ -2136,7 +2161,7 @@ function OperationsPanel({ job, setJob, mode }: { job: Job; setJob: React.Dispat
     const correctionPatch = correctionResolutionPatch(job, next);
     const patchToSave = { ...patch, ...correctionPatch };
     try {
-      const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: jobUpdateBody(job, patchToSave) });
+      const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: jobUpdateBody(job, patchToSave, user?.id) });
       const saved = await response.json();
       if (!response.ok) throw new Error(saved.error || "The job update could not be saved.");
       setJob((old) => ({ ...old, ...saved, checklist: saved.checklist?.length ? saved.checklist : old.checklist }));
@@ -2164,9 +2189,8 @@ function OperationsPanel({ job, setJob, mode }: { job: Job; setJob: React.Dispat
   async function submitNote(message = note, type: JobActivity["type"] = "Note") {
     const trimmed = message.trim();
     if (!trimmed) return;
-    setNote("");
-    setNotify(false);
-    await savePatch({ activityLog: addActivity(trimmed, type) });
+    const saved = await savePatch({ activityLog: addActivity(trimmed, type) });
+    if (saved) { setNote(""); setNotify(false); }
   }
 
   async function updatePaperwork(id: string, status: PaperworkItem["status"]) {
@@ -2205,7 +2229,7 @@ function OperationsPanel({ job, setJob, mode }: { job: Job; setJob: React.Dispat
     try { uploaded = await uploadStoredFile(file, job.jobId, category); }
     catch (caught) { setError(caught instanceof Error ? caught.message : "Upload failed. Keep your file and try again."); return; }
     await savePatch({
-      workOrderFiles: [uploaded, ...workOrderFiles],
+      workOrderFiles: [uploaded, ...workOrderFiles.filter((saved) => saved.id !== uploaded.id)],
       paperworkItems: paperwork.map((item) => item.id === "work-order" ? { ...item, status: "Collected", notes: uploaded.fileName } : item),
       activityLog: addActivity(`${category} uploaded: ${uploaded.fileName}.`, "Paperwork"),
     });
@@ -2245,9 +2269,9 @@ function OperationsPanel({ job, setJob, mode }: { job: Job; setJob: React.Dispat
           <div className="space-y-2">{paperwork.map((item) => <div key={item.id} className="rounded-xl bg-sand p-3">
             <p className="font-extrabold">{item.label}</p>
             {item.notes && <p className="text-xs font-semibold text-content/65">{item.notes}</p>}
-            <select className="field mt-2 !min-h-11 !py-2 text-sm" value={item.status} onChange={(event) => updatePaperwork(item.id, event.target.value as PaperworkItem["status"])}>
+            <AddNewSelect choiceKey="paperworkStatus" className="field mt-2 !min-h-11 !py-2 text-sm" value={item.status} onChange={(event) => updatePaperwork(item.id, event.target.value as PaperworkItem["status"])}>
               {["Needed", "Collected", "Submitted", "Not needed"].map((status) => <option key={status}>{status}</option>)}
-            </select>
+            </AddNewSelect>
           </div>)}</div>
         </div>
         <div id="receipts" className="rounded-2xl border border-content/10 bg-surface p-3">
@@ -2258,7 +2282,7 @@ function OperationsPanel({ job, setJob, mode }: { job: Job; setJob: React.Dispat
               <input name="amount" className="field !min-h-11 !py-2 text-sm" inputMode="decimal" placeholder="Amount" />
               <input name="date" type="date" className="field !min-h-11 !py-2 text-sm" defaultValue={new Date().toLocaleDateString("en-CA")} />
             </div>
-            <select name="category" className="field !min-h-11 !py-2 text-sm">{["Meal", "Lodging", "Parts / Materials", "Misc"].map((category) => <option key={category}>{category}</option>)}</select>
+            <AddNewSelect choiceKey="receiptCategory" name="category" className="field !min-h-11 !py-2 text-sm">{["Meal", "Lodging", "Parts / Materials", "Misc"].map((category) => <option key={category}>{category}</option>)}</AddNewSelect>
             <label className="flex min-h-11 items-center gap-2 text-sm font-bold"><input name="reimbursable" type="checkbox" className="size-4 accent-forest" /> Reimbursable</label>
             <input name="notes" className="field !min-h-11 !py-2 text-sm" placeholder="Notes" />
             <label className="flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed border-content/15 bg-sand px-3 py-3 text-center text-sm font-bold text-content">
@@ -2293,9 +2317,9 @@ function OperationsPanel({ job, setJob, mode }: { job: Job; setJob: React.Dispat
         <label className="label">Add job update</label>
         <textarea className="field min-h-24 resize-y" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Example: Customer called, parts ordered, dealer notified..." />
         <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto]">
-          <label><span className="label">Who is this update for?</span><select value={audience} onChange={(event) => setAudience(event.target.value as JobActivity["audience"])} className="field !min-h-11 !py-2 text-sm font-bold">
+          <label><span className="label">Who is this update for?</span><AddNewSelect choiceKey="audience" value={audience} onChange={(event) => setAudience(event.target.value as JobActivity["audience"])} className="field !min-h-11 !py-2 text-sm font-bold">
             {["All", "Admin", "Manager", "Employee"].map((option) => <option key={option}>{option}</option>)}
-          </select></label>
+          </AddNewSelect></label>
           <label className="flex min-h-11 items-center gap-2 self-end rounded-xl border border-content/10 bg-sand px-3 py-2 text-sm font-bold"><input type="checkbox" checked={notify} onChange={(event) => setNotify(event.target.checked)} className="size-4 accent-forest" /> Flag for follow-up</label>
         </div>
         <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -2347,13 +2371,19 @@ function summarizeFiles(job: Job) {
   return summary;
 }
 
-function OfflineDraftPanel({ job, saving, onSave }: { job: Job; saving: boolean; onSave: (patch: Partial<Job>) => Promise<Job | undefined> }) {
+function OfflineDraftPanel({ job, saving, onSynced }: { job: Job; saving: boolean; onSynced: (job: Job) => void }) {
   const [draft, setDraft] = useState("");
   const [lastSaved, setLastSaved] = useState("");
   const [online, setOnline] = useState(true);
   const [message, setMessage] = useState("");
   const user = useAuthUser();
   const storageKey = accountDraftKey(user?.id, `note-${job.jobId}`);
+  const pendingKey = accountDraftKey(user?.id, `note-pending-${job.jobId}`);
+  const [sending, setSending] = useState(false);
+  const sendingRef = useRef(false);
+  const currentKey = useRef(storageKey);
+  currentKey.current = storageKey;
+
 
   useEffect(() => {
     setOnline(navigator.onLine);
@@ -2383,20 +2413,27 @@ function OfflineDraftPanel({ job, saving, onSave }: { job: Job; saving: boolean;
 
   async function pushDraft() {
     const trimmed = draft.trim();
-    if (!trimmed) return;
-    const entry = addJobActivity(job, `Field draft note: ${trimmed}`, "Note");
-    const saved = await onSave({ activityLog: entry });
-    if (saved) {
-      if (storageKey) window.localStorage.removeItem(storageKey);
-      setDraft("");
-      setMessage("Draft pushed to job activity.");
-    } else {
-      setMessage("Could not push yet. Draft is still saved on this phone.");
-    }
+    if (!trimmed || !storageKey || !pendingKey || !user || sendingRef.current) return;
+    if (!navigator.onLine) { setMessage("You are offline. Your draft is saved; send it when connected."); return; }
+    sendingRef.current = true;
+    setSending(true);
+    const ownerKey = storageKey;
+    const ownerPendingKey = pendingKey;
+    const snapshot = draft;
+    try {
+      const result = await sendStoredFieldNote(window.localStorage, navigator.locks, ownerKey, ownerPendingKey, snapshot, authFetch, user.id, job.jobId);
+      if (currentKey.current !== ownerKey) return;
+      if (result.job) onSynced(result.job);
+      setDraft(result.draft);
+      setMessage(result.draft ? "Your newer local draft is still saved." : result.job ? "Draft saved to job activity." : "This draft was already sent or changed in another tab.");
+    } catch (error) {
+      if (currentKey.current === ownerKey) setMessage(error instanceof Error ? error.message : "Could not send yet. Your draft is still saved.");
+    } finally { sendingRef.current = false; setSending(false); }
   }
 
   function clearDraft() {
     if (storageKey) window.localStorage.removeItem(storageKey);
+    if (pendingKey) window.localStorage.removeItem(pendingKey);
     setDraft("");
     setMessage("Draft cleared from this phone.");
   }
@@ -2412,11 +2449,11 @@ function OfflineDraftPanel({ job, saving, onSave }: { job: Job; saving: boolean;
       </div>
       <span className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wide ${online ? "bg-forest text-white" : "bg-orange-100 text-orange-800"}`}>{online ? "Online" : "Offline"}</span>
     </div>
-    <textarea className="field min-h-32 resize-y" value={draft} onChange={(event) => saveDraft(event.target.value)} placeholder="Type field notes here even if service is bad. Example: customer wants call before arrival, extra trim damage on back side..." />
+    <textarea disabled={sending} className="field min-h-32 resize-y" value={draft} onChange={(event) => saveDraft(event.target.value)} placeholder="Type field notes here even if service is bad. Example: customer wants call before arrival, extra trim damage on back side..." />
     <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto_auto] sm:items-center">
       <p className="text-xs font-bold text-content/65">{draft ? `Saved on this phone${lastSaved ? ` at ${lastSaved}` : ""}.` : "No local draft saved."}</p>
-      <button type="button" onClick={clearDraft} disabled={!draft || saving} className="min-h-11 rounded-xl border border-content/10 bg-surface px-4 py-2 text-sm font-bold text-content/65 disabled:opacity-50">Clear Draft</button>
-      <button type="button" onClick={pushDraft} disabled={!draft.trim() || saving} className="min-h-11 rounded-xl bg-forest px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{saving ? "Saving…" : "Push to Activity"}</button>
+      <button type="button" onClick={clearDraft} disabled={!draft || saving || sending} className="min-h-11 rounded-xl border border-content/10 bg-surface px-4 py-2 text-sm font-bold text-content/65 disabled:opacity-50">Clear Draft</button>
+      <button type="button" onClick={pushDraft} disabled={!draft.trim() || saving || sending || !online || !storageKey} className="min-h-11 rounded-xl bg-forest px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{sending ? "Sending…" : "Send to Activity"}</button>
     </div>
     {message && <p className="mt-3 rounded-xl bg-sand p-3 text-sm font-bold text-content/65">{message}</p>}
   </section>;
@@ -2680,12 +2717,13 @@ function FileList({ files }: { files: WorkOrderFile[] }) {
   </div>)}</div>;
 }
 
-async function uploadStoredFile(file: File, jobId: string, category: FileCategory, caption = ""): Promise<WorkOrderFile> {
+async function uploadStoredFile(file: File, jobId: string, category: FileCategory, caption = "", expectedUserId?: string): Promise<WorkOrderFile> {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("jobId", jobId);
   formData.append("category", category);
   if (caption) formData.append("caption", caption);
+  if (expectedUserId) formData.append("expectedUserId", expectedUserId);
   const response = await authFetch("/api/files/upload", { method: "POST", body: formData });
   if (response.ok) return response.json();
   const result = await response.json().catch(() => ({}));

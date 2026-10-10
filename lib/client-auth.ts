@@ -21,6 +21,7 @@ export async function authFetch(input: RequestInfo | URL, init: RequestInit = {}
   return fetch(input, { ...init, headers, credentials: "include" });
 }
 
-export function jobUpdateBody(job: Pick<Job, "revision">, patch: Partial<Job>) {
-  return JSON.stringify({ ...patch, expectedRevision: job.revision || null });
+export function jobUpdateBody(job: Pick<Job, "revision">, patch: Partial<Job>, expectedUserId: string | undefined) {
+  if (!expectedUserId) throw new Error("Sign back into the account that opened this job before saving.");
+  return JSON.stringify({ ...patch, expectedRevision: job.revision || null, expectedUserId });
 }

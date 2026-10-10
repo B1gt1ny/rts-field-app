@@ -1,5 +1,7 @@
 "use client";
 
+import { AddNewSelect, useNewEmployees } from "./AddNewSelect";
+
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { BriefcaseIcon, CameraIcon, CalendarDaysIcon, CheckCircleIcon, ClipboardDocumentCheckIcon, ClockIcon, DocumentTextIcon, ExclamationTriangleIcon, MapPinIcon, PhoneIcon, PlayIcon, ReceiptPercentIcon, UserCircleIcon, UserGroupIcon, WrenchScrewdriverIcon } from "@heroicons/react/24/outline";
@@ -42,6 +44,7 @@ const defaultFieldPermissions: FieldPermissions = {
 export function FieldAppView() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  useNewEmployees(setEmployees);
   const [employeeId, setEmployeeId] = useState("");
   const [loading, setLoading] = useState(true);
   const [savingJobId, setSavingJobId] = useState("");
@@ -172,7 +175,7 @@ export function FieldAppView() {
       timeEntries: timeEntry ? [timeEntry, ...(job.timeEntries || [])].slice(0, 100) : job.timeEntries || [],
     };
     try {
-      const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: jobUpdateBody(job, patch) });
+      const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: jobUpdateBody(job, patch, user?.id) });
       const saved = await response.json();
       if (!response.ok) throw new Error(saved.error || "The job update could not be saved. Refresh and try again.");
       setJobs((old) => old.map((item) => item.jobId === job.jobId ? { ...item, ...saved } : item));
@@ -212,7 +215,7 @@ export function FieldAppView() {
         body: jobUpdateBody(job, {
           activityLog: [activity, ...(job.activityLog || [])].slice(0, 50),
           timeEntries: [timeEntry, ...(job.timeEntries || [])].slice(0, 100),
-        }),
+        }, user?.id),
       });
       const saved = await response.json();
       if (!response.ok) throw new Error(saved.error || "The job update could not be saved. Refresh and try again.");
@@ -253,7 +256,7 @@ export function FieldAppView() {
         body: jobUpdateBody(job, {
           activityLog: [activity, ...(job.activityLog || [])].slice(0, 50),
           timeEntries: [timeEntry, ...(job.timeEntries || [])].slice(0, 100),
-        }),
+        }, user?.id),
       });
       const saved = await response.json();
       if (!response.ok) throw new Error(saved.error || "The job update could not be saved. Refresh and try again.");
@@ -283,7 +286,7 @@ export function FieldAppView() {
       const response = await authFetch(`/api/jobs/${job.jobId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: jobUpdateBody(job, { checklist, activityLog: [activity, ...(job.activityLog || [])].slice(0, 50) }),
+        body: jobUpdateBody(job, { checklist, activityLog: [activity, ...(job.activityLog || [])].slice(0, 50) }, user?.id),
       });
       const saved = await response.json();
       if (!response.ok) throw new Error(saved.error || "The job update could not be saved. Refresh and try again.");
@@ -315,7 +318,7 @@ export function FieldAppView() {
       const response = await authFetch(`/api/jobs/${job.jobId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: jobUpdateBody(job, { activityLog: [activity, ...(job.activityLog || [])].slice(0, 50) }),
+        body: jobUpdateBody(job, { activityLog: [activity, ...(job.activityLog || [])].slice(0, 50) }, user?.id),
       });
       const saved = await response.json();
       if (!response.ok) throw new Error(saved.error || "The job update could not be saved. Refresh and try again.");
@@ -336,7 +339,7 @@ export function FieldAppView() {
     const employeeName = employee?.name || user?.employeeName || "Crew";
     const travelLeg: TravelLeg = { ...leg, id: `travel-${Date.now()}`, employeeName };
     try {
-      const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: jobUpdateBody(job, { travelLegs: [...(job.travelLegs || []), travelLeg] }) });
+      const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: jobUpdateBody(job, { travelLegs: [...(job.travelLegs || []), travelLeg] }, user?.id) });
       const saved = await response.json();
       if (!response.ok) throw new Error(saved.error || "The job update could not be saved. Refresh and try again.");
       setJobs((old) => old.map((item) => item.jobId === job.jobId ? { ...item, ...saved } : item));
@@ -366,7 +369,7 @@ export function FieldAppView() {
       const response = await authFetch(`/api/jobs/${job.jobId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: jobUpdateBody(job, { factoryCost, activityLog: [activity, ...(job.activityLog || [])].slice(0, 50) }),
+        body: jobUpdateBody(job, { factoryCost, activityLog: [activity, ...(job.activityLog || [])].slice(0, 50) }, user?.id),
       });
       const saved = await response.json();
       if (!response.ok) throw new Error(saved.error || "The job update could not be saved. Refresh and try again.");
@@ -397,7 +400,7 @@ export function FieldAppView() {
       const response = await authFetch(`/api/jobs/${job.jobId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: jobUpdateBody(job, { completionNotes: trimmed, checklist, activityLog: [activity, ...(job.activityLog || [])].slice(0, 50) }),
+        body: jobUpdateBody(job, { completionNotes: trimmed, checklist, activityLog: [activity, ...(job.activityLog || [])].slice(0, 50) }, user?.id),
       });
       const saved = await response.json();
       if (!response.ok) throw new Error(saved.error || "The job update could not be saved. Refresh and try again.");
@@ -443,7 +446,7 @@ export function FieldAppView() {
       timeEntries: [timeEntry, ...(job.timeEntries || [])].slice(0, 100),
     };
     try {
-      const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: jobUpdateBody(job, patch) });
+      const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: jobUpdateBody(job, patch, user?.id) });
       const saved = await response.json();
       if (!response.ok) throw new Error(saved.error || "The job update could not be saved. Refresh and try again.");
       setJobs((old) => old.map((item) => item.jobId === job.jobId ? { ...item, ...saved, checklist: saved.checklist?.length ? saved.checklist : checklist } : item));
@@ -468,9 +471,9 @@ export function FieldAppView() {
       </div>
       {employees.length > 0 && !lockedToLogin && <label className="mt-4 block">
         <span className="mb-2 block text-xs font-bold uppercase tracking-wide text-white/60">Viewing employee</span>
-        <select value={employeeId} onChange={(event) => chooseEmployee(event.target.value)} className="field bg-surface text-content">
+        <AddNewSelect choiceKey="employee" value={employeeId} onChange={(event) => chooseEmployee(event.target.value)} className="field bg-surface text-content">
           {employees.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-        </select>
+        </AddNewSelect>
       </label>}
       {lockedToLogin && <p className="mt-3 text-xs font-bold text-white/65">This login is locked to {user?.employeeName || "the linked employee"}.</p>}
     </section>

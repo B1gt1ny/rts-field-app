@@ -1,5 +1,9 @@
 "use client";
 
+import { AddNewSelect, useNewEmployees } from "./AddNewSelect";
+
+import type { DropdownKey } from "@/lib/dropdown-options";
+
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { BanknotesIcon, BellAlertIcon, CalendarDaysIcon, ChevronDownIcon, ExclamationTriangleIcon, MagnifyingGlassIcon, WrenchScrewdriverIcon } from "@heroicons/react/24/outline";
@@ -25,6 +29,7 @@ export function JobsView({ title, description, preset = {} }: { title: string; d
   const [quickFilter, setQuickFilter] = useState<QuickFilter>("");
   const [sortMode, setSortMode] = useState<SortMode>("dueDate");
   const [employees, setEmployees] = useState<Employee[]>([]);
+  useNewEmployees(setEmployees);
   useEffect(() => { authFetch("/api/jobs").then((r) => r.json()).then((data) => setJobs(Array.isArray(data) ? data : [])).finally(() => setLoading(false)); }, []);
   useEffect(() => { fetch("/api/employees").then((r) => r.json()).then(setEmployees).catch(() => setEmployees([])); }, []);
   useEffect(() => {
@@ -134,11 +139,11 @@ export function JobsView({ title, description, preset = {} }: { title: string; d
     <section className="card mb-5 p-3 sm:p-4">
       <div className="relative mb-3"><MagnifyingGlassIcon className="absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-content/65" /><input value={search} onChange={(e) => setSearch(e.target.value)} className="field !pl-11" placeholder="Search customer, job ID, city..." /></div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-        <Filter value={status} onChange={setStatus} label="All statuses" options={[...statuses]} />
-        <Filter value={source} onChange={setSource} label="All sources" options={[...sources]} />
-        <Filter value={crew} onChange={setCrew} label="All employees" options={["Full Crew", ...employees.filter((employee) => employee.active).map((employee) => employee.id)]} optionLabels={Object.fromEntries(employees.map((employee) => [employee.id, employee.name]))} />
-        <Filter value={priority} onChange={setPriority} label="All priorities" options={[...priorities]} />
-        <Filter value={sortMode} onChange={(value) => setSortMode(value as SortMode)} label="Sort" options={["dueDate", "priority", "customer", "status"]} optionLabels={{ dueDate: "Sort: due date", priority: "Sort: priority", customer: "Sort: customer", status: "Sort: status" }} />
+        <Filter choiceKey="jobStatus" value={status} onChange={setStatus} label="All statuses" options={[...statuses]} />
+        <Filter choiceKey="source" value={source} onChange={setSource} label="All sources" options={[...sources]} />
+        <Filter choiceKey="employee" value={crew} onChange={setCrew} label="All employees" options={["Full Crew", ...employees.filter((employee) => employee.active).map((employee) => employee.id)]} optionLabels={Object.fromEntries(employees.map((employee) => [employee.id, employee.name]))} />
+        <Filter choiceKey="priority" value={priority} onChange={setPriority} label="All priorities" options={[...priorities]} />
+        <Filter choiceKey="sort" value={sortMode} onChange={(value) => setSortMode(value as SortMode)} label="Sort" options={["dueDate", "priority", "customer", "status"]} optionLabels={{ dueDate: "Sort: due date", priority: "Sort: priority", customer: "Sort: customer", status: "Sort: status" }} />
       </div>
       {(quickFilter || search || status || source || crew || priority || sortMode !== "dueDate") && <div className="mt-3 flex flex-wrap items-center gap-2">
         {quickFilter && <ActiveChip label={`Quick: ${quickFilterLabel(quickFilter)}`} onClear={() => setQuickFilter("")} />}
@@ -212,8 +217,8 @@ function ActiveChip({ label, onClear }: { label: string; onClear: () => void }) 
   return <button type="button" onClick={onClear} className="rounded-full border border-forest/10 bg-forest/10 px-3 py-1.5 text-xs font-bold text-accent transition hover:bg-forest/15">{label} ×</button>;
 }
 
-function Filter({ value, onChange, label, options, optionLabels = {} }: { value: string; onChange: (value: string) => void; label: string; options: string[]; optionLabels?: Record<string, string> }) {
-  return <select aria-label={label} value={value} onChange={(e) => onChange(e.target.value)} className="field !py-2 text-sm font-semibold"><option value="">{label}</option>{options.map((option) => <option key={option} value={option}>{optionLabels[option] || option}</option>)}</select>;
+function Filter({ choiceKey, value, onChange, label, options, optionLabels = {} }: { choiceKey: DropdownKey; value: string; onChange: (value: string) => void; label: string; options: string[]; optionLabels?: Record<string, string> }) {
+  return <AddNewSelect choiceKey={choiceKey} aria-label={label} value={value} onChange={(e) => onChange(e.target.value)} className="field !py-2 text-sm font-semibold"><option value="">{label}</option>{options.map((option) => <option key={option} value={option}>{optionLabels[option] || option}</option>)}</AddNewSelect>;
 }
 
 function matchesQuickFilter(job: Job, quickFilter: QuickFilter, today: string) {

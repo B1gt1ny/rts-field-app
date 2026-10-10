@@ -34,7 +34,10 @@ export function hasOpenParts(job: Job) {
 function readinessEvidence(job: Job) {
   const paperworkReady = Boolean(job.paperworkPickedUp || (job.workOrderFiles || []).length || (job.paperworkItems || []).some((item) => ["Collected", "Submitted", "Not needed"].includes(item.status)));
   const completionSignoff = (job.signoffs || []).some((signoff) => signoff.accepted && ["Completion Sign-off", "Customer Approval"].includes(signoff.type));
-  const sourceNotified = (job.activityLog || []).some((entry) => ["Customer", "Source"].includes(entry.type) || /notified|called|text|voicemail|contacted/i.test(entry.message));
+  const sourceNotified = (job.activityLog || []).some((entry) =>
+    ["Customer", "Source"].includes(entry.type) ||
+    (entry.type === "Status" && /^Job marked complete\. Customer\/source notified\.(?: Invoice marked ready\.)?$/.test(entry.message))
+  );
   const invoiceReady = ["Ready", "Draft", "Sent to Billing", "Sent", "Paid"].includes(job.invoiceStatus);
   const invoiceCreated = ["Draft", "Sent to Billing", "Sent", "Paid"].includes(job.invoiceStatus);
   const jobComplete = ["Complete", "Billed", "Paid"].includes(job.status);
@@ -155,6 +158,11 @@ export function correctionResolutionPatch(current: Job, next: Job): Partial<Job>
 export function billingBlockers(job: Job) {
   const closeoutBlockers = closeoutChecks(job).filter((check) => !check.ok && ["Job complete", "Completion notes", "Paperwork", "Completion sign-off"].includes(check.label));
   return [...closeoutBlockers, ...billingEvidenceChecks(job).filter((check) => !check.ok)];
+}
+
+// Approval creates completion; every other billing requirement still applies.
+export function managerApprovalBlockers(job: Job) {
+  return billingBlockers(job).filter((check) => check.label !== "Job complete");
 }
 
 export function isReadyForBilling(job: Job) {

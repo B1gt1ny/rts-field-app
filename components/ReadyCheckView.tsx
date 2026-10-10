@@ -1,9 +1,11 @@
 "use client";
 
+import { useAuthUser } from "./AuthGate";
+
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowUturnLeftIcon, CheckCircleIcon, ClipboardDocumentCheckIcon, ExclamationTriangleIcon, WrenchScrewdriverIcon } from "@heroicons/react/24/outline";
-import { billingBlockers, closeoutChecks, dispatchBlockers, dispatchChecks, dispatchReadinessScore, isReadyForDispatch, readinessScore } from "@/lib/job-readiness";
+import { billingBlockers, managerApprovalBlockers, closeoutChecks, dispatchBlockers, dispatchChecks, dispatchReadinessScore, isReadyForDispatch, readinessScore } from "@/lib/job-readiness";
 import type { Job, JobActivity } from "@/lib/types";
 import { PriorityBadge, StatusBadge } from "./StatusBadge";
 import { authFetch, jobUpdateBody } from "@/lib/client-auth";
@@ -11,6 +13,7 @@ import { authFetch, jobUpdateBody } from "@/lib/client-auth";
 const activeStatuses = ["New", "Scheduled", "In Progress", "Waiting on Parts", "Needs Inspection"];
 
 export function ReadyCheckView({ jobs: initialJobs }: { jobs: Job[] }) {
+  const user = useAuthUser();
   const [jobs, setJobs] = useState(initialJobs);
   const [saveError, setSaveError] = useState("");
   const [savingJobId, setSavingJobId] = useState("");
@@ -28,7 +31,7 @@ export function ReadyCheckView({ jobs: initialJobs }: { jobs: Job[] }) {
     setSaveError("");
     setSavingJobId(job.jobId);
     try {
-      const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: jobUpdateBody(job, patch) });
+      const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: jobUpdateBody(job, patch, user?.id) });
       const saved = await response.json();
       if (!response.ok) throw new Error(saved.error || "Review could not be saved.");
       setJobs((old) => old.map((item) => item.jobId === job.jobId ? { ...item, ...saved } : item));
@@ -38,7 +41,8 @@ export function ReadyCheckView({ jobs: initialJobs }: { jobs: Job[] }) {
   }
 
   async function approveComplete(job: Job) {
-    const blockers = billingBlockers(job);
+    const blockers = managerApprovalBlockers(job);
+    if (blockers.length) return;
     const checklist = (job.checklist || []).map((item) => {
       const closeoutLabels = ["Work completed", "After photos taken", "Completion notes added", "Dealer/factory notified"];
       return closeoutLabels.includes(item.label) ? { ...item, complete: true } : item;
@@ -138,7 +142,7 @@ export function ReadyCheckView({ jobs: initialJobs }: { jobs: Job[] }) {
 function InspectionJobCard({ job, saving, returnNote, onReturnNote, onApprove, onSendBack }: { job: Job; saving: boolean; returnNote: string; onReturnNote: (value: string) => void; onApprove: () => void; onSendBack: () => void }) {
   const score = readinessScore(job);
   const checks = closeoutChecks(job);
-  const blockers = billingBlockers(job);
+  const blockers = managerApprovalBlockers(job);
   return <div className="rounded-2xl border border-content/10 bg-surface p-4">
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0">

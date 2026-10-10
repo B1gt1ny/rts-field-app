@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { ArrowRightOnRectangleIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
 import { roleHomePath, type AuthUser } from "@/lib/client-auth";
 
+import { clearOwnerUploads, invalidateOwnerUploads } from "@/lib/client-uploads";
 import { clearBrowserDrafts } from "@/lib/client-drafts";
 
 const publicPaths = ["/login"];
@@ -32,6 +33,10 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
         return;
       }
       if (data.user) {
+        if (window.localStorage.getItem(`rts-upload-cleanup:${data.user.id}`)) {
+          setUser(null);
+          try { await clearOwnerUploads(data.user.id); } catch { window.alert("Local photo cleanup is incomplete. Keep this device private and retry signing in."); setLoading(false); return; }
+        }
         setUser(data.user);
         if (pathname === "/login") router.replace(roleHomePath(data.user.role));
       }
@@ -58,10 +63,14 @@ export function useAuthUser() {
 }
 
 export function LogoutButton() {
+  const user = useAuthUser();
   async function logout() {
+    try { if (user?.id) window.localStorage.setItem(`rts-upload-cleanup:${user.id}`, "pending"); } catch { /* Unavailable storage also blocks upload persistence; still terminate the server session. */ }
     const response = await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
-    if (!response.ok) return;
+    if (!response.ok) { if (user?.id) window.localStorage.removeItem(`rts-upload-cleanup:${user.id}`); return; }
+    try { if (user?.id) invalidateOwnerUploads(user.id); } catch { /* Continue owner cleanup even when marker storage is unavailable. */ }
     try { clearBrowserDrafts(window.localStorage, window.sessionStorage); } catch { /* Browser storage may be unavailable. */ }
+    if (user?.id) { try { await clearOwnerUploads(user.id); } catch { window.alert("Signed out, but local photo cleanup is incomplete. Keep this device private until cleanup succeeds."); } }
     window.location.replace("/login");
   }
   return <button type="button" onClick={logout} className="btn-secondary !min-h-11 !px-3 !py-2"><ArrowRightOnRectangleIcon className="size-5" /><span className="hidden sm:inline">Logout</span></button>;

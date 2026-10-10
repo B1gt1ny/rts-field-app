@@ -20,7 +20,8 @@ export async function PUT(request: Request, { params }: Context) {
   const access = await requireRole(request, ["Admin", "Manager", "Employee"]);
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
   const { id } = await params;
-  const { expectedRevision, ...input } = await request.json() as Partial<Job> & { expectedRevision?: string | null };
+  const { expectedRevision, expectedUserId, ...input } = await request.json() as Partial<Job> & { expectedRevision?: string | null; expectedUserId?: string };
+  if (expectedUserId !== undefined && expectedUserId !== access.user?.id) return NextResponse.json({ error: "Sign back into the account that saved this draft." }, { status: 403 });
   const job = await getJob(id);
   if (!job) return NextResponse.json({ error: "Job not found" }, { status: 404 });
   if (!canEmployeeAccessJob(access.user || null, job)) return NextResponse.json({ error: "This job is not assigned to you." }, { status: 403 });

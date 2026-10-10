@@ -1,5 +1,7 @@
 "use client";
 
+import { useAuthUser } from "./AuthGate";
+
 import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeftIcon, CameraIcon, CheckCircleIcon, ClipboardDocumentListIcon, PrinterIcon, ReceiptPercentIcon, WrenchScrewdriverIcon } from "@heroicons/react/24/outline";
@@ -161,6 +163,7 @@ export function CloseoutPacket({ job }: { job: Job }) {
 }
 
 function BillingPacketActions({ job, blockers }: { job: Job; blockers: number }) {
+  const user = useAuthUser();
   const [invoiceStatus, setInvoiceStatus] = useState(job.invoiceStatus || "Not started");
   const [saving, setSaving] = useState("");
   const [copied, setCopied] = useState(false);
@@ -191,7 +194,7 @@ function BillingPacketActions({ job, blockers }: { job: Job; blockers: number })
         ...extra,
         invoiceStatus: nextStatus,
         activityLog: [activity, ...(savedJob.activityLog || [])].slice(0, 50),
-      } satisfies Partial<Job>),
+      } satisfies Partial<Job>, user?.id),
     });
     const saved = await response.json();
     if (!response.ok) throw new Error(saved.error || "Billing update could not be saved.");
