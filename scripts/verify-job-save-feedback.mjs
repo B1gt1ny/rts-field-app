@@ -143,3 +143,123 @@ assert.equal(JSON.stringify(localJobs.find(job => job.jobId === otherId)), other
 await assert.rejects(jobExports.saveJobIntegration({ ...original, companyCamProjectId: 'different-project' }), /changed/);
 assert.equal((await jobExports.getJob(original.jobId)).companyCamProjectId, 'synthetic-project');
 console.log('Repository helper fixtures passed: local concurrent writes/creates and delayed integration metadata preserve newer and unrelated records.');
+
+// Execute the actual closeout component with real readiness helpers.
+const closeoutModules = new Map();
+function closeoutModule(name) {
+  const key = name.replace(/^@\/lib\//, '').replace(/^\.\//, '');
+  if (closeoutModules.has(key)) return closeoutModules.get(key);
+  const result = {};
+  closeoutModules.set(key, result);
+  vm.runInNewContext(ts.transpileModule(readFileSync(`lib/${key}.ts`, 'utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 }
+  }).outputText, { exports: result, Date, Math, Map, Set, require: closeoutModule });
+  return result;
+}
+const completeExports = {};
+vm.runInNewContext(ts.transpileModule(readFileSync('components/JobDetail.tsx', 'utf8'), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX }
+}).outputText + '\nexports.CompleteJobFlow = CompleteJobFlow;', {
+  exports: completeExports, Date, Math, Map, Set,
+  fetch: async () => Response.json({ requireAfterPhotosToComplete: true }),
+  require(name) {
+    if (name === 'react') return react;
+    if (name === 'react/jsx-runtime') return { jsx, jsxs: jsx };
+    if (['@/lib/types', '@/lib/job-readiness', '@/lib/receipt-backup', '@/lib/field-activity', '@/lib/factory-costs'].includes(name)) return closeoutModule(name);
+    return new Proxy({}, { get: () => () => ({}) });
+  }
+});
+const readyJob = {
+  jobId: 'synthetic-closeout', status: 'In Progress', invoiceStatus: 'Not Started',
+  completionNotes: 'Synthetic work complete', paperworkPickedUp: true,
+  paperworkItems: [{ label: 'Work order', status: 'Collected' }],
+  checklist: [{ label: 'Customer/source notified', complete: false }],
+  timeEntries: [{ type: 'Work started' }], afterPhotos: ['synthetic-after'],
+  activityLog: [{ type: 'Note', message: 'No customer contacted. No text sent.' }],
+};
+for (const canManageJob of [false, true]) {
+  for (const action of ['sendForManagerReview', ...(canManageJob ? ['completeJob'] : [])]) {
+    remount(); let saved;
+    function closeoutRender(candidate = readyJob) {
+      cursor = 0; effectCursor = 0;
+      return completeExports.CompleteJobFlow({ job: candidate, saving: false, canManageJob,
+        onFinishWork() {}, onSave: async patch => { saved = patch; return { ...candidate, ...patch }; } });
+    }
+    let completeTree = closeoutRender();
+    let button = nodes(completeTree).find(node => node.type === 'button' && node.props.onClick?.name === action);
+    assert.equal(button.props.disabled, true, 'Unchecked notification remains blocked');
+    await button.props.onClick(); assert.equal(saved, undefined, 'Unchecked action cannot fabricate notification');
+    nodes(completeTree).find(node => node.type === 'input' && node.props.type === 'checkbox').props.onChange({ target: { checked: true } });
+    completeTree = closeoutRender();
+    button = nodes(completeTree).find(node => node.type === 'button' && node.props.onClick?.name === action);
+    assert.equal(button.props.disabled, false, 'Explicit notification checkbox enables otherwise ready job');
+    await button.props.onClick();
+    assert.equal(saved.status, action === 'completeJob' ? 'Complete' : 'Needs Inspection');
+    assert.ok(saved.activityLog.some(entry => entry.type === 'Source' && entry.message === 'Customer/source notification confirmed.'));
+    const notification = closeoutModule('@/lib/job-readiness').closeoutChecks({ ...readyJob, ...saved }).find(check => check.label === 'Customer/source notified');
+    assert.equal(notification.ok, true, 'Saved notification survives shared readiness evaluation');
+    saved = undefined;
+    completeTree = closeoutRender({ ...readyJob, paperworkPickedUp: false, paperworkItems: [] });
+    button = nodes(completeTree).find(node => node.type === 'button' && node.props.onClick?.name === action);
+    assert.equal(button.props.disabled, true, 'Notification does not bypass missing paperwork');
+    await button.props.onClick(); assert.equal(saved, undefined);
+  }
+}
+console.log('Actual closeout component PASS: explicit checkbox enables and persists notification for employee/manager review and manager completion; unchecked and other blockers stay blocked.');
+
+// Finish Work passes its editable note and saves it atomically with departure.
+const finishJob = { ...readyJob, completionNotes: 'Existing saved notes',
+  timeEntries: [{ type: 'Work started', createdAt: '2026-10-10T10:00:00.000Z' }] };
+remount(); let finishAccepted = false, finishDraft, finishCalls = 0;
+function finishRender() {
+  cursor = 0; effectCursor = 0;
+  return completeExports.CompleteJobFlow({ job: finishJob, saving: false, canManageJob: false,
+    onSave: async () => undefined,
+    onFinishWork: async value => { finishCalls++; finishDraft = value; return finishAccepted ? finishJob : undefined; } });
+}
+let finishTree = finishRender();
+nodes(finishTree).find(node => node.type === 'textarea').props.onChange({ target: { value: 'New editable completion draft' } });
+finishTree = finishRender();
+function finishButton(tree) { return nodes(tree).find(node => node.type === 'button' && node.props.children === 'Finish Work'); }
+assert.equal(finishButton(finishTree).props.disabled, false);
+await finishButton(finishTree).props.onClick();
+assert.equal(finishDraft, 'New editable completion draft');
+finishTree = finishRender();
+assert.equal(nodes(finishTree).find(node => node.type === 'textarea').props.value, finishDraft, 'Failed save keeps editable draft');
+assert.equal(finishButton(finishTree).props.disabled, false, 'Failed save leaves session retry available');
+finishAccepted = true; await finishButton(finishTree).props.onClick(); assert.equal(finishCalls, 2);
+const detailSource = readFileSync('components/JobDetail.tsx', 'utf8');
+const detailAst = ts.createSourceFile('JobDetail.tsx', detailSource, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+const detailFunction = detailAst.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === 'JobDetail');
+const finishHandlers = detailFunction.body.statements.filter(node => ts.isFunctionDeclaration(node) && ['saveJobPatch', 'finishWorkSession'].includes(node.name?.text));
+const finishCode = ts.transpileModule(finishHandlers.map(node => node.getText(detailAst)).join('\n'), { compilerOptions: { target: ts.ScriptTarget.ES2020 } }).outputText;
+for (const mode of ['success', 'server', 'conflict', 'network', 'blank']) {
+  let current = structuredClone(finishJob), payload, note = '', resolveRequest;
+  const context = { job: structuredClone(finishJob), user: { employeeName: 'Synthetic worker' }, Date,
+    getWorkSession: closeoutModule('@/lib/field-activity').getWorkSession,
+    correctionResolutionPatch: () => ({}), setSaving() {}, setDetailMessage(value) { note = value; },
+    setJob(value) { current = typeof value === 'function' ? value(current) : value; },
+    jobUpdateBody: (_job, patch) => JSON.stringify(patch),
+    authFetch: async (_url, init) => {
+      if (!init) return Response.json(finishJob);
+      payload = JSON.parse(init.body);
+      await new Promise(resolve => { resolveRequest = resolve; });
+      if (mode === 'network') throw new Error('Synthetic network failure');
+      return Response.json(mode === 'success' || mode === 'blank' ? { ...finishJob, ...payload } : { error: 'Synthetic rejected save' }, { status: mode === 'server' ? 500 : mode === 'conflict' ? 409 : 200 });
+    }
+  };
+  vm.runInNewContext(finishCode + '\nthis.finishWorkSession = finishWorkSession;', context);
+  const pendingFinish = context.finishWorkSession(mode === 'blank' ? '   ' : finishDraft);
+  assert.equal(current.timeEntries.length, 1, 'No premature closed session before save confirmation');
+  assert.equal(payload.timeEntries[0].type, 'Departed');
+  assert.equal(payload.activityLog[0].message, 'Finished Work');
+  for (const forbidden of ['status', 'invoiceStatus', 'checklist']) assert.equal(Object.hasOwn(payload, forbidden), false);
+  assert.equal(payload.activityLog.some(entry => entry.type === 'Source' || entry.type === 'Customer'), false, 'Finish Work does not assert notification');
+  if (mode === 'blank') assert.equal(Object.hasOwn(payload, 'completionNotes'), false, 'Blank draft preserves saved notes');
+  else assert.equal(payload.completionNotes, finishDraft);
+  resolveRequest(); await pendingFinish;
+  if (mode === 'success') { assert.equal(current.completionNotes, finishDraft); assert.equal(current.timeEntries[0].type, 'Departed'); }
+  else if (mode === 'blank') assert.equal(current.completionNotes, finishJob.completionNotes);
+  else { assert.ok(note); assert.equal(current.timeEntries.length, 1, 'Rejected finish keeps active session'); }
+}
+console.log('Actual Finish Work PASS: note callback/retry, atomic note+departure save, no premature closure, server/conflict/network failures, blank-note preservation and unchanged status/invoice/notification.');

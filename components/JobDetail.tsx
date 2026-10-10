@@ -60,14 +60,14 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
   const checklistPercent = checklist.percent;
   const isEmployee = user?.role === "Employee";
   const canManageJob = Boolean(user && user.role !== "Employee");
-  async function saveJobPatch(patch: Partial<Job>) {
+  async function saveJobPatch(patch: Partial<Job>, optimistic = true) {
     setSaving(true);
     setDetailMessage("");
     const next = { ...job, ...patch };
     const correctionPatch = correctionResolutionPatch(job, next);
     const finalNext = { ...next, ...correctionPatch };
     const patchToSave = { ...patch, ...correctionPatch };
-    setJob(finalNext);
+    if (optimistic) setJob(finalNext);
     try {
       const response = await authFetch(`/api/jobs/${job.jobId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: jobUpdateBody(job, patchToSave) });
       const saved = await response.json();
@@ -146,7 +146,7 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
       activityLog: [activity, ...(job.activityLog || [])].slice(0, 50),
     });
   }
-  async function finishWorkSession() {
+  async function finishWorkSession(completionNotes: string) {
     const session = getWorkSession(job);
     if (!session.active) return;
     const employeeName = user?.employeeName || user?.email || "Field";
@@ -167,9 +167,10 @@ export function JobDetail({ initialJob }: { initialJob: Job }) {
       audience: "All",
     };
     await saveJobPatch({
+      ...(completionNotes.trim() ? { completionNotes: completionNotes.trim() } : {}),
       timeEntries: [entry, ...(job.timeEntries || [])].slice(0, 100),
       activityLog: [activity, ...(job.activityLog || [])].slice(0, 50),
-    });
+    }, false);
   }
   return <>
     <div className="mb-5 grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)_auto]">
@@ -1370,13 +1371,17 @@ function receiptBackupApplies(job: Job) {
   return isReceiptBackupMissing(job) || (job.receipts || []).some((receipt) => Boolean(receipt.amount || receipt.file)) || hasFactoryCostWork(job.factoryCost);
 }
 
-function CompleteJobFlow({ job, saving, canManageJob, onFinishWork, onSave }: { job: Job; saving: boolean; canManageJob: boolean; onFinishWork: () => void; onSave: (patch: Partial<Job>) => Promise<Job | undefined> }) {
+function CompleteJobFlow({ job, saving, canManageJob, onFinishWork, onSave }: { job: Job; saving: boolean; canManageJob: boolean; onFinishWork: (completionNotes: string) => Promise<void>; onSave: (patch: Partial<Job>) => Promise<Job | undefined> }) {
   const [notes, setNotes] = useState(job.completionNotes || "");
   const [notified, setNotified] = useState(false);
   const [invoiceReady, setInvoiceReady] = useState(job.invoiceStatus === "Ready");
   const [requireAfterPhotos, setRequireAfterPhotos] = useState(true);
   const session = getWorkSession(job);
-  const draftJob = { ...job, completionNotes: notes.trim() || job.completionNotes };
+  const draftJob = {
+    ...job,
+    completionNotes: notes.trim() || job.completionNotes,
+    activityLog: notified ? addJobActivity(job, "Customer/source notification confirmed.", "Source") : job.activityLog,
+  };
   const reviewRequirements = closeoutRequirements(draftJob, "review", { requireAfterPhotos });
   const reviewBlockers = blockingRequirements(reviewRequirements);
   const afterPhotosReady = hasAfterPhotos(job);
@@ -1401,7 +1406,7 @@ function CompleteJobFlow({ job, saving, canManageJob, onFinishWork, onSave }: { 
       completionNotes: notes.trim(),
       invoiceStatus: invoiceReady ? "Ready" : job.invoiceStatus,
       checklist,
-      activityLog: addJobActivity(job, `Job marked complete.${notified ? " Customer/source notified." : ""}${invoiceReady ? " Invoice marked ready." : ""}`, "Status"),
+      activityLog: addJobActivity(draftJob, `Job marked complete.${notified ? " Customer/source notified." : ""}${invoiceReady ? " Invoice marked ready." : ""}`, "Status"),
     });
   }
 
@@ -1415,7 +1420,7 @@ function CompleteJobFlow({ job, saving, canManageJob, onFinishWork, onSave }: { 
       status: "Needs Inspection",
       completionNotes: notes.trim(),
       checklist,
-      activityLog: addJobActivity(job, "Field work marked ready for manager review.", "Status"),
+      activityLog: addJobActivity(draftJob, "Field work marked ready for manager review.", "Status"),
     });
   }
 
@@ -1445,7 +1450,7 @@ function CompleteJobFlow({ job, saving, canManageJob, onFinishWork, onSave }: { 
           <p className="text-sm font-bold">Finish Work</p>
           <p className="text-xs font-semibold text-content/65">{session.active ? "Closes the current work session without submitting for review." : session.started ? "Current work session is already closed." : "Start the job before finishing work."}</p>
         </div>
-        <button type="button" disabled={saving || !session.active} onClick={onFinishWork} className="min-h-11 rounded-xl bg-ink px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{saving ? "Saving..." : "Finish Work"}</button>
+        <button type="button" disabled={saving || !session.active} onClick={() => onFinishWork(notes)} className="min-h-11 rounded-xl bg-ink px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{saving ? "Saving..." : "Finish Work"}</button>
       </div>
     </div>
     <div className={`mt-4 grid gap-2 ${canManageJob ? "sm:grid-cols-2" : ""}`}>
